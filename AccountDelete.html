@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>অ্যাকাউন্ট ডিলিট - EasyPremium</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+   
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+
+   
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:; style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval';">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="format-detection" content="telephone=no, address=no, email=no">
+    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <style>
+      
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        input[type="text"],
+        input[type="tel"],
+        input[type="email"],
+        textarea {
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            -ms-user-select: text !important;
+            user-select: text !important;
+        }
+
+        :root {
+            --primary-color: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary-color: #7209b7;
+            --danger-color: #f72585;
+            --danger-dark: #e01e75;
+            --warning-color: #f8961e;
+            --success-color: #4cc9f0;
+            --dark-bg: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --gradient-primary: linear-gradient(135deg, #4361ee, #3a0ca3);
+            --gradient-danger: linear-gradient(135deg, #f72585, #b5179e);
+            --gradient-warning: linear-gradient(135deg, #f8961e, #f3722c);
+            --gradient-success: linear-gradient(135deg, #4cc9f0, #4895ef);
+            --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.3);
+            --shadow-xl: 0 25px 50px rgba(0, 0, 0, 0.4);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        html, body {
+            height: 100%;
+            min-height: 100vh;
+        }
+
+        body {
+            font-family: 'Poppins', 'Noto Sans Bengali', sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+       
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(67, 97, 238, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(114, 9, 183, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(248, 150, 30, 0.1) 0%, transparent 50%);
+            animation: float 20s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            33% { transform: translateY(-20px) rotate(1deg); }
+            66% { transform: translateY(20px) rotate(-1deg); }
+        }
+
+       
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+            flex: 1;
+            width: 100%;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 60px;
+            position: relative;
+        }
+
+        .page-header::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: var(--gradient-primary);
+            border-radius: 2px;
+        }
+
+        .page-title {
+            font-size: 48px;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .page-subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+      
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--primary-color);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .card-icon {
+            width: 70px;
+            height: 70px;
+            background: var(--gradient-primary);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: white;
+            box-shadow: 0 10px 20px rgba(67, 97, 238, 0.3);
+            transition: var(--transition);
+        }
+
+        .card:hover .card-icon {
+            transform: scale(1.1) rotate(10deg);
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        .card-content {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 25px;
+        }
+
+       
+        .card-danger .card-icon {
+            background: var(--gradient-danger);
+            box-shadow: 0 10px 20px rgba(247, 37, 133, 0.3);
+        }
+
+        .card-warning .card-icon {
+            background: var(--gradient-warning);
+            box-shadow: 0 10px 20px rgba(248, 150, 30, 0.3);
+        }
+
+        .card-success .card-icon {
+            background: var(--gradient-success);
+            box-shadow: 0 10px 20px rgba(76, 201, 240, 0.3);
+        }
+
+      
+        .user-info-grid {
+            display: grid;
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            min-width: 120px;
+        }
+
+        .info-value {
+            color: var(--text-primary);
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .status-badge {
+            background: var(--gradient-success);
+            color: white;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+       
+        .alert-box {
+            padding: 20px;
+            border-radius: 12px;
+            margin: 25px 0;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid;
+        }
+
+        .alert-box.warning {
+            background: linear-gradient(135deg, rgba(248, 150, 30, 0.1), transparent);
+            border-color: rgba(248, 150, 30, 0.3);
+        }
+
+        .alert-box.danger {
+            background: linear-gradient(135deg, rgba(247, 37, 133, 0.1), transparent);
+            border-color: rgba(247, 37, 133, 0.3);
+        }
+
+        .alert-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .alert-title.warning {
+            color: var(--warning-color);
+        }
+
+        .alert-title.danger {
+            color: var(--danger-color);
+        }
+
+        .alert-content {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+       
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 18px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.7s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 10px 20px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(67, 97, 238, 0.4);
+        }
+
+        .btn-danger {
+            background: var(--gradient-danger);
+            color: white;
+            box-shadow: 0 10px 20px rgba(247, 37, 133, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(247, 37, 133, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+     
+        .not-logged-in {
+            text-align: center;
+            padding: 60px 30px;
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 20px;
+            margin: 40px 0;
+            border: 2px solid var(--border-color);
+        }
+
+        .not-logged-in-icon {
+            font-size: 80px;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            opacity: 0.7;
+        }
+
+        .not-logged-in-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+        }
+
+        .not-logged-in-text {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto 30px;
+        }
+
+      
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .modal-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            background: var(--gradient-danger);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .modal-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+        }
+
+        .modal-body {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 15px;
+        }
+
+        .modal-footer .btn {
+            flex: 1;
+        }
+
+     
+        .modal-success .modal-content::before {
+            background: var(--gradient-success);
+        }
+
+        .modal-success .modal-icon {
+            background: var(--gradient-success);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+     
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .spinner {
+            width: 80px;
+            height: 80px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 30px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+      
+        .footer {
+            background: rgba(10, 10, 26, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 40px 20px 30px;
+            text-align: center;
+            width: 100%;
+            margin-top: auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 0 auto 30px;
+            flex-wrap: wrap;
+            max-width: 500px;
+        }
+
+        .social-link {
+            color: #ffffff;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            text-decoration: none;
+        }
+
+        .social-link:hover {
+            color: #ff9800;
+            background: rgba(255, 152, 0, 0.2);
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
+        }
+
+      
+        .social-link:nth-child(1) i { color: #1877F2; }
+        .social-link:nth-child(2) i { color: #E4405F; }
+        .social-link:nth-child(3) i { color: #FF0000; }
+        .social-link:nth-child(4) i { color: #0088cc; }
+        .social-link:nth-child(5) i { color: #25D366; }
+
+        .social-link:hover i {
+            color: #ff9800;
+        }
+
+        .copyright {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .copyright p {
+            margin-bottom: 8px;
+        }
+
+        .copyright p:last-child {
+            margin-bottom: 0;
+        }
+
+       
+        @media (max-width: 768px) {
+            .container {
+                padding: 40px 20px;
+            }
+
+            .page-title {
+                font-size: 36px;
+            }
+
+            .page-subtitle {
+                font-size: 16px;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+                gap: 25px;
+            }
+
+            .card {
+                padding: 25px;
+            }
+
+            .card-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+
+            .card-title {
+                font-size: 22px;
+            }
+
+            .btn {
+                padding: 16px 24px;
+                font-size: 15px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .modal-content {
+                padding: 30px 20px;
+            }
+
+            .modal-footer {
+                flex-direction: column;
+            }
+
+            .footer {
+                padding: 30px 15px 25px;
+            }
+
+            .social-links {
+                gap: 15px;
+                margin-bottom: 25px;
+            }
+
+            .social-link {
+                width: 45px;
+                height: 45px;
+                font-size: 1.3rem;
+            }
+
+            .copyright {
+                font-size: 0.8rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-title {
+                font-size: 28px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .card-title {
+                font-size: 20px;
+            }
+
+            .info-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+
+            .info-label {
+                min-width: auto;
+            }
+        }
+    </style>
+
+   
+    <noscript>
+        <style>
+            body { display: none !important; }
+            html { 
+                background: #000 !important; 
+                height: 100% !important;
+                overflow: hidden !important;
+            }
+        </style>
+        <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:#000;color:#ff0000;display:flex;align-items:center;justify-content:center;z-index:999999;font-family:monospace;text-align:center;flex-direction:column;">
+            <div style="animation: pulse 1s infinite;">
+                <h1 style="font-size:120px;margin:0;text-shadow:0 0 20px #ff0000;">🖕</h1>
+                <h1 style="font-size:72px;margin:20px 0;letter-spacing:10px;">FUCK YOU</h1>
+                <p style="font-size:24px;margin:20px 0;color:#fff;">JavaScript is DISABLED</p>
+                <p style="font-size:18px;color:#ff6666;">Nice try, script kiddie</p>
+                <p style="font-size:16px;color:#666;margin-top:30px;">Enable JavaScript to access this site</p>
+            </div>
+        </div>
+        <style>
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.1); opacity: 0.8; }
+            }
+        </style>
+    </noscript>
+</head>
+<body ondragstart="return false" onselectstart="return false">
+   
+    <div class="bg-animation"></div>
+
+   
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p id="loadingText" style="color: white; font-size: 18px;">প্রক্রিয়াধীন...</p>
+        </div>
+    </div>
+
+   
+    <main class="container">
+        <div class="page-header">
+            <h1 class="page-title">অ্যাকাউন্ট ডিলিট</h1>
+            <p class="page-subtitle">এখানে থেকে আপনি আপনার EasyPremium অ্যাকাউন্টের ডাটা বা সম্পূর্ণ অ্যাকাউন্ট মুছে ফেলতে পারেন। দয়া করে সতর্কতার সাথে পছন্দ করুন।</p>
+        </div>
+
+       
+        <div id="notLoggedIn" class="not-logged-in">
+            <div class="not-logged-in-icon">
+                <i class="fas fa-user-lock"></i>
+            </div>
+            <h2 class="not-logged-in-title">লগইন করা নেই</h2>
+            <p class="not-logged-in-text">অ্যাকাউন্ট ডিলিট করতে লগইন করুন</p>
+            <button onclick="goToLogin()" class="btn btn-primary">
+                <i class="fas fa-sign-in-alt"></i> লগইন করুন
+            </button>
+        </div>
+
+      
+        <div id="loggedInContent" style="display: none;">
+            <div class="cards-grid">
+
+             
+                <div class="card card-warning">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <h2 class="card-title">বিকল্প ১: শুধু ডাটা ডিলিট</h2>
+                    </div>
+
+                    <div class="card-content">
+                        <p>এই অপশন শুধুমাত্র আপনার ডাটা মুছে দেবে কিন্তু অ্যাকাউন্ট থাকবে:</p>
+                        <ul style="padding-left: 20px; margin: 15px 0; color: var(--text-secondary);">
+                            <li style="margin-bottom: 8px;">• আপনার অর্ডার ইতিহাস</li>
+                            <li style="margin-bottom: 8px;">• ব্যবহারের রেকর্ড</li>
+                            <li style="margin-bottom: 8px;">• সমস্ত ব্যক্তিগত তথ্য</li>
+                        </ul>
+                        <p><strong>✅ আপনার অ্যাকাউন্টটি থাকবে</strong> - আপনি পুনরায় লগইন করতে পারবেন এবং নতুন অর্ডার দিতে পারবেন।</p>
+                    </div>
+
+                    <div class="alert-box warning">
+                        <div class="alert-title warning">
+                            <i class="fas fa-info-circle"></i>
+                            <span>তথ্য</span>
+                        </div>
+                        <p class="alert-content">ডাটা মুছে ফেলার পর পুনরুদ্ধার করা সম্ভব নয়।</p>
+                    </div>
+
+                    <button onclick="deleteUserData()" class="btn btn-primary btn-full" id="deleteDataBtn">
+                        <i class="fas fa-trash-alt"></i> ডাটা ডিলিট করুন
+                    </button>
+                </div>
+
+              
+                <div class="card card-danger">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <i class="fas fa-user-times"></i>
+                        </div>
+                        <h2 class="card-title">বিকল্প ২: সম্পূর্ণ অ্যাকাউন্ট ডিলিট</h2>
+                    </div>
+
+                    <div class="card-content">
+                        <p>এই অপশন আপনার সম্পূর্ণ EasyPremium অ্যাকাউন্ট মুছে দেবে:</p>
+                        <ul style="padding-left: 20px; margin: 15px 0; color: var(--text-secondary);">
+                            <li style="margin-bottom: 8px;">• Firebase Authentication থেকে অ্যাকাউন্ট</li>
+                            <li style="margin-bottom: 8px;">• Realtime Database থেকে সকল ডাটা</li>
+                            <li style="margin-bottom: 8px;">• আপনি স্বয়ংক্রিয়ভাবে লগআউট হয়ে যাবেন</li>
+                        </ul>
+                        <p><strong>🚨 আপনার অ্যাকাউন্ট সম্পূর্ণ মুছে যাবে</strong> - পরে আপনি নতুন অ্যাকাউন্ট খুলতে পারবেন।</p>
+                    </div>
+
+                    <div class="alert-box danger">
+                        <div class="alert-title danger">
+                            <i class="fas fa-radiation-alt"></i>
+                            <span>চূড়ান্ত সতর্কতা</span>
+                        </div>
+                        <p class="alert-content">এই কাজটি সম্পূর্ণ অপরিবর্তনীয়। একবার অ্যাকাউন্ট ডিলিট করলে পুনরুদ্ধার করা যাবে না।</p>
+                    </div>
+
+                    <button onclick="deleteFullAccount()" class="btn btn-danger btn-full" id="deleteAccountBtn">
+                        <i class="fas fa-fire"></i> অ্যাকাউন্ট ডিলিট করুন
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+   
+    <footer class="footer">
+        <div class="social-links">
+            <a href="https://m.me/906635592542978" class="social-link"><i class="fab fa-facebook"></i></a>
+            <a href="https://www.instagram.com/easy__premium/" class="social-link"><i class="fab fa-instagram"></i></a>
+            <a href="https://www.youtube.com/@Easy_Premium" class="social-link"><i class="fab fa-youtube"></i></a>
+            <a href="https://t.me/+8801770584994" class="social-link"><i class="fab fa-telegram"></i></a>
+            <a href="https://wa.me/1770584994" class="social-link"><i class="fab fa-whatsapp"></i></a>
+        </div>
+
+        <div class="copyright">
+            © 2026 Easy Premium. সর্বস্বত্ব সুরক্ষিত।<br>
+            কন্টাক্ট: mdashikislam017705@gmail.com | হেল্পলাইন: +8801770584994<br>
+            অফিস: বামনডাঙ্গা পোস্ট কোড: ৫৭২১ থানা/উপজেলা: সুন্দরগঞ্জ জেলা: গাইবান্ধা বিভাগ: রংপুর
+        </div>
+    </footer>
+
+    <script>
+       
+        const encodedFirebaseConfig = "ewogICJhcGlLZXkiOiAiQUl6YVN5QnQ5dDZtY2pVdFh4WDJpZ0FKZHNldUlJYzhwUF9RUEV3IiwKICAiYXV0aERvbWFpbiI6ICJlYXN5LXByZW1pdW0uZmlyZWJhc2VhcHAuY29tIiwKICAiZGF0YWJhc2VVUkwiOiAiaHR0cHM6Ly9lYXN5LXByZW1pdW0tZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcCIsCiAgInByb2plY3RJZCI6ICJlYXN5LXByZW1pdW0iLAogICJzdG9yYWdlQnVja2V0IjogImVhc3ktcHJlbWl1bS5maXJlYmFzZXN0b3JhZ2UuYXBwIiwKICAibWVzc2FnaW5nU2VuZGVySWQiOiAiMTU1ODkxMjUyMjY1IiwKICAiYXBwSWQiOiAiMToxNTU4OTEyNTIyNjU6d2ViOjc3YWI0MWRlMjQyMzFlOGU1ZWYwMzgiLAogICJtZWFzdXJlbWVudElkIjogIkctQ0hMODFLOEhSUFgiCn0=";
+
+        function decodeBase64(str) {
+            try {
+                return JSON.parse(atob(str));
+            } catch (e) {
+                console.error("Decoding error", e);
+                return null;
+            }
+        }
+
+        const firebaseConfig = decodeBase64(encodedFirebaseConfig);
+
+      
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+      
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const notLoggedIn = document.getElementById('notLoggedIn');
+        const loggedInContent = document.getElementById('loggedInContent');
+        const deleteDataBtn = document.getElementById('deleteDataBtn');
+        const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+
+      
+        let currentUser = null;
+
+      
+        (function() {
+            'use strict';
+
+           
+            const CONFIG = {
+                SESSION_TIMEOUT: 30 * 60 * 1000, 
+                MAX_ATTEMPTS: 5,
+                RATE_LIMIT_WINDOW: 15 * 60 * 1000,
+                ALERT_ON_DEVTOOLS: false, 
+                ENABLE_ACTIVITY_LOG: false,
+                ENFORCE_HTTPS: true,
+                REDIRECT_URL: 'https://easy-premium.com/Privacy,Refund-Policy,Terms-Of-Service.html' 
+            };
+
+           
+            if (CONFIG.ENFORCE_HTTPS && location.protocol !== 'https:' && location.hostname !== 'localhost' && !location.hostname.includes('127.0.0.1')) {
+                location.replace('https://' + location.host + location.pathname + location.search);
+            }
+
+           
+            if (self !== top) {
+                try {
+                    top.location.href = self.location.href;
+                } catch (e) {
+                    document.body.innerHTML = '<h1 style="color:red;text-align:center;padding:50px;">Access Denied</h1>';
+                    throw new Error('Clickjacking protection');
+                }
+            }
+
+          
+            let devToolsOpened = false;
+            function detectDevTools() {
+                const start = performance.now();
+                debugger;
+                const end = performance.now();
+
+                if (end - start > 100) {
+                    if (!devToolsOpened) {
+                        devToolsOpened = true;
+                    
+                        window.location.href = CONFIG.REDIRECT_URL;
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+          
+            setInterval(detectDevTools, 1000);
+          
+            setTimeout(detectDevTools, 500);
+
+         
+            window._rateLimitStore = window._rateLimitStore || { attempts: {}, blockUntil: {} };
+            window.checkRateLimit = function(action, userId = 'anonymous') {
+                const key = `${action}_${userId}`;
+                const now = Date.now();
+                if (window._rateLimitStore.blockUntil[key] && window._rateLimitStore.blockUntil[key] > now) {
+                    const remaining = Math.ceil((window._rateLimitStore.blockUntil[key] - now) / 1000 / 60);
+                    return { allowed: false, message: `অনেক চেষ্টা করেছেন। ${remaining} মিনিট পরে আবার চেষ্টা করুন।` };
+                }
+                if (!window._rateLimitStore.attempts[key]) window._rateLimitStore.attempts[key] = [];
+                window._rateLimitStore.attempts[key] = window._rateLimitStore.attempts[key].filter(t => t > now - CONFIG.RATE_LIMIT_WINDOW);
+                if (window._rateLimitStore.attempts[key].length >= CONFIG.MAX_ATTEMPTS) {
+                    window._rateLimitStore.blockUntil[key] = now + CONFIG.RATE_LIMIT_WINDOW;
+                    return { allowed: false, message: 'অনেক চেষ্টা করেছেন। ১৫ মিনিট পরে আবার চেষ্টা করুন।' };
+                }
+                window._rateLimitStore.attempts[key].push(now);
+                return { allowed: true };
+            };
+
+          
+            let sessionTimer;
+            function resetSessionTimer() {
+                if (sessionTimer) clearTimeout(sessionTimer);
+                sessionTimer = setTimeout(() => {
+                    if (firebase && firebase.auth() && firebase.auth().currentUser) {
+                        if (confirm('আপনার সেশন শেষ হয়ে গেছে। আবার লগইন করবেন?')) {
+                            firebase.auth().signOut();
+                            window.location.reload();
+                        } else {
+                            firebase.auth().signOut();
+                        }
+                    }
+                }, CONFIG.SESSION_TIMEOUT);
+            }
+            ['click', 'keypress', 'scroll', 'mousemove', 'touchstart'].forEach(event => {
+                document.addEventListener(event, resetSessionTimer, { passive: true });
+            });
+            if (typeof firebase !== 'undefined' && firebase.auth) {
+                firebase.auth().onAuthStateChanged(user => {
+                    if (user) resetSessionTimer();
+                    else if (sessionTimer) clearTimeout(sessionTimer);
+                });
+            }
+
+         
+            function setupFormProtection() {
+                document.querySelectorAll('form').forEach(form => {
+                    if (form._protected) return;
+                    form._protected = true;
+                    form.addEventListener('submit', function() {
+                        const textInputs = this.querySelectorAll('input[type="text"], input[type="tel"], input[type="email"], textarea');
+                        textInputs.forEach(input => {
+                            if (input.value && /[<>"'`=]/.test(input.value)) {
+                                console.warn('সতর্কতা: ইনপুটে বিপজ্জনক ক্যারেক্টার পাওয়া গেছে');
+                            }
+                        });
+                    }, true);
+                });
+            }
+            const observer = new MutationObserver(() => setupFormProtection());
+            observer.observe(document.body, { childList: true, subtree: true });
+
+         
+            const originalSetItem = localStorage.setItem;
+            const originalGetItem = localStorage.getItem;
+            const sensitiveKeys = ['user', 'session', 'token', 'auth'];
+            localStorage.setItem = function(key, value) {
+                if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
+                    try {
+                        const encoded = btoa(encodeURIComponent(value));
+                        return originalSetItem.call(this, `_sec_${key}`, encoded);
+                    } catch (e) { console.warn('LocalStorage encoding error'); }
+                }
+                return originalSetItem.call(this, key, value);
+            };
+            localStorage.getItem = function(key) {
+                if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
+                    try {
+                        const encoded = originalGetItem.call(this, `_sec_${key}`);
+                        if (encoded) return decodeURIComponent(atob(encoded));
+                    } catch (e) { console.warn('LocalStorage decoding error'); }
+                }
+                return originalGetItem.call(this, key);
+            };
+
+          
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey && [85, 83].includes(e.keyCode)) || (e.ctrlKey && e.shiftKey && e.keyCode === 73) || e.keyCode === 123) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            console.log('%c🔒 Easy Premium (Delete Page) - অত্যাধুনিক নিরাপত্তা সক্রিয়', 'color: #4caf50; font-size: 14px; font-weight: bold;');
+        })();
+
+     
+        (function() {
+            document.addEventListener('contextmenu', (e) => e.preventDefault());
+            document.addEventListener('mousedown', (e) => { if (e.button === 2) e.preventDefault(); });
+            document.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    const timer = setTimeout(() => e.preventDefault(), 500);
+                    document.addEventListener('touchend', () => clearTimeout(timer), { once: true });
+                }
+            }, { passive: false });
+            console.log('✅ রাইট ক্লিক প্রোটেকশন চালু হয়েছে (Delete Page)');
+        })();
+
+       
+        auth.onAuthStateChanged(function(user) {
+            if (user) {
+                console.log("User logged in:", user.email);
+                currentUser = user;
+                notLoggedIn.style.display = 'none';
+                loggedInContent.style.display = 'block';
+            } else {
+                console.log("No user logged in");
+                currentUser = null;
+                notLoggedIn.style.display = 'block';
+                loggedInContent.style.display = 'none';
+            }
+        });
+
+        function showLoading(text = "প্রক্রিয়াধীন...") {
+            loadingText.textContent = text;
+            loadingOverlay.style.display = 'flex';
+        }
+
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+
+        function createModal(type, title, message, confirmText, confirmCallback, cancelText = 'বাতিল করুন') {
+            const existingModal = document.querySelector('.custom-modal');
+            if (existingModal) existingModal.remove();
+
+            const modalClass = type === 'success' ? 'modal-success' : '';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+            const modalHTML = `
+                <div class="modal-overlay custom-modal ${modalClass}" style="display: flex;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div class="modal-icon"><i class="fas ${icon}"></i></div>
+                            <h3 class="modal-title">${title}</h3>
+                        </div>
+                        <div class="modal-body">${message.replace(/\n/g, '<br>')}</div>
+                        <div class="modal-footer">
+                            ${type === 'success' ?
+                                `<button id="modalOk" class="btn btn-primary">${confirmText}</button>` :
+                                `<button id="modalCancel" class="btn btn-secondary">${cancelText}</button>
+                                 <button id="modalConfirm" class="btn btn-danger">${confirmText}</button>`
+                            }
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+            const modal = document.querySelector('.custom-modal');
+            if (type === 'success') {
+                document.getElementById('modalOk').addEventListener('click', () => { modal.remove(); if (confirmCallback) confirmCallback(); });
+            } else {
+                document.getElementById('modalCancel').addEventListener('click', () => modal.remove());
+                document.getElementById('modalConfirm').addEventListener('click', () => { modal.remove(); if (confirmCallback) confirmCallback(); });
+            }
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        }
+
+        async function deleteUserData() {
+            if (!currentUser) { createModal('error', "লগইন করা নেই", "লগইন করা নেই। দয়া করে প্রথমে লগইন করুন।", "লগইন করুন", goToLogin); return; }
+            createModal('error', "ডাটা ডিলিট", `আপনি কি নিশ্চিত যে আপনি আপনার সকল ডাটা মুছে ফেলতে চান?<br><strong>ইমেইল:</strong> ${currentUser.email}<br>⚠️ ডাটা মুছে ফেলার পর পুনরুদ্ধার করা যাবে না।`, "ডিলিট করুন", async () => {
+                try {
+                    showLoading("ডাটা মুছে ফেলা হচ্ছে...");
+                    const userId = currentUser.uid;
+                    await database.ref('users/' + userId).remove();
+                    await database.ref('userOrders/' + userId).remove();
+                    try { await database.ref('userDeletions/' + userId).set({ email: currentUser.email, deletedAt: new Date().toISOString(), type: 'data_only' }); } catch (logError) {}
+                    hideLoading();
+                    createModal('success', "✅ সফল!", "আপনার ডাটা সফলভাবে মুছে ফেলা হয়েছে!<br><br>আপনার অ্যাকাউন্টটি এখনও সক্রিয় আছে। আপনি নতুন অর্ডার দিতে পারবেন।", "ঠিক আছে", () => window.location.reload());
+                } catch (error) {
+                    hideLoading();
+                    let errorMsg = "ডাটা ডিলিট করতে সমস্যা হয়েছে: " + error.message;
+                    if (error.message.includes('PERMISSION_DENIED')) errorMsg = "⚠️ অনুমতি সমস্যা!<br><br>Firebase Rules এ আপনার ডিলিট করার অনুমতি নেই।";
+                    createModal('error', "ত্রুটি!", errorMsg, "ঠিক আছে", null);
+                }
+            });
+        }
+
+        async function deleteFullAccount() {
+            if (!currentUser) { createModal('error', "লগইন করা নেই", "লগইন করা নেই। দয়া করে প্রথমে লগইন করুন।", "লগইন করুন", goToLogin); return; }
+            createModal('error', "সম্পূর্ণ অ্যাকাউন্ট ডিলিট", `🚨 চূড়ান্ত সতর্কতা!<br>আপনি কি নিশ্চিত যে আপনি আপনার সম্পূর্ণ EasyPremium অ্যাকাউন্ট মুছে ফেলতে চান?<br><strong>ইমেইল:</strong> ${currentUser.email}<br>⚠️ এই কাজটি সম্পূর্ণ অপরিবর্তনীয়!`, "নিশ্চিত করুন", () => {
+                createModal('error', "চূড়ান্ত নিশ্চিতকরণ", "আপনি কি সম্পূর্ণ নিশ্চিত?<br><br>আপনার অ্যাকাউন্ট চিরতরে মুছে যাবে এবং পুনরুদ্ধার করা যাবে না!", "ডিলিট করুন", async () => {
+                    try {
+                        showLoading("অ্যাকাউন্ট মুছে ফেলা হচ্ছে...");
+                        const userId = currentUser.uid;
+                        const userEmail = currentUser.email;
+                        await database.ref('users/' + userId).remove();
+                        await database.ref('userOrders/' + userId).remove();
+                        try { await database.ref('userDeletions/' + userId).set({ email: userEmail, deletedAt: new Date().toISOString(), type: 'full_account' }); } catch (logError) {}
+                        await currentUser.delete();
+                        await auth.signOut();
+                        hideLoading();
+                        createModal('success', "✅ সফল!", "আপনার অ্যাকাউন্ট সফলভাবে মুছে ফেলা হয়েছে!<br><br>আপনার সকল তথ্য Firebase থেকে মুছে গেছে।<br><br>আপনি এখন হোমপেজে যাচ্ছেন...", "ঠিক আছে", () => window.location.href = "index.html");
+                    } catch (error) {
+                        hideLoading();
+                        let errorMsg = error.message.includes('requires-recent-login') ? "⚠️ সাম্প্রতিক লগইন প্রয়োজন!<br><br>সুরক্ষার জন্য আপনাকে লগআউট করা হচ্ছে। দয়া করে পুনরায় লগইন করুন এবং আবার চেষ্টা করুন।" : "অ্যাকাউন্ট ডিলিট করতে সমস্যা হয়েছে: " + error.message;
+                        createModal('error', "ত্রুটি!", errorMsg, "ঠিক আছে", null);
+                        try { await auth.signOut(); setTimeout(() => window.location.href = "index.html", 3000); } catch (signOutError) {}
+                    }
+                });
+            });
+        }
+
+        function goToLogin() { window.location.href = "index.html"; }
+
+        window.deleteUserData = deleteUserData;
+        window.deleteFullAccount = deleteFullAccount;
+        window.goToLogin = goToLogin;
+
+        document.addEventListener('DOMContentLoaded', function() { console.log("Premium Account Delete page loaded with enhanced security features"); });
+    </script>
+</body>
+</html>
