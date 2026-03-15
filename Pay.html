@@ -864,7 +864,7 @@
                 }, 5 * 60 * 1000);
             });
 
-            // ---------- VERIFY বাটন - আপডেট করা অংশ (ফোন ও ট্রানজেকশন ID reference-এ পাঠানো, কারেন্সি USD) ----------
+            // ---------- VERIFY বাটন - আপডেট করা অংশ (ফোন ও ট্রানজেকশন ID reference-এ পাঠানো, কারেন্সি EUR) ----------
             const verifyInside = document.getElementById('verifyInsideBtn');
             if (verifyInside) {
                 verifyInside.replaceWith(verifyInside.cloneNode(true));
@@ -918,8 +918,8 @@
                     const productSlug = data.platformId; 
                     const amount = parseInt(data.price) || 1;
                     
-                    // কারেন্সি 'usd' দেওয়া আছে (যদি USD ওয়ালেট না থাকে তাহলে 'bdt' করে দিন)
-                    const paymentCurrency = 'usd';
+                    // ⭐⭐⭐ কারেন্সি 'eur' দেওয়া হয়েছে (যেহেতু USD ওয়ালেট নেই)
+                    const paymentCurrency = 'eur';
                     
                     // পেমেন্ট মেথড ও ট্রানজেকশন তথ্য reference-এ পাঠানো
                     const paymentMethod = selected.value.replace('woo_', '').toUpperCase(); // BKASH, NAGAD, ROCKET
