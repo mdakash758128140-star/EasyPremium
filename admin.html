@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rewarble Admin · Easy Premium</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -42,6 +43,7 @@
         .status-badge { padding:4px 12px; border-radius:30px; font-size:0.8rem; font-weight:600; }
         .status-active { background:rgba(76,175,80,0.2); color:#4caf50; }
         .status-redeemed { background:rgba(33,150,243,0.2); color:#2196f3; }
+        .status-pending { background:rgba(255,152,0,0.2); color:#ff9800; }
         .toast { position:fixed; top:20px; right:20px; background:#ff9800; padding:15px 25px; border-radius:8px; animation:slideIn 0.3s; z-index:9999; }
         @keyframes slideIn { from{transform:translateX(100%); opacity:0;} to{transform:translateX(0); opacity:1;} }
         @media (max-width:600px){ .glass-card{ padding:15px; } }
@@ -73,10 +75,12 @@
                 <button id="logoutBtn" class="btn" style="background:#dc3545;"><i class="fas fa-sign-out-alt"></i> লগ আউট</button>
             </div>
 
+            <!-- নেভিগেশন বাটন -->
             <div class="admin-nav">
                 <button class="nav-btn active" data-section="dashboard"><i class="fas fa-tachometer-alt"></i> ড্যাশবোর্ড</button>
                 <button class="nav-btn" data-section="generate"><i class="fas fa-key"></i> নতুন API কী</button>
                 <button class="nav-btn" data-section="vouchers"><i class="fas fa-credit-card"></i> ভাউচার ম্যানেজ</button>
+                <button class="nav-btn" data-section="relograde"><i class="fas fa-list"></i> Relograde অর্ডার</button>
                 <button class="nav-btn" data-section="settings"><i class="fas fa-cog"></i> সেটিংস</button>
             </div>
 
@@ -172,6 +176,27 @@
                 </div>
             </section>
 
+            <!-- Relograde অর্ডার তালিকা সেকশন -->
+            <section class="section" id="relogradeSection">
+                <h2 class="section-title">📦 Relograde অর্ডার তালিকা</h2>
+                <div style="overflow-x:auto;">
+                    <table class="voucher-table">
+                        <thead>
+                            <tr>
+                                <th>অর্ডার আইডি</th>
+                                <th>পণ্য</th>
+                                <th>পরিমাণ</th>
+                                <th>স্ট্যাটাস</th>
+                                <th>তারিখ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="relogradeOrdersList">
+                            <tr><td colspan="5" style="text-align:center;">লোড হচ্ছে...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
             <!-- সেটিংস সেকশন -->
             <section class="section" id="settingsSection">
                 <h2 class="section-title">⚙️ সেটিংস</h2>
@@ -228,6 +253,7 @@
         const activeVouchers = document.getElementById('activeVouchers');
         const updateSettingsBtn = document.getElementById('updateSettings');
         const defaultWebhook = document.getElementById('defaultWebhook');
+        const relogradeOrdersList = document.getElementById('relogradeOrdersList');
 
         let currentUserEmail = '';
         let isSuperAdmin = false;
@@ -244,6 +270,7 @@
                 loadApiKey();
                 loadVouchers();
                 loadBalance();
+                // Relograde অর্ডার ডিফল্টভাবে লোড হবে না, শুধু সেকশনে গেলে
             } else {
                 if (user) await auth.signOut();
                 loginScreen.style.display = 'block';
@@ -273,7 +300,12 @@
                 navBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 sections.forEach(s => s.classList.remove('active'));
-                document.getElementById(btn.dataset.section + 'Section').classList.add('active');
+                const sectionId = btn.dataset.section + 'Section';
+                document.getElementById(sectionId).classList.add('active');
+                // যদি Relograde সেকশন হয়, তাহলে অর্ডার লোড করি
+                if (btn.dataset.section === 'relograde') {
+                    loadRelogradeOrders();
+                }
             });
         });
 
@@ -319,7 +351,7 @@
                 showToast('ত্রুটি: ' + err.message, 'error');
             } finally {
                 generateBtn.disabled = false;
-                generateBtn.innerHTML = '<i class="fas fa-sync-alt"></i>8ef43d4b-37f9-4ceb-baa3-177b4e3832e7';
+                generateBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Generate New Key';
             }
         });
 
@@ -360,7 +392,7 @@
             }
         });
 
-        // ভাউচার লিস্ট লোড
+        // ভাউচার লিস্ট লোড (ফায়ারবেস থেকে)
         async function loadVouchers() {
             try {
                 const snap = await database.ref('vouchers').once('value');
@@ -390,6 +422,37 @@
         async function loadBalance() {
             totalBalanceUsd.innerText = '1,250.00';
             totalBalanceBdt.innerText = '1,45,000';
+        }
+
+        // Relograde অর্ডার লোড (Vercel ফাংশন থেকে)
+        async function loadRelogradeOrders() {
+            relogradeOrdersList.innerHTML = '<tr><td colspan="5" style="text-align:center;">লোড হচ্ছে...</td></tr>';
+            try {
+                const response = await fetch('/api/relograde-orders');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const orders = await response.json();
+                if (orders.length === 0) {
+                    relogradeOrdersList.innerHTML = '<tr><td colspan="5" style="text-align:center;">কোন অর্ডার নেই</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                orders.forEach(order => {
+                    const statusClass = order.status === 'completed' ? 'status-active' : (order.status === 'pending' ? 'status-pending' : '');
+                    html += `<tr>
+                        <td>${order.id || order.orderId || '—'}</td>
+                        <td>${order.product || order.description || '—'}</td>
+                        <td>${order.amount || order.price || '—'} ${order.currency || 'USD'}</td>
+                        <td><span class="status-badge ${statusClass}">${order.status || '—'}</span></td>
+                        <td>${order.createdAt ? new Date(order.createdAt).toLocaleDateString('bn-BD') : '—'}</td>
+                    </tr>`;
+                });
+                relogradeOrdersList.innerHTML = html;
+            } catch (error) {
+                relogradeOrdersList.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff6b6b;">ত্রুটি: ${error.message}</td></tr>`;
+            }
         }
 
         // সেটিংস আপডেট (শুধু সুপার অ্যাডমিন)
