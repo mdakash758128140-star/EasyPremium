@@ -6,14 +6,13 @@
     <title>পেমেন্ট তথ্য · Easy Premium</title>
     <meta name="theme-color" content="#0a0a1a">
     
-    <!-- ================== সিকিউরিটি হেডার (আগের মত) ================== -->
+    <!-- ================== সিকিউরিটি হেডার ================== -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:; style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval';">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="format-detection" content="telephone=no, address=no, email=no">
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
     
     <style>
-        /* আপনার পূর্বের CSS ঠিক একই থাকবে, কোনো পরিবর্তন নেই */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         html, body { 
@@ -598,21 +597,18 @@
             }
         }
 
-        // ফোন নম্বর ফরম্যাট করে 0 যোগ করা (যদি 10 ডিজিটের সংখ্যা হয়)
+        // ফোন নম্বর ফরম্যাট করে 0 যোগ করা
         function formatPhoneNumber(num) {
             if (typeof num === 'number') {
                 num = num.toString();
             }
             if (typeof num !== 'string') return num;
-            // যদি 10 ডিজিটের স্ট্রিং (শুরুতে 0 নেই) তাহলে শুরুতে 0 যোগ
             if (num.length === 10 && /^[1-9]\d{9}$/.test(num)) {
                 return '0' + num;
             }
-            // যদি 11 ডিজিটের এবং প্রথম ডিজিট 0 হয় তাহলে যেমন আছে
             if (num.length === 11 && num[0] === '0') {
                 return num;
             }
-            // অন্যথায় আগের মত
             return num;
         }
 
@@ -620,10 +616,10 @@
         async function setActiveAdminNumber() {
             try {
                 const snapshot = await database.ref('publicAdminInfo').once('value');
-                const admins = snapshot.val(); // { uid1: { name, number, lastActive }, ... }
+                const admins = snapshot.val();
 
                 const now = new Date();
-                const oneMinuteAgo = new Date(now.getTime() - 60 * 1000); // ১ মিনিট আগের সময়
+                const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
 
                 let activeAdminNumber = null;
                 let latestTimestamp = 0;
@@ -641,7 +637,6 @@
                     }
                 }
 
-                // নম্বর ফরম্যাট করে 0 যোগ করা
                 const formattedNumber = activeAdminNumber ? formatPhoneNumber(activeAdminNumber) : null;
 
                 const numberSpans = document.querySelectorAll('.account-number-text');
@@ -650,18 +645,15 @@
                 const payBtn = document.getElementById('payBtn');
 
                 if (formattedNumber) {
-                    // নম্বর আপডেট
                     numberSpans.forEach(span => {
                         span.textContent = formattedNumber;
                     });
                     copyButtons.forEach(btn => {
                         btn.setAttribute('data-number', formattedNumber);
                     });
-                    // payBtn দৃশ্যমান রাখা
                 } else {
-                    // কোনো active এডমিন নেই → পুরো প্যানেল ব্লক
                     panel.innerHTML = '<div class="error" style="padding: 30px; text-align: center; background: rgba(255,68,68,0.15); border: 1px solid #ff4444;">⚠️ পেমেন্ট বন্ধ আছে। এডমিনের সাথে যোগাযোগ করুন।</div>';
-                    payBtn.style.display = 'none'; // পেমেন্ট বাটন লুকানো
+                    payBtn.style.display = 'none';
                 }
             } catch (e) {
                 console.error("Error in setActiveAdminNumber:", e);
@@ -670,50 +662,34 @@
             }
         }
 
-        // আপডেটেড ফাংশন: প্ল্যান ডাটা খুঁজে বের করা (Products ফিল্ডের সাথে মিলিয়ে)
+        // প্ল্যান ডাটা খুঁজে বের করা (Products ফিল্ডের সাথে মিলিয়ে)
         async function fetchPlanData(platformId) {
             try {
                 console.log("🔍 Fetching plan data for platformId:", platformId);
                 
-                // প্রথমে সরাসরি পাথ চেষ্টা করা যাক (যেমন pricingPlans2/<platformId>)
-                const directSnapshot = await database.ref(`pricingPlans2/${platformId}`).once('value');
-                if (directSnapshot.exists()) {
-                    console.log("✅ Found directly at pricingPlans2/"+platformId);
-                    return directSnapshot.val();
-                }
-
-                // না পেলে pricingPlans2 নোডের সব চাইল্ডের মধ্যে Products ফিল্ড খুঁজে দেখি
-                const allPlansSnapshot = await database.ref('pricingPlans2').once('value');
-                if (allPlansSnapshot.exists()) {
-                    const allPlans = allPlansSnapshot.val();
+                // প্রথমে pricingPlans2 এ খোঁজা
+                const plansSnapshot = await database.ref('publicData/pricingPlans2').once('value');
+                if (plansSnapshot.exists()) {
+                    const allPlans = plansSnapshot.val();
                     for (let key in allPlans) {
                         const plan = allPlans[key];
-                        // Products ফিল্ডে স্লাগ আছে (যেমন "visa-card-usd-5")
-                        if (plan.Products === platformId) {
-                            console.log(`✅ Found plan with Products="${platformId}" at key: ${key}`);
-                            return plan;
-                        }
-                        // যদি name বা অন্য কোনো ফিল্ডেও মিলে
-                        if (plan.name && plan.name.replace(/\s+/g, '-').toLowerCase() === platformId) {
-                            console.log(`✅ Found plan by name match at key: ${key}`);
+                        if (key === platformId || plan.Products === platformId) {
+                            console.log(`✅ Found plan with key: ${key}`);
                             return plan;
                         }
                     }
                 }
 
-                // তারপর অন্যান্য পাথ চেক করা
-                const paths = [
-                    `publicData/pricingPlans2/${platformId}`,
-                    `plans/${platformId}`,
-                    `platforms/${platformId}`,
-                    `products/${platformId}`
-                ];
-                for (const path of paths) {
-                    console.log("Checking alternative path:", path);
-                    const snapshot = await database.ref(path).once('value');
-                    if (snapshot.exists()) {
-                        console.log("✅ Found at:", path);
-                        return snapshot.val();
+                // pricingPlans1 এ খোঁজা
+                const plans1Snapshot = await database.ref('publicData/pricingPlans1').once('value');
+                if (plans1Snapshot.exists()) {
+                    const allPlans = plans1Snapshot.val();
+                    for (let key in allPlans) {
+                        const plan = allPlans[key];
+                        if (key === platformId || plan.Products === platformId) {
+                            console.log(`✅ Found plan in pricingPlans1 with key: ${key}`);
+                            return plan;
+                        }
                     }
                 }
 
@@ -732,7 +708,7 @@
             const paymentPanel = document.getElementById('paymentPanel');
             
             let paymentTimer = null;
-            let planData = null; // planData সংরক্ষণের জন্য variable
+            let planData = null;
 
             // ১. ডাটাবেস থেকে সক্রিয় এডমিন নম্বর সেট করি
             await setActiveAdminNumber();
@@ -755,45 +731,30 @@
                 return;
             }
             
-            // ৩. প্ল্যান ডাটা fetch করি (D field ও service charge সহ)
+            // ৩. প্ল্যান ডাটা fetch করি
             planData = await fetchPlanData(data.platformId);
             
-            // service charge ডিফল্ট 0
             let serviceCharge = 0;
             if (planData && planData.ServicCharge !== undefined) {
                 serviceCharge = Number(planData.ServicCharge) || 0;
-            } else if (planData && planData.serviceCharge !== undefined) {
-                serviceCharge = Number(planData.serviceCharge) || 0;
             }
             
             const productPrice = Number(data.price) || 0;
             const totalAmount = productPrice + serviceCharge;
             
-            // D field (বিবরণ) এবং প্ল্যাটফর্মের নাম দেখানোর জন্য
-            const dField = planData && (planData.D || planData.description || planData.d || planData.info || '');
-            // প্ল্যাটফর্মের নাম (যদি পাওয়া যায়)
+            const dField = planData && (planData.D || planData.description || '');
+            
             let platformDisplayName = data.platformId.replace(/_/g, ' ').toUpperCase();
             if (planData && planData.name) {
                 platformDisplayName = planData.name;
-            } else if (planData && planData.title) {
-                platformDisplayName = planData.title;
             }
-            
-            const date = new Date(parseInt(data.timestamp));
-            const formattedDate = date.toLocaleString('bn-BD', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                hour: '2-digit', 
-                minute: '2-digit'
-            });
             
             let dFieldHTML = '';
             if (dField) {
                 dFieldHTML = `
                     <div class="card" style="margin-top:10px;">
                         <div style="color:#ff9800; margin-bottom:8px; font-weight:600;">📝 বিস্তারিত</div>
-                        <div style="color:#b0bec5; font-size:14px;">${dField}</div>
+                        <div style="color:#b0bec5; font-size:14px; white-space: pre-line;">${dField}</div>
                     </div>
                 `;
             }
@@ -830,27 +791,18 @@
                 ${dFieldHTML}
             `;
             
-            // ৪. পেমেন্ট প্যানেলে মূল্য, সার্ভিস চার্জ এবং মোট টাকা আপডেট করা
-            const priceSpans = document.querySelectorAll('.product-price-value');
-            const serviceSpans = document.querySelectorAll('.service-charge-value');
-            const totalSpans = document.querySelectorAll('.total-amount-value');
+            // ৪. পেমেন্ট প্যানেলে মোট টাকা আপডেট করা
             const totalAmountSpans = document.querySelectorAll('.bdpg-total-amount b');
-            
-            priceSpans.forEach(span => span.textContent = productPrice);
-            serviceSpans.forEach(span => span.textContent = serviceCharge);
-            totalSpans.forEach(span => span.textContent = totalAmount);
             totalAmountSpans.forEach(span => span.textContent = `৳ ${totalAmount}`);
 
-            // পেমেন্ট টগল বাটন: যদি payBtn লুকানো না থাকে তবে hidden সরান
+            // পেমেন্ট টগল বাটন
             if (payBtn.style.display !== 'none') {
                 payBtn.classList.remove('hidden');
             }
             
-            // পুনরায় ক্লিক ইভেন্ট যাতে একাধিক লিসেনার না জুড়ে যায়
             payBtn.replaceWith(payBtn.cloneNode(true));
             const newPayBtn = document.getElementById('payBtn');
             
-            // টগল functionality
             newPayBtn.addEventListener('click', function() {
                 if (paymentTimer) clearTimeout(paymentTimer);
                 output.style.display = 'none';
@@ -862,7 +814,7 @@
                 }, 5 * 60 * 1000);
             });
 
-            // ---------- VERIFY বাটন - ফিক্সড (quantity = 1, সঠিক product slug, ইমেইল সহ) ----------
+            // ---------- VERIFY বাটন ----------
             const verifyInside = document.getElementById('verifyInsideBtn');
             if (verifyInside) {
                 verifyInside.replaceWith(verifyInside.cloneNode(true));
@@ -871,7 +823,6 @@
                 newVerify.addEventListener('click', async function(e) {
                     e.preventDefault();
                     
-                    // 1. ফর্মের ডাটা সংগ্রহ
                     const selected = document.querySelector('input[name="payment_method"]:checked');
                     if (!selected) {
                         alert('কোন পেমেন্ট পদ্ধতি নির্বাচন করুন');
@@ -902,11 +853,10 @@
                         return;
                     }
                     if (!accountVal || !transVal) {
-                        alert('দয়া করে অ্যাকাউন্ট নম্বর এবং ট্রানজেকশন আইডি উভয়ই পূরণ করুন।');
+                        alert('দয়া করে অ্যাকাউন্ট নম্বর এবং ট্রানজেকশন আইডি পূরণ করুন।');
                         return;
                     }
 
-                    // 2. URL থেকে প্রয়োজনীয় ডাটা নেওয়া
                     const urlParams = new URLSearchParams(window.location.search);
                     const encodedData = urlParams.get('data');
                     if (!encodedData) {
@@ -920,32 +870,33 @@
                         return;
                     }
                     
-                    // ***** গুরুত্বপূর্ণ পরিবর্তন: productSlug নির্ধারণ *****
-                    // planData থেকে Products নিন, না হলে platformId
+                    // ★★★ গুরুত্বপূর্ণ: সঠিক productSlug নির্ধারণ ★★★
                     let productSlug = data.platformId;
                     if (planData && planData.Products) {
-                        productSlug = planData.Products; // যেমন "visa-card-usd-5"
+                        productSlug = planData.Products; // যেমন "rewarble-ww-usd-5"
+                        console.log("✅ Using productSlug from DB:", productSlug);
+                    } else {
+                        console.warn("⚠️ Using platformId as productSlug:", productSlug);
                     }
                     
-                    const quantity = 1; // একটি আইটেম
+                    const quantity = 1;
                     const paymentCurrency = 'bdt';
                     
-                    // রেফারেন্স: পদ্ধতি, ইমেইল, ফোন, ট্রানজেকশন আইডি
-                    const paymentMethod = selected.value.replace('woo_', '').toUpperCase(); // BKASH, NAGAD, ROCKET
+                    const paymentMethod = selected.value.replace('woo_', '').toUpperCase();
                     const reference = `${paymentMethod}|Email:${emailVal}|Phone:${accountVal}|TXID:${transVal}`;
                     
-                    // 3. API কল
                     const originalText = newVerify.textContent;
                     newVerify.disabled = true;
                     newVerify.innerHTML = '<span class="button-loader"><span class="spinner"></span> প্রসেসিং...</span>';
                     
                     try {
+                        // API কল
                         const response = await fetch('/api/create-order', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ 
-                                productSlug: productSlug, 
-                                amount: quantity,        // quantity = 1
+                                productSlug: productSlug,
+                                amount: quantity,
                                 paymentCurrency: paymentCurrency,
                                 reference: reference
                             })
@@ -957,18 +908,17 @@
                             throw new Error(result.error || 'অর্ডার ব্যর্থ');
                         }
                         
-                        // 4. অর্ডার সফল হলে পেমেন্ট প্যানেলের কন্টেন্ট প্রতিস্থাপন
                         const orderId = result.trx || data.orderId;
                         paymentPanel.innerHTML = `
                             <div class="card" style="text-align: center; padding: 40px;">
                                 <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
                                 <p style="margin:20px 0;">আপনার অর্ডার প্রসেসিং হচ্ছে। ভাউচার পেতে কয়েক মিনিট অপেক্ষা করুন।</p>
                                 <div class="spinner" style="width:40px; height:40px; border-width:4px; margin:0 auto;"></div>
-                                <p style="margin-top:20px; word-break:break-all;">অর্ডার আইডি: ${orderId}</p>
+                                <p style="margin-top:20px;">অর্ডার আইডি: ${orderId}</p>
                             </div>
                         `;
                         
-                        // 5. Firebase-এ এই অর্ডারের জন্য listener সেট করা
+                        // Firebase listener for voucher
                         if (orderId) {
                             const vouchersRef = database.ref('vouchers');
                             const query = vouchersRef.orderByChild('trx').equalTo(orderId).limitToFirst(1);
@@ -991,17 +941,8 @@
                                 }
                             });
                             
-                            // টাইমআউট: ৫ মিনিট পর যদি ভাউচার না আসে
                             setTimeout(() => {
                                 query.off('child_added', onVoucherAdded);
-                                if (paymentPanel.innerHTML.includes('প্রসেসিং হচ্ছে')) {
-                                    paymentPanel.innerHTML = `
-                                        <div class="card" style="text-align: center; padding: 40px;">
-                                            <h3 style="color:#ff6b6b;">⏰ সময় শেষ</h3>
-                                            <p>অর্ডার প্রসেসিংয়ে দেরি হচ্ছে। দয়া করে পরে আবার চেক করুন অথবা সাপোর্টের সাথে যোগাযোগ করুন।</p>
-                                        </div>
-                                    `;
-                                }
                             }, 5 * 60 * 1000);
                         }
                         
@@ -1013,9 +954,8 @@
                     }
                 });
             }
-            // ---------- VERIFY বাটন শেষ ----------
 
-            // কপি বাটন এবং রেডিও ইভেন্ট (আগের মতই)
+            // রেডিও বাটন ইভেন্ট
             const radios = document.querySelectorAll('input[name="payment_method"]');
             const bkashBox = document.getElementById('box-bkash');
             const nagadBox = document.getElementById('box-nagad');
@@ -1081,7 +1021,7 @@
         
         <div id="output"></div>
 
-        <!-- ========== পেমেন্ট প্যানেল (bKash/Nagad/Rocket) ইমেইল ফিল্ড সহ ========== -->
+        <!-- ========== পেমেন্ট প্যানেল ========== -->
         <div id="paymentPanel">
             <ul class="wc_payment_methods">
                 <!-- bKash -->
@@ -1089,16 +1029,16 @@
                     <input id="payment_method_woo_bkash" type="radio" class="input-radio" name="payment_method" value="woo_bkash" checked>
                     <label for="payment_method_woo_bkash">
                         bKash Personal
-                        <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Bkash.png" alt="bKash" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2216%22%20fill%3D%22%23E2136E%22%2F%3E%3Ctext%20x%3D%225%22%20y%3D%2222%22%20fill%3D%22white%22%20font-size%3D%2212%22%3EBkash%3C%2Ftext%3E%3C%2Fsvg%3E'">
+                        <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Bkash.png" alt="bKash">
                     </label>
                     <div class="payment_box payment_method_woo_bkash active-box" id="box-bkash">
                         <div class="instruction-note">
-                            ১। নিচে দেওয়া bKash Personal Number এ টাকা পাঠান।<br>
-                            ২। টাকা পাঠানোর পর, আপনার ইমেইল, যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID নিচে দিন।
+                            ১। নিচের bKash Personal Number-এ টাকা পাঠান।<br>
+                            ২। আপনার ইমেইল, যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID দিন।
                         </div>
                         
                         <div class="bdpg-total-amount">
-                            You need to send us <b>৳ 154</b>
+                            আপনাকে মোট <b>৳ 154</b> পাঠাতে হবে
                         </div>
                         
                         <div class="bdpg-available-accounts">
@@ -1111,39 +1051,38 @@
                                 </p>
                             </div>
                             <div class="bdpg-user__acc">
-                                <!-- ইমেইল ফিল্ড -->
                                 <div class="bdpg-user__field">
                                     <label for="bkash_email">ইমেইল ঠিকানা <span class="required-star">*</span></label>
-                                    <input type="email" id="bkash_email" name="bkash_email" placeholder="your@email.com" required>
+                                    <input type="email" id="bkash_email" placeholder="your@email.com" required>
                                 </div>
                                 <div class="bdpg-user__field">
                                     <label for="bkash_acc_no">bKash Account Number (যে নম্বর থেকে টাকা দিয়েছেন) <span class="required-star">*</span></label>
-                                    <input type="text" id="bkash_acc_no" name="bKash_acc_no" placeholder="01XXXXXXXXX" required>
+                                    <input type="text" id="bkash_acc_no" placeholder="01XXXXXXXXX" required>
                                 </div>
                                 <div class="bdpg-user__field">
                                     <label for="bkash_trans_id">bKash Transaction ID <span class="required-star">*</span></label>
-                                    <input type="text" id="bkash_trans_id" name="bKash_trans_id" placeholder="AH855PR805" required>
+                                    <input type="text" id="bkash_trans_id" placeholder="AH855PR805" required>
                                 </div>
-                                <div class="small-hint">ইমেইল, অ্যাকাউন্ট নম্বর ও ট্রানজেকশন আইডি অবশ্যই দিন</div>
                             </div>
                         </div>
                     </div>
                 </li>
+                
                 <!-- Nagad -->
                 <li class="wc_payment_method" id="method-nagad">
                     <input id="payment_method_woo_nagad" type="radio" class="input-radio" name="payment_method" value="woo_nagad">
                     <label for="payment_method_woo_nagad">
                         Nagad Personal
-                        <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Nagad.png" alt="Nagad" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2216%22%20fill%3D%22%23F48221%22%2F%3E%3Ctext%20x%3D%225%22%20y%3D%2222%22%20fill%3D%22white%22%20font-size%3D%2212%22%3ENagad%3C%2Ftext%3E%3C%2Fsvg%3E'">
+                        <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Nagad.png" alt="Nagad">
                     </label>
                     <div class="payment_box payment_method_woo_nagad" id="box-nagad">
                         <div class="instruction-note">
-                            ১। নিচে দেওয়া Nagad Personal Number এ টাকা পাঠান।<br>
-                            ২। টাকা পাঠানোর পর, আপনার ইমেইল, যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID নিচে দিন।
+                            ১। নিচের Nagad Personal Number-এ টাকা পাঠান।<br>
+                            ২। আপনার ইমেইল, যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID দিন।
                         </div>
                         
                         <div class="bdpg-total-amount">
-                            You need to send us <b>৳ 154</b>
+                            আপনাকে মোট <b>৳ 154</b> পাঠাতে হবে
                         </div>
                         
                         <div class="bdpg-available-accounts">
@@ -1158,36 +1097,36 @@
                             <div class="bdpg-user__acc">
                                 <div class="bdpg-user__field">
                                     <label for="nagad_email">ইমেইল ঠিকানা <span class="required-star">*</span></label>
-                                    <input type="email" id="nagad_email" name="nagad_email" placeholder="your@email.com" required>
+                                    <input type="email" id="nagad_email" placeholder="your@email.com" required>
                                 </div>
                                 <div class="bdpg-user__field">
-                                    <label for="nagad_acc_no">Nagad Account Number (যে নম্বর থেকে টাকা দিয়েছেন) <span class="required-star">*</span></label>
-                                    <input type="text" id="nagad_acc_no" name="nagad_acc_no" placeholder="01XXXXXXXXX" required>
+                                    <label for="nagad_acc_no">Nagad Account Number <span class="required-star">*</span></label>
+                                    <input type="text" id="nagad_acc_no" placeholder="01XXXXXXXXX" required>
                                 </div>
                                 <div class="bdpg-user__field">
                                     <label for="nagad_trans_id">Nagad Transaction ID <span class="required-star">*</span></label>
-                                    <input type="text" id="nagad_trans_id" name="nagad_trans_id" placeholder="719AQ34C" required>
+                                    <input type="text" id="nagad_trans_id" placeholder="719AQ34C" required>
                                 </div>
-                                <div class="small-hint">ইমেইল, অ্যাকাউন্ট নম্বর ও ট্রানজেকশন আইডি অবশ্যই দিন</div>
                             </div>
                         </div>
                     </div>
                 </li>
+                
                 <!-- Rocket -->
                 <li class="wc_payment_method" id="method-rocket">
                     <input id="payment_method_woo_rocket" type="radio" class="input-radio" name="payment_method" value="woo_rocket">
                     <label for="payment_method_woo_rocket">
                         Rocket Personal
-                        <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Rocket.png" alt="Rocket" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2216%22%20fill%3D%22%23DA291C%22%2F%3E%3Ctext%20x%3D%224%22%20y%3D%2222%22%20fill%3D%22white%22%20font-size%3D%2212%22%3ERocket%3C%2Ftext%3E%3C%2Fsvg%3E'">
+                        <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Rocket.png" alt="Rocket">
                     </label>
                     <div class="payment_box payment_method_woo_rocket" id="box-rocket">
                         <div class="instruction-note">
-                            ১। নিচে দেওয়া Rocket Personal Number এ টাকা পাঠান।<br>
-                            ২। টাকা পাঠানোর পর, আপনার ইমেইল, যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID নিচে দিন।
+                            ১। নিচের Rocket Personal Number-এ টাকা পাঠান।<br>
+                            ২। আপনার ইমেইল, যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID দিন।
                         </div>
                         
                         <div class="bdpg-total-amount">
-                            You need to send us <b>৳ 154</b>
+                            আপনাকে মোট <b>৳ 154</b> পাঠাতে হবে
                         </div>
                         
                         <div class="bdpg-available-accounts">
@@ -1202,28 +1141,26 @@
                             <div class="bdpg-user__acc">
                                 <div class="bdpg-user__field">
                                     <label for="rocket_email">ইমেইল ঠিকানা <span class="required-star">*</span></label>
-                                    <input type="email" id="rocket_email" name="rocket_email" placeholder="your@email.com" required>
+                                    <input type="email" id="rocket_email" placeholder="your@email.com" required>
                                 </div>
                                 <div class="bdpg-user__field">
-                                    <label for="rocket_acc_no">Rocket Account Number (যে নম্বর থেকে টাকা দিয়েছেন) <span class="required-star">*</span></label>
-                                    <input type="text" id="rocket_acc_no" name="rocket_acc_no" placeholder="01XXXXXXXXX" required>
+                                    <label for="rocket_acc_no">Rocket Account Number <span class="required-star">*</span></label>
+                                    <input type="text" id="rocket_acc_no" placeholder="01XXXXXXXXX" required>
                                 </div>
                                 <div class="bdpg-user__field">
                                     <label for="rocket_trans_id">Rocket Transaction ID <span class="required-star">*</span></label>
-                                    <input type="text" id="rocket_trans_id" name="rocket_trans_id" placeholder="2988708467" required>
+                                    <input type="text" id="rocket_trans_id" placeholder="2988708467" required>
                                 </div>
-                                <div class="small-hint">ইমেইল, অ্যাকাউন্ট নম্বর ও ট্রানজেকশন আইডি অবশ্যই দিন</div>
                             </div>
                         </div>
                     </div>
                 </li>
             </ul>
-            <!-- পেমেন্ট প্যানেলের নিজস্ব ভেরিফাই বাটন -->
+            
             <button class="verify-inside-btn" id="verifyInsideBtn">VERIFY</button>
         </div>
     </div>
     
-    <!-- ফিক্সড পেমেন্ট টগল বাটন (মূল) -->
     <button id="payBtn" class="pay-btn hidden">পেমেন্ট কনফার্ম করুন</button>
 </body>
 </html>
