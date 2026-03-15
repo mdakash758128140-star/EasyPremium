@@ -670,7 +670,7 @@
             }
         }
 
-        // নতুন ফাংশন: প্ল্যানের সম্পূর্ণ ডাটা fetch করা (D field, service charge, etc.)
+        // নতুন ফাংশন: প্ল্যানের সম্পূর্ণ ডাটা fetch করা (D field, service charge, নাম ইত্যাদি)
         async function fetchPlanData(platformId) {
             try {
                 console.log("🔍 Fetching plan data for:", platformId);
@@ -743,8 +743,15 @@
             const productPrice = Number(data.price) || 0;
             const totalAmount = productPrice + serviceCharge;
             
-            // D field (বিবরণ) দেখানোর জন্য
+            // D field (বিবরণ) এবং প্ল্যাটফর্মের নাম দেখানোর জন্য
             const dField = planData && (planData.D || planData.description || planData.d || planData.info || '');
+            // প্ল্যাটফর্মের নাম (যদি পাওয়া যায়)
+            let platformDisplayName = data.platformId.replace(/_/g, ' ').toUpperCase();
+            if (planData && planData.name) {
+                platformDisplayName = planData.name;
+            } else if (planData && planData.title) {
+                platformDisplayName = planData.title;
+            }
             
             const date = new Date(parseInt(data.timestamp));
             const formattedDate = date.toLocaleString('bn-BD', { 
@@ -755,14 +762,12 @@
                 minute: '2-digit'
             });
             
-            const platformName = data.platformId.replace(/_/g, ' ').toUpperCase();
-            
             let dFieldHTML = '';
             if (dField) {
                 dFieldHTML = `
-                    <div class="d-field">
-                        <div class="d-field-title">বিস্তারিত বর্ণনা</div>
-                        <div>${dField}</div>
+                    <div class="card" style="margin-top:10px;">
+                        <div style="color:#ff9800; margin-bottom:8px; font-weight:600;">📝 বিস্তারিত</div>
+                        <div style="color:#b0bec5; font-size:14px;">${dField}</div>
                     </div>
                 `;
             }
@@ -778,7 +783,7 @@
                     
                     <div class="info-row">
                         <span class="label">প্ল্যাটফর্ম:</span>
-                        <span class="value">${platformName}</span>
+                        <span class="value">${platformDisplayName}</span>
                     </div>
                     
                     <div class="info-row">
@@ -795,9 +800,8 @@
                         <span class="label"><strong>সর্বমোট:</strong></span>
                         <span class="value" style="color:#ff0000; font-size:1.2rem;">${totalAmount} ৳</span>
                     </div>
-                    
-                    ${dFieldHTML}
                 </div>
+                ${dFieldHTML}
             `;
             
             // ৪. পেমেন্ট প্যানেলে মূল্য, সার্ভিস চার্জ এবং মোট টাকা আপডেট করা
@@ -832,7 +836,7 @@
                 }, 5 * 60 * 1000);
             });
 
-            // ---------- VERIFY বাটন - আপডেট করা অংশ (ফোন ও ট্রানজেকশন ID reference-এ পাঠানো) ----------
+            // ---------- VERIFY বাটন - ফিক্সড (quantity = 1, সঠিক reference) ----------
             const verifyInside = document.getElementById('verifyInsideBtn');
             if (verifyInside) {
                 verifyInside.replaceWith(verifyInside.cloneNode(true));
@@ -882,10 +886,11 @@
                         return;
                     }
                     
-                    // productSlug তৈরি (platformId ই product slug হিসেবে ধরে নিচ্ছি)
+                    // productSlug তৈরি (platformId ই product slug)
                     const productSlug = data.platformId;
-                    const amount = parseInt(data.price) || 1;
-                    const paymentCurrency = 'bdt'; // এই পৃষ্ঠায় BDT পেমেন্ট
+                    // গুরুত্বপূর্ণ: amount এখানে quantity (কতটি), দাম নয়। যেহেতু একটি আইটেম, quantity = 1
+                    const quantity = 1;
+                    const paymentCurrency = 'USD'; // এই পৃষ্ঠায় BDT পেমেন্ট
                     
                     // ফোন ও ট্রানজেকশন আইডি reference-এ পাঠানোর জন্য ফরম্যাট করা
                     const paymentMethod = selected.value.replace('woo_', '').toUpperCase(); // BKASH, NAGAD, ROCKET
@@ -902,9 +907,9 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ 
                                 productSlug: productSlug, 
-                                amount: amount, 
+                                amount: quantity,        // quantity = 1
                                 paymentCurrency: paymentCurrency,
-                                reference: reference // ফোন ও ট্রানজেকশন আইডি সহ রেফারেন্স
+                                reference: reference
                             })
                         });
                         
