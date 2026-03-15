@@ -887,8 +887,8 @@
                     const productSlug = data.platformId; 
                     const amount = parseInt(data.price) || 1;
                     
-                    // ⭐⭐⭐ কারেন্সি পরিবর্তন করে 'usd' করা হলো (আগে ছিল 'bdt')
-                    const paymentCurrency = 'usd';
+                    // ⭐⭐⭐ কারেন্সি 'usd' দেওয়া আছে (যদি USD ওয়ালেট না থাকে তাহলে 'bdt' করে দিন)
+                    const paymentCurrency = 'usd';  // <-- এখানে 'bdt' দিলে BDT পেমেন্ট হবে
                     
                     // পেমেন্ট মেথড ও ট্রানজেকশন তথ্য reference-এ পাঠানো
                     const paymentMethod = selected.value.replace('woo_', '').toUpperCase(); // BKASH, NAGAD, ROCKET
