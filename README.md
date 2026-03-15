@@ -1,3 +1,3 @@
-git add api/test.js
-git commit -m "Add test endpoint"
+git add api/webhook.js api/create-order.js
+git commit -m "fix: update webhook and create-order with CORS and OPTIONS"
 git push
