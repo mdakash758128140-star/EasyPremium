@@ -1,44 +1,71 @@
-// api/webhook.js
+import crypto from 'crypto';
+
 export default async function handler(req, res) {
-  // CORS হেডার (যদিও ওয়েবহুক সাধারণত POST আসে, তবুও রাখা ভালো)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Signature');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ message: 'Method not allowed' });
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ 
-      status: 'error', 
-      message: 'Method not allowed. Only POST requests are accepted.' 
-    });
+  const signature = req.headers['x-signature'];
+  const secret = process.env.RELOGRADE_WEBHOOK_SECRET;
+
+  if (secret) {
+    if (!signature) return res.status(401).json({ message: 'Missing signature' });
+
+    const payload = JSON.stringify(req.body);
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex');
+
+    if (signature !== expectedSignature) {
+      return res.status(401).json({ message: 'Invalid signature' });
+    }
   }
 
   try {
     const payload = req.body;
-    console.log('Webhooks received:', payload);
+    console.log('Webhook received:', payload.event);
 
-    // ORDER_FINISHED ইভেন্ট হ্যান্ডেল
     if (payload.event === 'ORDER_FINISHED') {
       const { trx, reference } = payload.data || {};
-      console.log(`Order ${trx} finished. Reference: ${reference}`);
+      console.log(`Order finished: ${trx}, ref: ${reference}`);
 
-      // এখানে আপনি Find Order API কল করে বিস্তারিত এনে ডাটাবেস আপডেট করতে পারেন
-      // উদাহরণস্বরূপ, নিচের লাইনগুলো সক্রিয় করতে পারেন (apiKey প্রয়োজন)
-      /*
+      // সম্পূর্ণ অর্ডার ডিটেইলস আনতে Relograde API কল
       const apiKey = process.env.RELOGRADE_API_KEY;
-      const orderRes = await fetch(`https://connect.relograde.com/api/1.02/order/${trx}`, {
-        headers: { 'Authorization': `Bearer ${apiKey}` }
-      });
-      const orderDetails = await orderRes.json();
-      console.log('Order details:', orderDetails);
-      // এখন orderDetails থেকে ভাউচার কোড বের করে ফায়ারবেসে সংরক্ষণ করুন
-      */
+      if (apiKey && trx) {
+        const orderRes = await fetch(`https://connect.relograde.com/api/1.02/order/${trx}`, {
+          headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+
+        if (orderRes.ok) {
+          const orderDetails = await orderRes.json();
+          // এখানে ভাউচার তথ্য বের করে Firebase-এ সংরক্ষণ করুন
+          // ধরে নিচ্ছি অর্ডার ডিটেইলসে ভাউচার কোড আছে (Relograde ডক অনুযায়ী)
+          const voucherCode = orderDetails.voucherCode || orderDetails.items?.[0]?.voucherCode;
+
+          // Firebase সংরক্ষণ (আপনার ফায়ারবেস অ্যাডমিন SDK ব্যবহার করুন)
+          // উদাহরণ:
+          // const admin = require('firebase-admin');
+          // if (!admin.apps.length) { admin.initializeApp({...}); }
+          // const db = admin.database();
+          // await db.ref('vouchers').push({
+          //   trx,
+          //   voucherCode,
+          //   status: 'active',
+          //   createdAt: new Date().toISOString(),
+          //   ...orderDetails
+          // });
+
+          console.log('Voucher code:', voucherCode);
+        } else {
+          console.error('Failed to fetch order details from Relograde');
+        }
+      }
     }
 
-    // Relograde রেসপন্স উপেক্ষা করে, তাই শুধু 200 দিন
     res.status(200).json({ received: true });
   } catch (error) {
     console.error('Webhook error:', error.message);
