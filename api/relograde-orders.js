@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  // CORS হেডার (ঐচ্ছিক, সমস্যা হলে যোগ করুন)
+  // CORS হেডার (প্রয়োজনীয়)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -9,6 +9,7 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  // শুধুমাত্র POST অনুরোধ অনুমোদিত
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
