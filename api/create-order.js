@@ -1,14 +1,16 @@
 // api/create-order.js
 export default async function handler(req, res) {
-  // CORS হেডার (প্রয়োজনীয়)
+  // CORS হেডার
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+  // প্রি-ফ্লাইট OPTIONS অনুরোধ হ্যান্ডেল
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
+  // শুধুমাত্র POST অনুমোদিত
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -18,25 +20,26 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
   }
 
-  const { productSlug, amount, faceValue, paymentCurrency, reference } = req.body;
+  const { cardType, amount, currency } = req.body;
 
-  // মৌলিক যাচাই
-  if (!productSlug || !amount || !paymentCurrency) {
-    return res.status(400).json({ error: 'Missing required fields: productSlug, amount, paymentCurrency' });
-  }
+  // পণ্যের স্লাগ (আপনার প্রকৃত স্লাগ দিন)
+  const productSlug = cardType === 'visa' 
+    ? 'rewarble-ww-usd-5'   // ভিসার জন্য স্লাগ
+    : 'rewarble-ww-usd-5';  // মাস্টারকার্ডের জন্য স্লাগ (প্রয়োজনে পরিবর্তন)
 
   try {
-    // আইটেম অবজেক্ট তৈরি
-    const item = { productSlug, amount: parseInt(amount) };
-    if (faceValue) {
-      item.faceValue = parseFloat(faceValue);
-    }
-
     const requestBody = {
-      items: [item],
-      paymentCurrency: paymentCurrency.toLowerCase(), // ডক্সে ছোট হাতের দেখিয়েছে
-      reference: reference || `order_${Date.now()}`
+      items: [
+        {
+          productSlug: productSlug,
+          amount: parseInt(amount)
+        }
+      ],
+      paymentCurrency: currency.toLowerCase(),
+      reference: `order_${Date.now()}`
     };
+
+    console.log('Sending to Relograde:', JSON.stringify(requestBody));
 
     const response = await fetch('https://connect.relograde.com/api/1.02/order', {
       method: 'POST',
