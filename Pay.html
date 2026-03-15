@@ -6,14 +6,14 @@
     <title>পেমেন্ট তথ্য · Easy Premium</title>
     <meta name="theme-color" content="#0a0a1a">
     
-    <!-- ================== সিকিউরিটি হেডার ================== -->
+    <!-- ================== সিকিউরিটি হেডার (আগের মত) ================== -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:; style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval';">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="format-detection" content="telephone=no, address=no, email=no">
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
     
     <style>
-        /* আপনার পূর্বের CSS ঠিক একই থাকবে, শুধু নতুন ইমেইল ফিল্ডের জন্য কিছু স্টাইল যোগ করা হয়েছে */
+        /* আপনার পূর্বের CSS ঠিক একই থাকবে, কোনো পরিবর্তন নেই */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         html, body { 
@@ -415,7 +415,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     
-    <!-- ================== সিকিউরিটি স্ক্রিপ্ট (আগের মতই) ================== -->
+    <!-- ================== সিকিউরিটি স্ক্রিপ্ট ================== -->
     <script>
     (function() {
         'use strict';
@@ -657,7 +657,7 @@
                     copyButtons.forEach(btn => {
                         btn.setAttribute('data-number', formattedNumber);
                     });
-                    // payBtn দৃশ্যমান রাখা (hidden class সরানো হবে পরে)
+                    // payBtn দৃশ্যমান রাখা
                 } else {
                     // কোনো active এডমিন নেই → পুরো প্যানেল ব্লক
                     panel.innerHTML = '<div class="error" style="padding: 30px; text-align: center; background: rgba(255,68,68,0.15); border: 1px solid #ff4444;">⚠️ পেমেন্ট বন্ধ আছে। এডমিনের সাথে যোগাযোগ করুন।</div>';
@@ -665,7 +665,6 @@
                 }
             } catch (e) {
                 console.error("Error in setActiveAdminNumber:", e);
-                // এরর হলে প্যানেল লুকানোই ভালো
                 const panel = document.getElementById('paymentPanel');
                 panel.innerHTML = '<div class="error">⚠️ সার্ভার সংযোগ সমস্যা। পরে আবার চেষ্টা করুন।</div>';
             }
@@ -732,8 +731,8 @@
             const payBtn = document.getElementById('payBtn');
             const paymentPanel = document.getElementById('paymentPanel');
             
-            // টাইমার আইডি সংরক্ষণের জন্য ভেরিয়েবল
             let paymentTimer = null;
+            let planData = null; // planData সংরক্ষণের জন্য variable
 
             // ১. ডাটাবেস থেকে সক্রিয় এডমিন নম্বর সেট করি
             await setActiveAdminNumber();
@@ -757,12 +756,11 @@
             }
             
             // ৩. প্ল্যান ডাটা fetch করি (D field ও service charge সহ)
-            const planData = await fetchPlanData(data.platformId);
+            planData = await fetchPlanData(data.platformId);
             
             // service charge ডিফল্ট 0
             let serviceCharge = 0;
             if (planData && planData.ServicCharge !== undefined) {
-                // ServicCharge নামের ফিল্ড (S বড় হাতের)
                 serviceCharge = Number(planData.ServicCharge) || 0;
             } else if (planData && planData.serviceCharge !== undefined) {
                 serviceCharge = Number(planData.serviceCharge) || 0;
@@ -864,7 +862,7 @@
                 }, 5 * 60 * 1000);
             });
 
-            // ---------- VERIFY বাটন - ফিক্সড (quantity = 1, সঠিক reference, ইমেইল সহ) ----------
+            // ---------- VERIFY বাটন - ফিক্সড (quantity = 1, সঠিক product slug, ইমেইল সহ) ----------
             const verifyInside = document.getElementById('verifyInsideBtn');
             if (verifyInside) {
                 verifyInside.replaceWith(verifyInside.cloneNode(true));
@@ -922,11 +920,15 @@
                         return;
                     }
                     
-                    // productSlug: platformId ই product slug (যেমন "visa-card-usd-5")
-                    const productSlug = data.platformId;
-                    // quantity = 1 (একটি আইটেম)
-                    const quantity = 1;
-                    const paymentCurrency = 'usd'; // এই পৃষ্ঠায় BDT পেমেন্ট
+                    // ***** গুরুত্বপূর্ণ পরিবর্তন: productSlug নির্ধারণ *****
+                    // planData থেকে Products নিন, না হলে platformId
+                    let productSlug = data.platformId;
+                    if (planData && planData.Products) {
+                        productSlug = planData.Products; // যেমন "visa-card-usd-5"
+                    }
+                    
+                    const quantity = 1; // একটি আইটেম
+                    const paymentCurrency = 'bdt';
                     
                     // রেফারেন্স: পদ্ধতি, ইমেইল, ফোন, ট্রানজেকশন আইডি
                     const paymentMethod = selected.value.replace('woo_', '').toUpperCase(); // BKASH, NAGAD, ROCKET
