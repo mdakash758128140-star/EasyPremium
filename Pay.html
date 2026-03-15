@@ -13,6 +13,7 @@
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
     
     <style>
+        /* আপনার পূর্বের CSS ঠিক একই থাকবে, শুধু নতুন ইমেইল ফিল্ডের জন্য কিছু স্টাইল যোগ করা হয়েছে */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         html, body { 
@@ -414,7 +415,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     
-    <!-- ================== সিকিউরিটি স্ক্রিপ্ট ================== -->
+    <!-- ================== সিকিউরিটি স্ক্রিপ্ট (আগের মতই) ================== -->
     <script>
     (function() {
         'use strict';
@@ -670,27 +671,54 @@
             }
         }
 
-        // নতুন ফাংশন: প্ল্যানের সম্পূর্ণ ডাটা fetch করা (D field, service charge, নাম ইত্যাদি)
+        // আপডেটেড ফাংশন: প্ল্যান ডাটা খুঁজে বের করা (Products ফিল্ডের সাথে মিলিয়ে)
         async function fetchPlanData(platformId) {
             try {
-                console.log("🔍 Fetching plan data for:", platformId);
+                console.log("🔍 Fetching plan data for platformId:", platformId);
+                
+                // প্রথমে সরাসরি পাথ চেষ্টা করা যাক (যেমন pricingPlans2/<platformId>)
+                const directSnapshot = await database.ref(`pricingPlans2/${platformId}`).once('value');
+                if (directSnapshot.exists()) {
+                    console.log("✅ Found directly at pricingPlans2/"+platformId);
+                    return directSnapshot.val();
+                }
+
+                // না পেলে pricingPlans2 নোডের সব চাইল্ডের মধ্যে Products ফিল্ড খুঁজে দেখি
+                const allPlansSnapshot = await database.ref('pricingPlans2').once('value');
+                if (allPlansSnapshot.exists()) {
+                    const allPlans = allPlansSnapshot.val();
+                    for (let key in allPlans) {
+                        const plan = allPlans[key];
+                        // Products ফিল্ডে স্লাগ আছে (যেমন "visa-card-usd-5")
+                        if (plan.Products === platformId) {
+                            console.log(`✅ Found plan with Products="${platformId}" at key: ${key}`);
+                            return plan;
+                        }
+                        // যদি name বা অন্য কোনো ফিল্ডেও মিলে
+                        if (plan.name && plan.name.replace(/\s+/g, '-').toLowerCase() === platformId) {
+                            console.log(`✅ Found plan by name match at key: ${key}`);
+                            return plan;
+                        }
+                    }
+                }
+
+                // তারপর অন্যান্য পাথ চেক করা
                 const paths = [
                     `publicData/pricingPlans2/${platformId}`,
-                    `pricingPlans2/${platformId}`,
                     `plans/${platformId}`,
                     `platforms/${platformId}`,
                     `products/${platformId}`
                 ];
                 for (const path of paths) {
-                    console.log("Checking:", path);
+                    console.log("Checking alternative path:", path);
                     const snapshot = await database.ref(path).once('value');
                     if (snapshot.exists()) {
-                        const data = snapshot.val();
-                        console.log("✅ Found at:", path, data);
-                        return data; // পুরো অবজেক্ট রিটার্ন করবে
+                        console.log("✅ Found at:", path);
+                        return snapshot.val();
                     }
                 }
-                console.log("❌ No plan data found");
+
+                console.log("❌ No plan data found for platformId:", platformId);
                 return null;
             } catch (e) {
                 console.error("Firebase error:", e);
@@ -836,7 +864,7 @@
                 }, 5 * 60 * 1000);
             });
 
-            // ---------- VERIFY বাটন - ফিক্সড (quantity = 1, সঠিক reference) ----------
+            // ---------- VERIFY বাটন - ফিক্সড (quantity = 1, সঠিক reference, ইমেইল সহ) ----------
             const verifyInside = document.getElementById('verifyInsideBtn');
             if (verifyInside) {
                 verifyInside.replaceWith(verifyInside.cloneNode(true));
@@ -852,21 +880,29 @@
                         return;
                     }
 
-                    let accountInput, transInput;
+                    let emailInput, accountInput, transInput;
                     if (selected.value === 'woo_bkash') {
+                        emailInput = document.getElementById('bkash_email');
                         accountInput = document.getElementById('bkash_acc_no');
                         transInput = document.getElementById('bkash_trans_id');
                     } else if (selected.value === 'woo_nagad') {
+                        emailInput = document.getElementById('nagad_email');
                         accountInput = document.getElementById('nagad_acc_no');
                         transInput = document.getElementById('nagad_trans_id');
                     } else {
+                        emailInput = document.getElementById('rocket_email');
                         accountInput = document.getElementById('rocket_acc_no');
                         transInput = document.getElementById('rocket_trans_id');
                     }
 
+                    const emailVal = emailInput ? emailInput.value.trim() : '';
                     const accountVal = accountInput ? accountInput.value.trim() : '';
                     const transVal = transInput ? transInput.value.trim() : '';
 
+                    if (!emailVal) {
+                        alert('দয়া করে আপনার ইমেইল ঠিকানা দিন।');
+                        return;
+                    }
                     if (!accountVal || !transVal) {
                         alert('দয়া করে অ্যাকাউন্ট নম্বর এবং ট্রানজেকশন আইডি উভয়ই পূরণ করুন।');
                         return;
@@ -886,15 +922,15 @@
                         return;
                     }
                     
-                    // productSlug তৈরি (platformId ই product slug)
+                    // productSlug: platformId ই product slug (যেমন "visa-card-usd-5")
                     const productSlug = data.platformId;
-                    // গুরুত্বপূর্ণ: amount এখানে quantity (কতটি), দাম নয়। যেহেতু একটি আইটেম, quantity = 1
+                    // quantity = 1 (একটি আইটেম)
                     const quantity = 1;
-                    const paymentCurrency = 'USD'; // এই পৃষ্ঠায় BDT পেমেন্ট
+                    const paymentCurrency = 'bdt'; // এই পৃষ্ঠায় BDT পেমেন্ট
                     
-                    // ফোন ও ট্রানজেকশন আইডি reference-এ পাঠানোর জন্য ফরম্যাট করা
+                    // রেফারেন্স: পদ্ধতি, ইমেইল, ফোন, ট্রানজেকশন আইডি
                     const paymentMethod = selected.value.replace('woo_', '').toUpperCase(); // BKASH, NAGAD, ROCKET
-                    const reference = `${paymentMethod}|Phone:${accountVal}|TXID:${transVal}`;
+                    const reference = `${paymentMethod}|Email:${emailVal}|Phone:${accountVal}|TXID:${transVal}`;
                     
                     // 3. API কল
                     const originalText = newVerify.textContent;
@@ -1043,7 +1079,7 @@
         
         <div id="output"></div>
 
-        <!-- ========== পেমেন্ট প্যানেল (bKash/Nagad/Rocket) ========== -->
+        <!-- ========== পেমেন্ট প্যানেল (bKash/Nagad/Rocket) ইমেইল ফিল্ড সহ ========== -->
         <div id="paymentPanel">
             <ul class="wc_payment_methods">
                 <!-- bKash -->
@@ -1056,10 +1092,8 @@
                     <div class="payment_box payment_method_woo_bkash active-box" id="box-bkash">
                         <div class="instruction-note">
                             ১। নিচে দেওয়া bKash Personal Number এ টাকা পাঠান।<br>
-                            ২। টাকা পাঠানোর পর, bKash Number বক্সে যে Number থেকে টাকা পাঠিয়েছেন সেই Number লিখুন।<br>
-                            ৩। bKash Transaction ID বক্সে Transaction ID লিখুন। (যেমন: 9EV2G0PDE9)
+                            ২। টাকা পাঠানোর পর, আপনার ইমেইল, যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID নিচে দিন।
                         </div>
-                        
                         
                         <div class="bdpg-total-amount">
                             You need to send us <b>৳ 154</b>
@@ -1075,15 +1109,20 @@
                                 </p>
                             </div>
                             <div class="bdpg-user__acc">
+                                <!-- ইমেইল ফিল্ড -->
                                 <div class="bdpg-user__field">
-                                    <label for="bkash_acc_no">bKash Account Number <span class="required-star">*</span></label>
-                                    <input type="text" id="bkash_acc_no" name="bKash_acc_no" placeholder="01XXXXXXXXX">
+                                    <label for="bkash_email">ইমেইল ঠিকানা <span class="required-star">*</span></label>
+                                    <input type="email" id="bkash_email" name="bkash_email" placeholder="your@email.com" required>
+                                </div>
+                                <div class="bdpg-user__field">
+                                    <label for="bkash_acc_no">bKash Account Number (যে নম্বর থেকে টাকা দিয়েছেন) <span class="required-star">*</span></label>
+                                    <input type="text" id="bkash_acc_no" name="bKash_acc_no" placeholder="01XXXXXXXXX" required>
                                 </div>
                                 <div class="bdpg-user__field">
                                     <label for="bkash_trans_id">bKash Transaction ID <span class="required-star">*</span></label>
-                                    <input type="text" id="bkash_trans_id" name="bKash_trans_id" placeholder="AH855PR805">
+                                    <input type="text" id="bkash_trans_id" name="bKash_trans_id" placeholder="AH855PR805" required>
                                 </div>
-                                <div class="small-hint">যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID অবশ্যই দিন</div>
+                                <div class="small-hint">ইমেইল, অ্যাকাউন্ট নম্বর ও ট্রানজেকশন আইডি অবশ্যই দিন</div>
                             </div>
                         </div>
                     </div>
@@ -1098,10 +1137,8 @@
                     <div class="payment_box payment_method_woo_nagad" id="box-nagad">
                         <div class="instruction-note">
                             ১। নিচে দেওয়া Nagad Personal Number এ টাকা পাঠান।<br>
-                            ২। টাকা পাঠানোর পর, Nagad Number বক্সে যে Number থেকে টাকা পাঠিয়েছেন সেই Number লিখুন।<br>
-                            ৩। Nagad Transaction ID বক্সে Transaction ID লিখুন। (যেমন: 719AQ34C)
+                            ২। টাকা পাঠানোর পর, আপনার ইমেইল, যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID নিচে দিন।
                         </div>
-                        
                         
                         <div class="bdpg-total-amount">
                             You need to send us <b>৳ 154</b>
@@ -1118,14 +1155,18 @@
                             </div>
                             <div class="bdpg-user__acc">
                                 <div class="bdpg-user__field">
-                                    <label for="nagad_acc_no">Nagad Account Number <span class="required-star">*</span></label>
-                                    <input type="text" id="nagad_acc_no" name="nagad_acc_no" placeholder="01XXXXXXXXX">
+                                    <label for="nagad_email">ইমেইল ঠিকানা <span class="required-star">*</span></label>
+                                    <input type="email" id="nagad_email" name="nagad_email" placeholder="your@email.com" required>
+                                </div>
+                                <div class="bdpg-user__field">
+                                    <label for="nagad_acc_no">Nagad Account Number (যে নম্বর থেকে টাকা দিয়েছেন) <span class="required-star">*</span></label>
+                                    <input type="text" id="nagad_acc_no" name="nagad_acc_no" placeholder="01XXXXXXXXX" required>
                                 </div>
                                 <div class="bdpg-user__field">
                                     <label for="nagad_trans_id">Nagad Transaction ID <span class="required-star">*</span></label>
-                                    <input type="text" id="nagad_trans_id" name="nagad_trans_id" placeholder="719AQ34C">
+                                    <input type="text" id="nagad_trans_id" name="nagad_trans_id" placeholder="719AQ34C" required>
                                 </div>
-                                <div class="small-hint">যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID অবশ্যই দিন</div>
+                                <div class="small-hint">ইমেইল, অ্যাকাউন্ট নম্বর ও ট্রানজেকশন আইডি অবশ্যই দিন</div>
                             </div>
                         </div>
                     </div>
@@ -1140,10 +1181,8 @@
                     <div class="payment_box payment_method_woo_rocket" id="box-rocket">
                         <div class="instruction-note">
                             ১। নিচে দেওয়া Rocket Personal Number এ টাকা পাঠান।<br>
-                            ২। টাকা পাঠানোর পর, Rocket Number বক্সে যে Number থেকে টাকা পাঠিয়েছেন সেই Number লিখুন।<br>
-                            ৩। Rocket Transaction ID বক্সে Transaction ID লিখুন। (যেমন: 2988708467)
+                            ২। টাকা পাঠানোর পর, আপনার ইমেইল, যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID নিচে দিন।
                         </div>
-                        
                         
                         <div class="bdpg-total-amount">
                             You need to send us <b>৳ 154</b>
@@ -1160,14 +1199,18 @@
                             </div>
                             <div class="bdpg-user__acc">
                                 <div class="bdpg-user__field">
-                                    <label for="rocket_acc_no">Rocket Account Number <span class="required-star">*</span></label>
-                                    <input type="text" id="rocket_acc_no" name="rocket_acc_no" placeholder="01XXXXXXXXX">
+                                    <label for="rocket_email">ইমেইল ঠিকানা <span class="required-star">*</span></label>
+                                    <input type="email" id="rocket_email" name="rocket_email" placeholder="your@email.com" required>
+                                </div>
+                                <div class="bdpg-user__field">
+                                    <label for="rocket_acc_no">Rocket Account Number (যে নম্বর থেকে টাকা দিয়েছেন) <span class="required-star">*</span></label>
+                                    <input type="text" id="rocket_acc_no" name="rocket_acc_no" placeholder="01XXXXXXXXX" required>
                                 </div>
                                 <div class="bdpg-user__field">
                                     <label for="rocket_trans_id">Rocket Transaction ID <span class="required-star">*</span></label>
-                                    <input type="text" id="rocket_trans_id" name="rocket_trans_id" placeholder="2988708467">
+                                    <input type="text" id="rocket_trans_id" name="rocket_trans_id" placeholder="2988708467" required>
                                 </div>
-                                <div class="small-hint">যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID অবশ্যই দিন</div>
+                                <div class="small-hint">ইমেইল, অ্যাকাউন্ট নম্বর ও ট্রানজেকশন আইডি অবশ্যই দিন</div>
                             </div>
                         </div>
                     </div>
