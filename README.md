@@ -1,3 +1,3 @@
-git add .
-git commit -m "redeploy after adding env var"
+git add api/create-order.js admin.html
+git commit -m "fix: update create-order to match Relograde API spec"
 git push
