@@ -44,7 +44,6 @@
 </head>
 <body>
     <div class="glass-card">
-        <!-- লগইন স্ক্রিন -->
         <div id="loginScreen" class="login-screen">
             <div class="login-box">
                 <div class="logo"><i class="fas fa-crown"></i></div>
@@ -57,20 +56,17 @@
             </div>
         </div>
 
-        <!-- অ্যাডমিন প্যানেল -->
         <div id="adminPanel" class="admin-panel">
             <div class="header">
                 <h2><i class="fas fa-user-shield"></i> <span id="adminName"></span></h2>
                 <button id="logoutBtn" class="logout-btn"><i class="fas fa-sign-out-alt"></i> লগ আউট</button>
             </div>
 
-            <!-- ড্যাশবোর্ড সারাংশ (শুধু পরিসংখ্যান) -->
             <div class="stats-grid">
                 <div class="stat-card"><div class="stat-value" id="totalVouchers">0</div><div class="stat-label">মোট ভাউচার</div></div>
                 <div class="stat-card"><div class="stat-value" id="totalBalance">$0</div><div class="stat-label">মোট বিক্রয় (USD)</div></div>
             </div>
 
-            <!-- নতুন অর্ডার ফর্ম (এখন productSlug ব্যবহার করবে) -->
             <h3 class="section-title">➕ নতুন ভাউচার অর্ডার</h3>
             <form id="orderForm">
                 <div class="form-group">
@@ -96,13 +92,11 @@
                 <button type="submit" class="btn" id="orderBtn"><i class="fas fa-shopping-cart"></i> অর্ডার তৈরি করুন</button>
             </form>
 
-            <!-- দুটি ট্যাব: ফায়ারবেস ভাউচার ও রিলোগ্রেড অর্ডার -->
             <div style="display:flex; gap:10px; margin:20px 0;">
                 <button class="btn" id="showLocalVouchersBtn">স্থানীয় ভাউচার</button>
                 <button class="btn" id="showRelogradeOrdersBtn">Relograde অর্ডার</button>
             </div>
 
-            <!-- স্থানীয় ভাউচার টেবিল (ফায়ারবেস থেকে) -->
             <div id="localVouchersSection">
                 <h3 class="section-title">📋 স্থানীয় ভাউচার তালিকা</h3>
                 <div style="overflow-x:auto;">
@@ -117,7 +111,6 @@
                 </div>
             </div>
 
-            <!-- Relograde অর্ডার টেবিল -->
             <div id="relogradeOrdersSection" style="display:none;">
                 <h3 class="section-title">📦 Relograde অর্ডার তালিকা</h3>
                 <div style="overflow-x:auto;">
@@ -135,7 +128,7 @@
     </div>
 
     <script>
-        // Firebase কনফিগারেশন (আপনার নিজের ব্যবহার করুন)
+        // Firebase কনফিগারেশন
         const firebaseConfig = {
             apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
             authDomain: "easy-premium.firebaseapp.com",
@@ -149,10 +142,10 @@
         const auth = firebase.auth();
         const database = firebase.database();
 
-        // অনুমোদিত ইমেইল তালিকা
+        // অনুমোদিত ইমেইল
         const ALLOWED_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com'];
 
-        // DOM এলিমেন্ট
+        // DOM elements
         const loginScreen = document.getElementById('loginScreen');
         const adminPanel = document.getElementById('adminPanel');
         const googleLoginBtn = document.getElementById('googleLoginBtn');
@@ -169,14 +162,13 @@
         const localSection = document.getElementById('localVouchersSection');
         const relogradeSection = document.getElementById('relogradeOrdersSection');
 
-        // অথেনটিকেশন স্টেট
+        // Auth state listener
         auth.onAuthStateChanged(user => {
             if (user && ALLOWED_EMAILS.includes(user.email)) {
                 adminNameSpan.textContent = user.displayName || user.email;
                 loginScreen.style.display = 'none';
                 adminPanel.style.display = 'block';
-                loadLocalVouchers();   // ফায়ারবেসের ভাউচার লোড
-                // ডিফল্টে লোকাল ভিউ দেখাবে
+                loadLocalVouchers();
             } else {
                 if (user) auth.signOut();
                 loginScreen.style.display = 'block';
@@ -184,6 +176,7 @@
             }
         });
 
+        // Google login
         googleLoginBtn.addEventListener('click', async () => {
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
@@ -199,22 +192,22 @@
 
         logoutBtn.addEventListener('click', () => auth.signOut());
 
-        // ট্যাব স্যুইচ
+        // Tab switch
         showLocalBtn.addEventListener('click', () => {
             localSection.style.display = 'block';
             relogradeSection.style.display = 'none';
             loadLocalVouchers();
         });
+
         showRelogradeBtn.addEventListener('click', () => {
             localSection.style.display = 'none';
             relogradeSection.style.display = 'block';
             loadRelogradeOrders();
         });
 
-        // অর্ডার ফর্ম সাবমিট (এখন সঠিক ফরম্যাটে পাঠাবে)
+        // Order form submit
         orderForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const productSlug = document.getElementById('productSlug').value.trim();
             const amount = parseInt(document.getElementById('amount').value);
             const paymentCurrency = document.getElementById('paymentCurrency').value;
@@ -248,7 +241,7 @@
                     throw new Error(responseData.error || `HTTP error ${response.status}`);
                 }
 
-                // সফল অর্ডার → ফায়ারবেসে সংরক্ষণ (ঐচ্ছিক)
+                // Save to Firebase (optional)
                 await database.ref('vouchers').push({
                     id: responseData.trx || 'VCH_' + Date.now(),
                     productSlug: productSlug,
@@ -260,10 +253,9 @@
 
                 showToast('✅ অর্ডার সফল হয়েছে!', 'success');
                 orderForm.reset();
-                document.getElementById('productSlug').value = 'rewarble-ww-usd-5'; // ডিফল্ট
+                document.getElementById('productSlug').value = 'rewarble-ww-usd-5';
                 document.getElementById('amount').value = '1';
-                loadLocalVouchers(); // রিফ্রেশ
-
+                loadLocalVouchers();
             } catch (error) {
                 console.error('❌ অর্ডার ত্রুটি:', error);
                 showToast('ত্রুটি: ' + error.message, 'error');
@@ -273,14 +265,13 @@
             }
         });
 
-        // ফায়ারবেস থেকে ভাউচার লোড
+        // Load local vouchers from Firebase
         async function loadLocalVouchers() {
             try {
                 const snap = await database.ref('vouchers').once('value');
                 const data = snap.val();
                 let html = '';
                 let totalAmt = 0, count = 0;
-
                 if (data) {
                     const sorted = Object.entries(data).sort((a,b) => b[1].createdAt - a[1].createdAt);
                     sorted.forEach(([key, val]) => {
@@ -303,7 +294,7 @@
             }
         }
 
-        // Relograde অর্ডার লোড (Find All Orders এন্ডপয়েন্ট)
+        // Load Relograde orders
         async function loadRelogradeOrders() {
             relogradeOrdersList.innerHTML = '<tr><td colspan="5" style="text-align:center;">লোড হচ্ছে...</td></tr>';
             try {
@@ -315,19 +306,18 @@
                     relogradeOrdersList.innerHTML = '<tr><td colspan="5" style="text-align:center;">কোন অর্ডার নেই</td></tr>';
                     return;
                 }
-
                 let html = '';
                 orders.forEach(order => {
                     const status = order.orderStatus || 'unknown';
-                    const amount = order.priceAmount || 0;
-                    const currency = order.priceCurrency || '';
-                    const date = order.dateCreated ? new Date(order.dateCreated).toLocaleDateString('bn-BD') : '';
+                    const amount = order.items?.[0]?.amount || order.totalAmount || 0;
+                    const currency = order.paymentCurrency || '';
+                    const date = order.createdAt || order.dateCreated || '';
                     html += `<tr>
-                        <td>${order.trx.substring(0,12)}...</td>
+                        <td>${order.trx?.substring(0,12) || 'N/A'}...</td>
                         <td><span class="status-badge">${status}</span></td>
                         <td>${amount} ${currency}</td>
                         <td>${currency}</td>
-                        <td>${date}</td>
+                        <td>${date ? new Date(date).toLocaleDateString('bn-BD') : 'N/A'}</td>
                     </tr>`;
                 });
                 relogradeOrdersList.innerHTML = html;
@@ -336,7 +326,7 @@
             }
         }
 
-        // টোস্ট নোটিফিকেশন
+        // Toast function
         function showToast(msg, type = 'info') {
             const t = document.createElement('div');
             t.className = 'toast';
