@@ -675,7 +675,6 @@
             try {
                 console.log("🔍 Fetching plan data for:", platformId);
                 const paths = [
-                    `publicData/pricingPlans1/${platformId}`,
                     `publicData/pricingPlans2/${platformId}`,
                     `pricingPlans2/${platformId}`,
                     `plans/${platformId}`,
@@ -697,30 +696,6 @@
                 console.error("Firebase error:", e);
                 return null;
             }
-        }
-
-        // ========== আইকন থেকে কার্ডের তথ্য বের করার ফাংশন ==========
-        function getCardInfoFromIcon(iconName) {
-            if (!iconName) return { type: 'Unknown', amount: 0, displayName: 'Unknown Card' };
-            
-            iconName = iconName.toLowerCase();
-            let cardType = 'Unknown';
-            let amount = 0;
-            
-            if (iconName.includes('visa')) {
-                cardType = 'Visa';
-            } else if (iconName.includes('master')) {
-                cardType = 'Mastercard';
-            }
-            
-            const amountMatch = iconName.match(/(\d+)_usd/);
-            if (amountMatch && amountMatch[1]) {
-                amount = parseInt(amountMatch[1]);
-            }
-            
-            const displayName = amount > 0 ? `${cardType} Card $${amount}` : cardType;
-            
-            return { type: cardType, amount: amount, displayName: displayName };
         }
 
         // ========== মূল পেজ লজিক ==========
@@ -759,6 +734,7 @@
             // service charge ডিফল্ট 0
             let serviceCharge = 0;
             if (planData && planData.ServicCharge !== undefined) {
+                // ServicCharge নামের ফিল্ড (S বড় হাতের)
                 serviceCharge = Number(planData.ServicCharge) || 0;
             } else if (planData && planData.serviceCharge !== undefined) {
                 serviceCharge = Number(planData.serviceCharge) || 0;
@@ -769,9 +745,6 @@
             
             // D field (বিবরণ) দেখানোর জন্য
             const dField = planData && (planData.D || planData.description || planData.d || planData.info || '');
-            
-            // আইকন থেকে কার্ডের তথ্য বের করা
-            const cardInfo = getCardInfoFromIcon(planData?.icon || '');
             
             const date = new Date(parseInt(data.timestamp));
             const formattedDate = date.toLocaleString('bn-BD', { 
@@ -806,11 +779,6 @@
                     <div class="info-row">
                         <span class="label">প্ল্যাটফর্ম:</span>
                         <span class="value">${platformName}</span>
-                    </div>
-                    
-                    <div class="info-row">
-                        <span class="label">কার্ডের ধরন:</span>
-                        <span class="value">${cardInfo.displayName}</span>
                     </div>
                     
                     <div class="info-row">
@@ -864,7 +832,7 @@
                 }, 5 * 60 * 1000);
             });
 
-            // ---------- VERIFY বাটন - আপডেট করা অংশ (ফোন ও ট্রানজেকশন ID reference-এ পাঠানো, কারেন্সি EUR) ----------
+            // ---------- VERIFY বাটন - আপডেট করা অংশ (ফোন ও ট্রানজেকশন ID reference-এ পাঠানো) ----------
             const verifyInside = document.getElementById('verifyInsideBtn');
             if (verifyInside) {
                 verifyInside.replaceWith(verifyInside.cloneNode(true));
@@ -914,14 +882,12 @@
                         return;
                     }
                     
-                    // productSlug হিসেবে platformId ব্যবহার করা হচ্ছে (ইতিমধ্যে সেট আছে)
-                    const productSlug = data.platformId; 
+                    // productSlug তৈরি (platformId ই product slug হিসেবে ধরে নিচ্ছি)
+                    const productSlug = data.platformId;
                     const amount = parseInt(data.price) || 1;
+                    const paymentCurrency = 'bdt'; // এই পৃষ্ঠায় BDT পেমেন্ট
                     
-                    // ⭐⭐⭐ কারেন্সি 'eur' দেওয়া হয়েছে (যেহেতু USD ওয়ালেট নেই)
-                    const paymentCurrency = 'eur';
-                    
-                    // পেমেন্ট মেথড ও ট্রানজেকশন তথ্য reference-এ পাঠানো
+                    // ফোন ও ট্রানজেকশন আইডি reference-এ পাঠানোর জন্য ফরম্যাট করা
                     const paymentMethod = selected.value.replace('woo_', '').toUpperCase(); // BKASH, NAGAD, ROCKET
                     const reference = `${paymentMethod}|Phone:${accountVal}|TXID:${transVal}`;
                     
@@ -938,7 +904,7 @@
                                 productSlug: productSlug, 
                                 amount: amount, 
                                 paymentCurrency: paymentCurrency,
-                                reference: reference
+                                reference: reference // ফোন ও ট্রানজেকশন আইডি সহ রেফারেন্স
                             })
                         });
                         
@@ -959,7 +925,7 @@
                             </div>
                         `;
                         
-                        // 5. Firebase-এ এই অর্ডারের জন্য listener সেট করা (vouchers নোডে trx ফিল্ড)
+                        // 5. Firebase-এ এই অর্ডারের জন্য listener সেট করা
                         if (orderId) {
                             const vouchersRef = database.ref('vouchers');
                             const query = vouchersRef.orderByChild('trx').equalTo(orderId).limitToFirst(1);
