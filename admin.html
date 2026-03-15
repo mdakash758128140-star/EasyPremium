@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Easy Premium · অর্ডার প্যানেল</title>
+    <title>Easy Premium · অ্যাডমিন প্যানেল</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -67,7 +67,7 @@
                 <div class="stat-card"><div class="stat-value" id="totalBalance">$0</div><div class="stat-label">মোট বিক্রয় (USD)</div></div>
             </div>
 
-            <h3 class="section-title">➕ নতুন ভাউচার অর্ডার</h3>
+            <h3 class="section-title">➕ নতুন অর্ডার তৈরি করুন</h3>
             <form id="orderForm">
                 <div class="form-group">
                     <label>প্রোডাক্ট স্লাগ</label>
@@ -98,11 +98,11 @@
             </div>
 
             <div id="localVouchersSection">
-                <h3 class="section-title">📋 স্থানীয় ভাউচার তালিকা</h3>
+                <h3 class="section-title">📋 ভাউচার তালিকা (অটো-আপডেট)</h3>
                 <div style="overflow-x:auto;">
                     <table class="voucher-table">
                         <thead>
-                            <tr><th>ID</th><th>স্লাগ</th><th>পরিমাণ</th><th>স্ট্যাটাস</th><th>তারিখ</th></tr>
+                            <tr><th>TRX</th><th>স্লাগ</th><th>পরিমাণ</th><th>স্ট্যাটাস</th><th>তারিখ</th></tr>
                         </thead>
                         <tbody id="voucherList">
                             <tr><td colspan="5" style="text-align:center;">লোড হচ্ছে...</td></tr>
@@ -116,10 +116,10 @@
                 <div style="overflow-x:auto;">
                     <table class="voucher-table">
                         <thead>
-                            <tr><th>TRX</th><th>স্ট্যাটাস</th><th>পরিমাণ</th><th>কারেন্সি</th><th>তারিখ</th></tr>
+                            <tr><th>TRX</th><th>স্ট্যাটাস</th><th>পরিমাণ</th><th>তারিখ</th></tr>
                         </thead>
                         <tbody id="relogradeOrdersList">
-                            <tr><td colspan="5" style="text-align:center;">লোড হচ্ছে...</td></tr>
+                            <tr><td colspan="4" style="text-align:center;">লোড হচ্ছে...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -128,7 +128,6 @@
     </div>
 
     <script>
-        // Firebase কনফিগারেশন
         const firebaseConfig = {
             apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
             authDomain: "easy-premium.firebaseapp.com",
@@ -142,10 +141,8 @@
         const auth = firebase.auth();
         const database = firebase.database();
 
-        // অনুমোদিত ইমেইল
         const ALLOWED_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com'];
 
-        // DOM elements
         const loginScreen = document.getElementById('loginScreen');
         const adminPanel = document.getElementById('adminPanel');
         const googleLoginBtn = document.getElementById('googleLoginBtn');
@@ -162,7 +159,6 @@
         const localSection = document.getElementById('localVouchersSection');
         const relogradeSection = document.getElementById('relogradeOrdersSection');
 
-        // Auth state listener
         auth.onAuthStateChanged(user => {
             if (user && ALLOWED_EMAILS.includes(user.email)) {
                 adminNameSpan.textContent = user.displayName || user.email;
@@ -176,7 +172,6 @@
             }
         });
 
-        // Google login
         googleLoginBtn.addEventListener('click', async () => {
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
@@ -192,7 +187,6 @@
 
         logoutBtn.addEventListener('click', () => auth.signOut());
 
-        // Tab switch
         showLocalBtn.addEventListener('click', () => {
             localSection.style.display = 'block';
             relogradeSection.style.display = 'none';
@@ -205,7 +199,6 @@
             loadRelogradeOrders();
         });
 
-        // Order form submit
         orderForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const productSlug = document.getElementById('productSlug').value.trim();
@@ -228,34 +221,16 @@
                     body: JSON.stringify({ productSlug, amount, paymentCurrency, reference })
                 });
 
-                let responseData;
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    responseData = await response.json();
-                } else {
-                    const text = await response.text();
-                    throw new Error(`সার্ভার JSON ছাড়া অন্য কিছু পাঠিয়েছে: ${text.substring(0, 100)}`);
-                }
-
                 if (!response.ok) {
-                    throw new Error(responseData.error || `HTTP error ${response.status}`);
+                    const err = await response.json();
+                    throw new Error(err.error || 'অর্ডার তৈরি ব্যর্থ');
                 }
 
-                // Save to Firebase (optional)
-                await database.ref('vouchers').push({
-                    id: responseData.trx || 'VCH_' + Date.now(),
-                    productSlug: productSlug,
-                    amount: amount,
-                    currency: paymentCurrency,
-                    status: responseData.orderStatus || 'created',
-                    createdAt: new Date().toISOString()
-                });
-
-                showToast('✅ অর্ডার সফল হয়েছে!', 'success');
+                const data = await response.json();
+                showToast('✅ অর্ডার সফল হয়েছে! ওয়েবহুকের মাধ্যমে ভাউচার যুক্ত হবে।', 'success');
                 orderForm.reset();
                 document.getElementById('productSlug').value = 'rewarble-ww-usd-5';
                 document.getElementById('amount').value = '1';
-                loadLocalVouchers();
             } catch (error) {
                 console.error('❌ অর্ডার ত্রুটি:', error);
                 showToast('ত্রুটি: ' + error.message, 'error');
@@ -265,7 +240,6 @@
             }
         });
 
-        // Load local vouchers from Firebase
         async function loadLocalVouchers() {
             try {
                 const snap = await database.ref('vouchers').once('value');
@@ -278,11 +252,11 @@
                         count++;
                         if (val.currency === 'usd') totalAmt += parseFloat(val.amount) || 0;
                         html += `<tr>
-                            <td>${val.id.substring(0,8)}</td>
-                            <td>${val.productSlug || val.type || ''}</td>
+                            <td>${val.trx ? val.trx.substring(0,10) : 'N/A'}</td>
+                            <td>${val.productSlug || ''}</td>
                             <td>${val.amount} ${val.currency}</td>
-                            <td><span class="status-badge status-active">${val.status}</span></td>
-                            <td>${new Date(val.createdAt).toLocaleDateString('bn-BD')}</td>
+                            <td><span class="status-badge status-active">${val.status || 'active'}</span></td>
+                            <td>${val.createdAt ? new Date(val.createdAt).toLocaleDateString('bn-BD') : ''}</td>
                         </tr>`;
                     });
                 }
@@ -294,16 +268,15 @@
             }
         }
 
-        // Load Relograde orders
         async function loadRelogradeOrders() {
-            relogradeOrdersList.innerHTML = '<tr><td colspan="5" style="text-align:center;">লোড হচ্ছে...</td></tr>';
+            relogradeOrdersList.innerHTML = '<tr><td colspan="4" style="text-align:center;">লোড হচ্ছে...</td></tr>';
             try {
                 const response = await fetch('/api/relograde-orders');
                 if (!response.ok) throw new Error('Failed to fetch');
                 const result = await response.json();
                 const orders = result.data || [];
                 if (orders.length === 0) {
-                    relogradeOrdersList.innerHTML = '<tr><td colspan="5" style="text-align:center;">কোন অর্ডার নেই</td></tr>';
+                    relogradeOrdersList.innerHTML = '<tr><td colspan="4" style="text-align:center;">কোন অর্ডার নেই</td></tr>';
                     return;
                 }
                 let html = '';
@@ -313,20 +286,18 @@
                     const currency = order.paymentCurrency || '';
                     const date = order.createdAt || order.dateCreated || '';
                     html += `<tr>
-                        <td>${order.trx?.substring(0,12) || 'N/A'}...</td>
+                        <td>${order.trx?.substring(0,12) || 'N/A'}</td>
                         <td><span class="status-badge">${status}</span></td>
                         <td>${amount} ${currency}</td>
-                        <td>${currency}</td>
                         <td>${date ? new Date(date).toLocaleDateString('bn-BD') : 'N/A'}</td>
                     </tr>`;
                 });
                 relogradeOrdersList.innerHTML = html;
             } catch (error) {
-                relogradeOrdersList.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#ff6b6b;">ত্রুটি: ${error.message}</td></tr>`;
+                relogradeOrdersList.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#ff6b6b;">ত্রুটি: ${error.message}</td></tr>`;
             }
         }
 
-        // Toast function
         function showToast(msg, type = 'info') {
             const t = document.createElement('div');
             t.className = 'toast';
