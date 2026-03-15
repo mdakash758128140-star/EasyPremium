@@ -12,7 +12,7 @@ export default async function handler(req, res) {
 
   // শুধুমাত্র POST অনুমোদিত
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Method not allowed2' });
   }
 
   const apiKey = process.env.RELOGRADE_API_KEY;
