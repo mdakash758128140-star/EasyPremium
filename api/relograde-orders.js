@@ -1,8 +1,8 @@
 // api/relograde-orders.js
 export default async function handler(req, res) {
-  // CORS হেডার (ঐচ্ছিক, আপনার ফ্রন্টএন্ড একই ডোমেইনে থাকলে প্রয়োজন নাও হতে পারে)
+  // CORS হেডার (ঐচ্ছিক)
   res.setHeader('Access-Control-Allow-Origin', '*');
-
+  
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -13,8 +13,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 🔴 এখানে সঠিক এন্ডপয়েন্ট বসানো হয়েছে
-    const response = await fetch('https://connect.relograde.com/api/1.02/order', {
+    // 🔴 এখানে সঠিক এন্ডপয়েন্ট বসান
+    const response = await fetch('YOUR_CORRECT_ENDPOINT_HERE', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
