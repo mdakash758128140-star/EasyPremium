@@ -1,12 +1,21 @@
-// api/create-order.js
 export default async function handler(req, res) {
+  // CORS হেডার (ঐচ্ছিক, সমস্যা হলে যোগ করুন)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // প্রি-ফ্লাইট OPTIONS অনুরোধ হ্যান্ডেল করুন
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'API key not configured' });
+    return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
   }
 
   const { cardType, amount, currency } = req.body;
@@ -29,6 +38,7 @@ export default async function handler(req, res) {
     const data = await response.json();
     res.status(200).json(data);
   } catch (error) {
+    console.error('❌ Error:', error.message);
     res.status(500).json({ error: error.message });
   }
 }
