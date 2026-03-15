@@ -1,6 +1,16 @@
 // api/webhook.js
 export default async function handler(req, res) {
-  // শুধুমাত্র POST মেথড অনুমোদিত
+  // CORS হেডার
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // OPTIONS প্রি-ফ্লাইট অনুরোধ হ্যান্ডেল করুন
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // শুধুমাত্র POST অনুরোধ অনুমোদিত
   if (req.method !== 'POST') {
     return res.status(405).json({ 
       status: 'error', 
@@ -9,43 +19,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    // হেডার থেকে API কী যাচাই (ঐচ্ছিক কিন্তু সুপারিশকৃত)
-    const authHeader = req.headers.authorization;
-    const expectedApiKey = '8ef43d4b-37f9-4ceb-baa3-177b4e3832e7'; // আপনার API কী
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
-        status: 'error', 
-        message: 'Unauthorized. Missing or invalid Authorization header.' 
-      });
-    }
-    
-    const apiKey = authHeader.split(' ')[1];
-    if (apiKey !== expectedApiKey) {
-      return res.status(401).json({ 
-        status: 'error', 
-        message: 'Unauthorized. Invalid API key.' 
-      });
-    }
-
     // বডি থেকে ডেটা গ্রহণ
-    const orderData = req.body;
-    
-    // ডেটা যাচাই
-    if (!orderData || Object.keys(orderData).length === 0) {
-      return res.status(400).json({ 
-        status: 'error', 
-        message: 'Bad Request. Request body is empty.' 
-      });
-    }
+    const payload = req.body;
+    console.log('📥 Webhook received:', payload);
 
-    // এখানে আপনার কাস্টম লজিক লিখুন (যেমন ডাটাবেস সেভ, ইমেইল নোটিফিকেশন)
-    console.log('✅ Webhook received successfully:', {
-      timestamp: new Date().toISOString(),
-      orderId: orderData.orderId || 'N/A',
-      status: orderData.status || 'N/A',
-      data: orderData
-    });
+    // 🔍 এখানে আপনি পেলোড অনুযায়ী লজিক যোগ করতে পারেন
+    // যেমন: ইভেন্ট টাইপ চেক করা, ডাটাবেস আপডেট করা ইত্যাদি
+    if (payload.event === 'ORDER_FINISHED') {
+      const { trx, reference } = payload.data || {};
+      console.log(`✅ Order ${trx} finished. Reference: ${reference}`);
+      
+      // আপনার ফায়ারবেসে অর্ডারের স্ট্যাটাস আপডেট করার লজিক এখানে বসাতে পারেন
+      // যেমন: database.ref('vouchers').orderByChild('trx').equalTo(trx).once('value', ...)
+    }
 
     // সফল রেসপন্স
     return res.status(200).json({
@@ -55,9 +41,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    // ত্রুটি হ্যান্ডলিং
     console.error('❌ Webhook error:', error.message);
-    
     return res.status(500).json({
       status: 'error',
       message: 'Internal server error',
