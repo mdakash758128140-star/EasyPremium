@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   try {
     // হেডার থেকে API কী যাচাই (ঐচ্ছিক কিন্তু সুপারিশকৃত)
     const authHeader = req.headers.authorization;
-    const expectedApiKey = 'a4f468d3-9192-4d20-b122-a99ac9a1857c'; // আপনার API কী
+    const expectedApiKey = '8ef43d4b-37f9-4ceb-baa3-177b4e3832e7'; // আপনার API কী
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ 
