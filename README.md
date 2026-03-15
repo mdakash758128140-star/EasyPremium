@@ -1,3 +1,3 @@
-git add api/create-order.js admin.html
-git commit -m "fix: update create-order to match Relograde API spec"
+git add api/test.js
+git commit -m "Add test endpoint"
 git push
