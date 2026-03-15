@@ -832,7 +832,7 @@
                 }, 5 * 60 * 1000);
             });
 
-            // ভেরিফাই বাটন
+            // ---------- VERIFY বাটন - আপডেট করা অংশ (ফোন ও ট্রানজেকশন ID reference-এ পাঠানো) ----------
             const verifyInside = document.getElementById('verifyInsideBtn');
             if (verifyInside) {
                 verifyInside.replaceWith(verifyInside.cloneNode(true));
@@ -841,11 +841,7 @@
                 newVerify.addEventListener('click', async function(e) {
                     e.preventDefault();
                     
-                    if (paymentTimer) {
-                        clearTimeout(paymentTimer);
-                        paymentTimer = null;
-                    }
-                    
+                    // 1. ফর্মের ডাটা সংগ্রহ
                     const selected = document.querySelector('input[name="payment_method"]:checked');
                     if (!selected) {
                         alert('কোন পেমেন্ট পদ্ধতি নির্বাচন করুন');
@@ -872,20 +868,111 @@
                         return;
                     }
 
+                    // 2. URL থেকে প্রয়োজনীয় ডাটা নেওয়া
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const encodedData = urlParams.get('data');
+                    if (!encodedData) {
+                        alert('URL এ ডাটা নেই');
+                        return;
+                    }
+                    
+                    const data = decryptData(encodedData);
+                    if (!data) {
+                        alert('ডাটা ডিক্রিপ্ট করা যায়নি');
+                        return;
+                    }
+                    
+                    // productSlug তৈরি (platformId ই product slug হিসেবে ধরে নিচ্ছি)
+                    const productSlug = data.platformId;
+                    const amount = parseInt(data.price) || 1;
+                    const paymentCurrency = 'bdt'; // এই পৃষ্ঠায় BDT পেমেন্ট
+                    
+                    // ফোন ও ট্রানজেকশন আইডি reference-এ পাঠানোর জন্য ফরম্যাট করা
+                    const paymentMethod = selected.value.replace('woo_', '').toUpperCase(); // BKASH, NAGAD, ROCKET
+                    const reference = `${paymentMethod}|Phone:${accountVal}|TXID:${transVal}`;
+                    
+                    // 3. API কল
                     const originalText = newVerify.textContent;
                     newVerify.disabled = true;
-                    newVerify.innerHTML = '<span class="button-loader"><span class="spinner"></span> Processing...</span>';
-
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-
-                    newVerify.innerHTML = originalText;
-                    newVerify.disabled = false;
-
-                    alert('✅ পেমেন্ট তথ্য জমা দেওয়া হয়েছে (ডেমো)');
+                    newVerify.innerHTML = '<span class="button-loader"><span class="spinner"></span> প্রসেসিং...</span>';
+                    
+                    try {
+                        const response = await fetch('/api/create-order', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                productSlug: productSlug, 
+                                amount: amount, 
+                                paymentCurrency: paymentCurrency,
+                                reference: reference // ফোন ও ট্রানজেকশন আইডি সহ রেফারেন্স
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (!response.ok) {
+                            throw new Error(result.error || 'অর্ডার ব্যর্থ');
+                        }
+                        
+                        // 4. অর্ডার সফল হলে পেমেন্ট প্যানেলের কন্টেন্ট প্রতিস্থাপন
+                        const orderId = result.trx || data.orderId;
+                        paymentPanel.innerHTML = `
+                            <div class="card" style="text-align: center; padding: 40px;">
+                                <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
+                                <p style="margin:20px 0;">আপনার অর্ডার প্রসেসিং হচ্ছে। ভাউচার পেতে কয়েক মিনিট অপেক্ষা করুন।</p>
+                                <div class="spinner" style="width:40px; height:40px; border-width:4px; margin:0 auto;"></div>
+                                <p style="margin-top:20px; word-break:break-all;">অর্ডার আইডি: ${orderId}</p>
+                            </div>
+                        `;
+                        
+                        // 5. Firebase-এ এই অর্ডারের জন্য listener সেট করা
+                        if (orderId) {
+                            const vouchersRef = database.ref('vouchers');
+                            const query = vouchersRef.orderByChild('trx').equalTo(orderId).limitToFirst(1);
+                            
+                            const onVoucherAdded = query.on('child_added', (snapshot) => {
+                                const voucherData = snapshot.val();
+                                if (voucherData && voucherData.voucherCode) {
+                                    query.off('child_added', onVoucherAdded);
+                                    paymentPanel.innerHTML = `
+                                        <div class="card" style="text-align: center; padding: 40px;">
+                                            <h3 style="color:#ff9800;">🎉 আপনার ভাউচার প্রস্তুত!</h3>
+                                            <div style="background: #1a1a3a; border: 2px dashed #ff9800; border-radius: 12px; padding: 20px; margin: 20px 0;">
+                                                <p style="font-size: 14px; color: #b0bec5;">ভাউচার কোড</p>
+                                                <div style="font-size: 28px; font-weight: bold; color: #ff9800; letter-spacing: 2px; word-break: break-all;">${voucherData.voucherCode}</div>
+                                            </div>
+                                            <button class="copy-btn" style="margin-top:10px;" onclick="navigator.clipboard.writeText('${voucherData.voucherCode}')">📋 কপি করুন</button>
+                                            <p style="margin-top:20px;">আপনার অর্ডার সম্পন্ন হয়েছে।</p>
+                                        </div>
+                                    `;
+                                }
+                            });
+                            
+                            // টাইমআউট: ৫ মিনিট পর যদি ভাউচার না আসে
+                            setTimeout(() => {
+                                query.off('child_added', onVoucherAdded);
+                                if (paymentPanel.innerHTML.includes('প্রসেসিং হচ্ছে')) {
+                                    paymentPanel.innerHTML = `
+                                        <div class="card" style="text-align: center; padding: 40px;">
+                                            <h3 style="color:#ff6b6b;">⏰ সময় শেষ</h3>
+                                            <p>অর্ডার প্রসেসিংয়ে দেরি হচ্ছে। দয়া করে পরে আবার চেক করুন অথবা সাপোর্টের সাথে যোগাযোগ করুন।</p>
+                                        </div>
+                                    `;
+                                }
+                            }, 5 * 60 * 1000);
+                        }
+                        
+                    } catch (error) {
+                        console.error('Order error:', error);
+                        alert('অর্ডার ব্যর্থ: ' + error.message);
+                        newVerify.disabled = false;
+                        newVerify.innerHTML = originalText;
+                    }
                 });
             }
+            // ---------- VERIFY বাটন শেষ ----------
 
-            // রেডিও বাটনের ইভেন্ট
+            // কপি বাটন এবং রেডিও ইভেন্ট (আগের মতই)
             const radios = document.querySelectorAll('input[name="payment_method"]');
             const bkashBox = document.getElementById('box-bkash');
             const nagadBox = document.getElementById('box-nagad');
