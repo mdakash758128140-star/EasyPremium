@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
   try {
     // 🔴 এখানে সঠিক এন্ডপয়েন্ট বসান
-    const response = await fetch('YOUR_CORRECT_ENDPOINT_HERE', {
+    const response = await fetch('https://connect.relograde.com/api/1.02/order', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
