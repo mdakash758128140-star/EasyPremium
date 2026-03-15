@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.RELOGRADE_API_KEY;
+  const apiKey = process.env.8ef43d4b-37f9-4ceb-baa3-177b4e3832e7;
   if (!apiKey) {
     return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
   }
