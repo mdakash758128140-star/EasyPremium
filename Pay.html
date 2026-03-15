@@ -870,7 +870,7 @@
                         return;
                     }
                     
-                    // ★★★ গুরুত্বপূর্ণ: সঠিক productSlug নির্ধারণ ★★★
+                    // ★★★ সঠিক productSlug নির্ধারণ ★★★
                     let productSlug = data.platformId;
                     if (planData && planData.Products) {
                         productSlug = planData.Products; // যেমন "rewarble-ww-usd-5"
@@ -880,6 +880,9 @@
                     }
                     
                     const quantity = 1;
+                    
+                    // ★★★ গুরুত্বপূর্ণ: paymentCurrency এখন 'usd' ★★★
+                    // Relograde API BDT সাপোর্ট করে না, তাই 'usd' ব্যবহার করছি
                     const paymentCurrency = 'usd';
                     
                     const paymentMethod = selected.value.replace('woo_', '').toUpperCase();
@@ -890,7 +893,7 @@
                     newVerify.innerHTML = '<span class="button-loader"><span class="spinner"></span> প্রসেসিং...</span>';
                     
                     try {
-                        // API কল
+                        // API কল - এখন paymentCurrency: 'usd' পাঠাচ্ছি
                         const response = await fetch('/api/create-order', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
