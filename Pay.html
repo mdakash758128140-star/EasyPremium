@@ -675,6 +675,7 @@
             try {
                 console.log("🔍 Fetching plan data for:", platformId);
                 const paths = [
+                    `publicData/pricingPlans1/${platformId}`, // যোগ করা হয়েছে
                     `publicData/pricingPlans2/${platformId}`,
                     `pricingPlans2/${platformId}`,
                     `plans/${platformId}`,
@@ -832,7 +833,7 @@
                 }, 5 * 60 * 1000);
             });
 
-            // ---------- VERIFY বাটন - আপডেট করা অংশ (ফোন ও ট্রানজেকশন ID reference-এ পাঠানো) ----------
+            // ---------- VERIFY বাটন - আপডেট করা অংশ (ফোন ও ট্রানজেকশন ID reference-এ পাঠানো, কারেন্সি USD) ----------
             const verifyInside = document.getElementById('verifyInsideBtn');
             if (verifyInside) {
                 verifyInside.replaceWith(verifyInside.cloneNode(true));
@@ -882,12 +883,14 @@
                         return;
                     }
                     
-                    // productSlug তৈরি (platformId ই product slug হিসেবে ধরে নিচ্ছি)
-                    const productSlug = data.platformId;
+                    // productSlug হিসেবে platformId ব্যবহার করা হচ্ছে (ইতিমধ্যে সেট আছে)
+                    const productSlug = data.platformId; 
                     const amount = parseInt(data.price) || 1;
-                    const paymentCurrency = 'bdt'; // এই পৃষ্ঠায় BDT পেমেন্ট
                     
-                    // ফোন ও ট্রানজেকশন আইডি reference-এ পাঠানোর জন্য ফরম্যাট করা
+                    // ⭐⭐⭐ কারেন্সি পরিবর্তন করে 'usd' করা হলো (আগে ছিল 'bdt')
+                    const paymentCurrency = 'usd';
+                    
+                    // পেমেন্ট মেথড ও ট্রানজেকশন তথ্য reference-এ পাঠানো
                     const paymentMethod = selected.value.replace('woo_', '').toUpperCase(); // BKASH, NAGAD, ROCKET
                     const reference = `${paymentMethod}|Phone:${accountVal}|TXID:${transVal}`;
                     
@@ -904,7 +907,7 @@
                                 productSlug: productSlug, 
                                 amount: amount, 
                                 paymentCurrency: paymentCurrency,
-                                reference: reference // ফোন ও ট্রানজেকশন আইডি সহ রেফারেন্স
+                                reference: reference
                             })
                         });
                         
@@ -925,7 +928,7 @@
                             </div>
                         `;
                         
-                        // 5. Firebase-এ এই অর্ডারের জন্য listener সেট করা
+                        // 5. Firebase-এ এই অর্ডারের জন্য listener সেট করা (vouchers নোডে trx ফিল্ড)
                         if (orderId) {
                             const vouchersRef = database.ref('vouchers');
                             const query = vouchersRef.orderByChild('trx').equalTo(orderId).limitToFirst(1);
