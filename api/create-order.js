@@ -1,4 +1,21 @@
+import admin from 'firebase-admin';
+
+// Initialize Firebase Admin SDK only once
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    }),
+    databaseURL: process.env.FIREBASE_DATABASE_URL,
+  });
+}
+
+const db = admin.database();
+
 export default async function handler(req, res) {
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -9,11 +26,24 @@ export default async function handler(req, res) {
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
 
-  // ✅ faceValue যোগ করা হয়েছে
-  const { productSlug, amount, paymentCurrency, reference, faceValue } = req.body;
+  // Extract fields from request body
+  const {
+    productSlug,
+    amount,
+    paymentCurrency,
+    reference,
+    faceValue,
+    // New fields for Firebase
+    email,
+    uid,
+    platformId,
+  } = req.body;
 
   if (!productSlug || !amount || !paymentCurrency) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+  if (!email || !uid) {
+    return res.status(400).json({ error: 'email and uid are required' });
   }
 
   const amountInt = parseInt(amount);
@@ -22,13 +52,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ✅ items array তৈরি
+    // Build items array for Relograde
     const items = [{
       productSlug,
       amount: amountInt
     }];
 
-    // ✅ faceValue থাকলে এবং তা সংখ্যা হলে যোগ করুন
     if (faceValue !== undefined && faceValue !== null) {
       const faceValueNum = parseFloat(faceValue);
       if (!isNaN(faceValueNum) && faceValueNum > 0) {
@@ -44,6 +73,7 @@ export default async function handler(req, res) {
       reference: reference || `order_${Date.now()}`
     };
 
+    // Call Relograde API
     const response = await fetch('https://connect.relograde.com/api/1.02/order', {
       method: 'POST',
       headers: {
@@ -58,8 +88,35 @@ export default async function handler(req, res) {
       throw new Error(`Relograde API responded with status ${response.status}: ${errorText}`);
     }
 
-    const data = await response.json();
-    res.status(200).json(data);
+    const relogradeData = await response.json();
+
+    // --- Save order to Firebase Realtime Database ---
+    const ordersRef = db.ref('RelogradeOrders');
+    const newOrderRef = ordersRef.push(); // generate unique key
+
+    // Map Relograde response fields (adjust according to actual API response)
+    // Common fields might be: paymentMethod, paymentNumber, transactionId, etc.
+    const paymentMethod = relogradeData.paymentMethod || 'unknown';
+    const paymentNumber = relogradeData.paymentNumber || '';
+    const paymentTrxId = relogradeData.transactionId || relogradeData.paymentTrxId || '';
+
+    const orderData = {
+      OrderId: newOrderRef.key,                // Firebase generated key
+      PaymentMethods: paymentMethod,
+      PaymentNumber: paymentNumber,
+      PaymentTrxID: paymentTrxId,
+      Time: admin.database.ServerValue.TIMESTAMP, // server timestamp
+      email: email,
+      platformId: platformId || '',
+      uid: uid,
+    };
+
+    await newOrderRef.set(orderData);
+
+    // Optionally attach the Firebase key to the response
+    relogradeData.firebaseOrderId = newOrderRef.key;
+
+    res.status(200).json(relogradeData);
   } catch (error) {
     console.error('Error creating order:', error.message);
     res.status(500).json({ error: error.message });
