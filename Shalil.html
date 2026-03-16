@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <style>
+        /* পুরনো CSS (আপনার দেওয়া) */
         * {
             margin: 0;
             padding: 0;
@@ -263,68 +264,6 @@
             color: #4caf50;
         }
         
-        .whatsapp-btn {
-            background: rgba(37, 211, 102, 0.2);
-            color: #25D366;
-            border: 1px solid #25D366;
-            padding: 8px 12px;
-            border-radius: 5px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s;
-            font-weight: 500;
-        }
-        
-        .whatsapp-btn:hover {
-            background: rgba(37, 211, 102, 0.3);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(37, 211, 102, 0.2);
-        }
-        
-        .btn-cancel {
-            background: rgba(220, 53, 69, 0.2);
-            color: #dc3545;
-            border: 1px solid #dc3545;
-            padding: 8px 15px;
-            border-radius: 5px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .btn-cancel:hover {
-            background: rgba(220, 53, 69, 0.3);
-            transform: translateY(-2px);
-        }
-        
-        .btn-pending {
-            background: rgba(255, 152, 0, 0.2);
-            color: #ff9800;
-            border: 1px solid #ff9800;
-            padding: 8px 15px;
-            border-radius: 5px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .btn-pending:hover {
-            background: rgba(255, 152, 0, 0.3);
-            transform: translateY(-2px);
-        }
-        
         .filter-section {
             display: flex;
             gap: 15px;
@@ -423,21 +362,6 @@
             color: #b0bec5;
         }
         
-        .btn-group {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-        }
-        
-        .reference-text {
-            font-size: 0.75rem;
-            color: #b0bec5;
-            max-width: 200px;
-            word-break: break-word;
-            white-space: normal;
-            font-family: monospace;
-        }
-        
         .refresh-btn {
             background: rgba(0, 188, 212, 0.2);
             color: #00bcd4;
@@ -457,6 +381,17 @@
         .refresh-btn:hover {
             background: rgba(0, 188, 212, 0.3);
             transform: translateY(-2px);
+        }
+        
+        .error-container {
+            text-align: center;
+            padding: 40px;
+            color: #ff6b6b;
+        }
+        
+        .error-container i {
+            font-size: 3rem;
+            margin-bottom: 15px;
         }
         
         @media (max-width: 768px) {
@@ -484,19 +419,6 @@
             
             .orders-table th, .orders-table td {
                 padding: 10px;
-            }
-            
-            .btn-cancel, .btn-pending, .whatsapp-btn {
-                padding: 6px 10px;
-                font-size: 0.8rem;
-            }
-            
-            .btn-group {
-                flex-direction: column;
-            }
-            
-            .reference-text {
-                max-width: 150px;
             }
         }
         
@@ -597,13 +519,13 @@
                     </div>
                     
                     <div class="stats-card">
-                        <div class="stat-value" id="cancelledOrders">0</div>
-                        <div class="stat-label">ক্যানসেল করা অর্ডার</div>
+                        <div class="stat-value" id="completedOrders">0</div>
+                        <div class="stat-label">সম্পূর্ণ অর্ডার</div>
                     </div>
                     
                     <div class="stats-card">
-                        <div class="stat-value" id="completedOrders">0</div>
-                        <div class="stat-label">সম্পূর্ণ অর্ডার</div>
+                        <div class="stat-value" id="cancelledOrders">0</div>
+                        <div class="stat-label">ক্যানসেল অর্ডার</div>
                     </div>
                 </div>
                 
@@ -614,7 +536,10 @@
             
             <!-- Relograde Orders Section -->
             <div class="section">
-                <h2 class="section-title">Relograde Console থেকে অর্ডার তালিকা</h2>
+                <h2 class="section-title">
+                    Relograde অর্ডার তালিকা
+                    <span id="orderCount" style="font-size: 0.9rem; color: #00bcd4; margin-left: 15px;"></span>
+                </h2>
                 
                 <!-- Filter Section -->
                 <div class="filter-section">
@@ -622,9 +547,9 @@
                         <label class="form-label">স্ট্যাটাস ফিল্টার</label>
                         <select id="orderFilter" class="form-select">
                             <option value="all">সব অর্ডার</option>
-                            <option value="pending">পেন্ডিং</option>
+                            <option value="created">পেন্ডিং (Created)</option>
+                            <option value="finished">সম্পূর্ণ (Finished)</option>
                             <option value="cancelled">ক্যানসেল</option>
-                            <option value="completed">সম্পূর্ণ</option>
                         </select>
                     </div>
                     
@@ -651,12 +576,12 @@
                         <thead>
                             <tr>
                                 <th>TRX ID</th>
-                                <th>অর্ডার তারিখ</th>
+                                <th>তারিখ</th>
                                 <th>স্ট্যাটাস</th>
                                 <th>আইটেম</th>
                                 <th>মোট দাম</th>
                                 <th>রেফারেন্স</th>
-                                <th>পেমেন্ট কারেন্সি</th>
+                                <th>কারেন্সি</th>
                             </tr>
                         </thead>
                         <tbody id="ordersTable">
@@ -682,8 +607,7 @@
             projectId: "easy-premium",
             storageBucket: "easy-premium.firebasestorage.app",
             messagingSenderId: "155891252265",
-            appId: "1:155891252265:web:77ab41de24231e8e5ef038",
-            measurementId: "G-CHL8K8HRPX"
+            appId: "1:155891252265:web:77ab41de24231e8e5ef038"
         };
 
         // Initialize Firebase
@@ -714,6 +638,7 @@
         const pendingOrdersEl = document.getElementById('pendingOrders');
         const cancelledOrdersEl = document.getElementById('cancelledOrders');
         const completedOrdersEl = document.getElementById('completedOrders');
+        const orderCountEl = document.getElementById('orderCount');
         const systemInfo = document.getElementById('systemInfo');
         
         // Order Management Elements
@@ -749,14 +674,16 @@
         function setupEventListeners() {
             googleLoginBtn.addEventListener('click', handleGoogleLogin);
             logoutBtn.addEventListener('click', handleLogout);
-            refreshOrdersBtn.addEventListener('click', loadOrdersFromRelograde);
+            refreshOrdersBtn.addEventListener('click', () => {
+                showToast('অর্ডার রিফ্রেশ করা হচ্ছে...', 'info');
+                loadOrdersFromRelograde();
+            });
             
             orderFilter.addEventListener('change', filterAndDisplayOrders);
             orderSearch.addEventListener('input', filterAndDisplayOrders);
             dateFilter.addEventListener('change', filterAndDisplayOrders);
         }
         
-        // Check admin authentication
         function checkAdminAuth() {
             auth.onAuthStateChanged(async (user) => {
                 if (user) {
@@ -767,10 +694,7 @@
                         await loadAdminData(user);
                         showAdminPanel();
                         
-                        // প্রতি মিনিটে অনলাইন স্ট্যাটাস আপডেট
                         startOnlineStatusUpdates(user);
-                        
-                        // Relograde থেকে অর্ডার লোড
                         loadOrdersFromRelograde();
                         
                     } else {
@@ -913,7 +837,6 @@
             updateSystemInfo();
         }
         
-        // Relograde API থেকে অর্ডার লোড
         async function loadOrdersFromRelograde() {
             ordersTable.innerHTML = `
                 <tr>
@@ -925,49 +848,63 @@
             `;
             
             try {
+                console.log('Fetching orders from /api/relograde-orders...');
                 const response = await fetch('/api/relograde-orders');
                 const result = await response.json();
                 
+                console.log('API Response:', result);
+                
                 if (!response.ok) {
-                    throw new Error(result.error || 'Failed to fetch orders');
+                    throw new Error(result.error || `HTTP error ${response.status}`);
+                }
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Unknown error');
                 }
                 
                 orders = result.data || [];
                 console.log(`Loaded ${orders.length} orders from Relograde`);
                 
+                if (orderCountEl) {
+                    orderCountEl.textContent = `(${orders.length}টি অর্ডার)`;
+                }
+                
                 filterAndDisplayOrders();
+                showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
                 
             } catch (error) {
                 console.error('Error loading orders:', error);
                 ordersTable.innerHTML = `
                     <tr>
                         <td colspan="7" class="no-data">
-                            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ff9800; margin-bottom: 15px;"></i>
-                            <p>অর্ডার লোড করতে সমস্যা হয়েছে: ${error.message}</p>
-                            <button onclick="loadOrdersFromRelograde()" class="refresh-btn" style="margin-top: 15px;">
-                                <i class="fas fa-sync-alt"></i> আবার চেষ্টা করুন
-                            </button>
+                            <div style="text-align: center; padding: 40px;">
+                                <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #ff9800; margin-bottom: 15px;"></i>
+                                <p style="color: #ff6b6b; margin-bottom: 15px;">অর্ডার লোড করতে সমস্যা হয়েছে:</p>
+                                <p style="color: #fff; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+                                    ${error.message}
+                                </p>
+                                <button onclick="loadOrdersFromRelograde()" class="refresh-btn" style="margin-top: 15px;">
+                                    <i class="fas fa-sync-alt"></i> আবার চেষ্টা করুন
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
             }
         }
         
-        // ফিল্টার এবং ডিসপ্লে
         function filterAndDisplayOrders() {
             let filtered = [...orders];
             
+            // Status filter
             const statusValue = orderFilter.value;
             if (statusValue !== 'all') {
-                filtered = filtered.filter(order => {
-                    const status = (order.orderStatus || '').toLowerCase();
-                    if (statusValue === 'pending') return status === 'created' || status === 'pending';
-                    if (statusValue === 'cancelled') return status === 'cancelled';
-                    if (statusValue === 'completed') return status === 'finished' || status === 'completed';
-                    return true;
-                });
+                filtered = filtered.filter(order => 
+                    order.orderStatus?.toLowerCase() === statusValue.toLowerCase()
+                );
             }
             
+            // Search filter
             const searchValue = orderSearch.value.toLowerCase();
             if (searchValue) {
                 filtered = filtered.filter(order => 
@@ -976,6 +913,7 @@
                 );
             }
             
+            // Date filter
             const dateValue = dateFilter.value;
             if (dateValue !== 'all') {
                 const today = new Date();
@@ -1016,7 +954,7 @@
             
             let html = '';
             
-            ordersList.forEach(order => {
+            ordersList.slice(0, 50).forEach(order => { // Show only first 50
                 const orderDate = order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD', {
                     year: 'numeric',
                     month: 'short',
@@ -1028,7 +966,7 @@
                 let statusClass = 'status-pending';
                 let statusText = order.orderStatus || 'unknown';
                 
-                if (statusText === 'finished' || statusText === 'completed') {
+                if (statusText === 'finished') {
                     statusClass = 'status-completed';
                     statusText = 'সম্পূর্ণ';
                 } else if (statusText === 'cancelled') {
@@ -1042,11 +980,10 @@
                 const items = order.items || [];
                 const itemsList = items.map(item => 
                     `${item.product?.name || item.productSlug} x${item.amount}`
-                ).join('<br>');
+                ).join('<br>') || '—';
                 
                 const totalPrice = order.priceInclVat || order.priceAmount || 0;
                 const currency = order.priceCurrency || 'USD';
-                
                 const reference = order.reference || '—';
                 
                 html += `
@@ -1056,8 +993,8 @@
                         <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                         <td><div style="max-width: 200px; font-size: 0.85rem;">${itemsList}</div></td>
                         <td style="color: #00bcd4; font-weight: 600;">${totalPrice} ${currency}</td>
-                        <td><div class="reference-text" title="${reference}">${reference.substring(0, 30)}${reference.length > 30 ? '...' : ''}</div></td>
-                        <td>${order.paymentCurrency || 'USD'}</td>
+                        <td><div style="max-width: 150px; font-size: 0.8rem; word-break: break-word;" title="${reference}">${reference.substring(0, 30)}${reference.length > 30 ? '...' : ''}</div></td>
+                        <td>${order.paymentCurrency || currency}</td>
                     </tr>
                 `;
             });
@@ -1067,19 +1004,14 @@
         
         function updateStats(ordersList) {
             const total = ordersList.length;
-            const pending = ordersList.filter(order => {
-                const status = order.orderStatus || '';
-                return status === 'created' || status === 'pending';
-            }).length;
+            const pending = ordersList.filter(order => order.orderStatus === 'created').length;
+            const completed = ordersList.filter(order => order.orderStatus === 'finished').length;
             const cancelled = ordersList.filter(order => order.orderStatus === 'cancelled').length;
-            const completed = ordersList.filter(order => 
-                order.orderStatus === 'finished' || order.orderStatus === 'completed'
-            ).length;
             
             totalOrdersEl.textContent = total;
             pendingOrdersEl.textContent = pending;
-            cancelledOrdersEl.textContent = cancelled;
             completedOrdersEl.textContent = completed;
+            cancelledOrdersEl.textContent = cancelled;
         }
         
         function updateSystemInfo() {
@@ -1088,7 +1020,7 @@
                 <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
                     <div><strong>বর্তমান সময়:</strong> ${now.toLocaleString('bn-BD')}</div>
                     <div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div>
-                    <div><strong>ডাটা সোর্স:</strong> <span style="color: #4caf50;">Relograde API (লাইভ)</span></div>
+                    <div><strong>ডাটা সোর্স:</strong> <span style="color: #4caf50;">Relograde API</span></div>
                     <div><strong>স্ট্যাটাস:</strong> <span style="color: #4caf50;">অনলাইন</span></div>
                 </div>
             `;
@@ -1102,7 +1034,7 @@
             }
             
             const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
+            toast.className = 'toast';
             toast.textContent = message;
             toast.style.background = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#ff9800';
             
