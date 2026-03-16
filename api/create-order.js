@@ -9,7 +9,8 @@ export default async function handler(req, res) {
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
 
-  const { productSlug, amount, paymentCurrency, reference } = req.body;
+  // ✅ faceValue যোগ করা হয়েছে
+  const { productSlug, amount, paymentCurrency, reference, faceValue } = req.body;
 
   if (!productSlug || !amount || !paymentCurrency) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -21,8 +22,24 @@ export default async function handler(req, res) {
   }
 
   try {
+    // ✅ items array তৈরি
+    const items = [{
+      productSlug,
+      amount: amountInt
+    }];
+
+    // ✅ faceValue থাকলে এবং তা সংখ্যা হলে যোগ করুন
+    if (faceValue !== undefined && faceValue !== null) {
+      const faceValueNum = parseFloat(faceValue);
+      if (!isNaN(faceValueNum) && faceValueNum > 0) {
+        items[0].faceValue = faceValueNum;
+      } else {
+        return res.status(400).json({ error: 'Face value must be a positive number' });
+      }
+    }
+
     const requestBody = {
-      items: [{ productSlug, amount: amountInt }],
+      items,
       paymentCurrency: paymentCurrency.toLowerCase(),
       reference: reference || `order_${Date.now()}`
     };
