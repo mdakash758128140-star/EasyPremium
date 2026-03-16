@@ -566,6 +566,7 @@
 
         const database = firebase.database();
 
+        // ========== আপডেটেড ডিক্রিপ্ট ফাংশন - ইউজার আইডি ও ইমেইল সহ ==========
         function decryptData(encrypted) {
             try {
                 console.log("=== DECRYPTION START ===");
@@ -576,19 +577,25 @@
                 console.log("3. After Base64 decode:", base64Decoded);
                 const parts = base64Decoded.split('|');
                 console.log("4. Split parts:", parts);
-                if (parts.length >= 4) {
+                
+                // এখন ৬টি অংশ: orderId | platformId | price | timestamp | userId | email
+                if (parts.length >= 6) {
                     let cleanPlatformId = parts[1];
                     cleanPlatformId = cleanPlatformId.replace(/\\/g, '');
                     cleanPlatformId = cleanPlatformId.replace(/[^a-zA-Z0-9_-]/g, '');
-                    console.log("5. Original Platform ID:", parts[1]);
-                    console.log("6. Cleaned Platform ID:", cleanPlatformId);
-                    return {
+                    
+                    const result = {
                         orderId: parts[0],
                         platformId: cleanPlatformId,
                         originalPlatformId: parts[1],
                         price: parts[2],
-                        timestamp: parts[3]
+                        timestamp: parts[3],
+                        userId: parts[4] || '',
+                        userEmail: parts[5] || ''
                     };
+                    
+                    console.log("✅ Decrypted data with user info:", result);
+                    return result;
                 }
                 return null;
             } catch (e) {
@@ -701,6 +708,28 @@
             }
         }
 
+        // ========== ট্রানজেকশন আপডেট ফাংশন (ইউজার আইডি ও ইমেইল সংরক্ষণ) ==========
+        async function updateTransactionWithUserInfo(transactionId, userId, userEmail, phoneNumber, transactionId_input) {
+            try {
+                if (!transactionId) return false;
+                
+                const updates = {};
+                
+                if (userId) updates['userId'] = userId;
+                if (userEmail) updates['userEmail'] = userEmail;
+                if (phoneNumber) updates['phoneNumber'] = phoneNumber;
+                if (transactionId_input) updates['transactionId_input'] = transactionId_input;
+                updates['updatedAt'] = firebase.database.ServerValue.TIMESTAMP;
+                
+                await database.ref(`transactions/${transactionId}`).update(updates);
+                console.log(`✅ Transaction ${transactionId} updated with user info`);
+                return true;
+            } catch (error) {
+                console.error("Error updating transaction:", error);
+                return false;
+            }
+        }
+
         // ========== মূল পেজ লজিক ==========
         window.addEventListener('DOMContentLoaded', async () => {
             const output = document.getElementById('output');
@@ -735,7 +764,13 @@
                 return;
             }
             
-            // ৩. প্ল্যান ডাটা fetch করি
+            // ৩. ইউজার আইডি ও ইমেইল সংরক্ষণ (যদি থাকে)
+            console.log("👤 User info from URL:", {
+                userId: data.userId || 'নাই',
+                userEmail: data.userEmail || 'নাই'
+            });
+            
+            // ৪. প্ল্যান ডাটা fetch করি
             planData = await fetchPlanData(data.platformId);
             
             let serviceCharge = 0;
@@ -814,7 +849,7 @@
                 ${dFieldHTML}
             `;
             
-            // ৪. পেমেন্ট প্যানেলে মোট টাকা আপডেট করা
+            // ৫. পেমেন্ট প্যানেলে মোট টাকা আপডেট করা
             const totalAmountSpans = document.querySelectorAll('.bdpg-total-amount b');
             totalAmountSpans.forEach(span => span.textContent = `৳ ${totalAmount}`);
 
@@ -891,27 +926,24 @@
                     // ফেস ভ্যালু অটোমেটিক সেট করা (ডলার অনুযায়ী)
                     let faceValue = null;
                     if (isVariableProduct) {
-                        // প্ল্যানের ডলার থেকে ফেস ভ্যালু নির্ধারণ
-                        // যেমন: "Rewarble VISA Card 5 USD" থেকে 5 নেওয়া
                         const dollarMatch = platformDisplayName.match(/(\d+)\s*USD/);
                         if (dollarMatch && dollarMatch[1]) {
                             faceValue = parseFloat(dollarMatch[1]);
                         } else {
-                            // ডিফল্ট মান সেট করা
                             faceValue = minFaceValue;
                         }
                         
-                        // ভ্যালিডেশন
                         if (faceValue < minFaceValue || faceValue > maxFaceValue) {
-                            faceValue = minFaceValue; // ডিফল্ট
+                            faceValue = minFaceValue;
                         }
                         
                         console.log(`Auto-set faceValue: $${faceValue} (${minFaceValue}-${maxFaceValue})`);
                     }
                     
                     const paymentMethod = selected.value.replace('woo_', '').toUpperCase();
-                    // ইমেইল সরিয়ে দেওয়া হয়েছে - শুধু পদ্ধতি, ফোন এবং TXID
-                    const reference = `${paymentMethod}|Phone:${accountVal}|TXID:${transVal}${faceValue ? `|FaceValue:$${faceValue}` : ''}`;
+                    
+                    // ইউজার আইডি ও ইমেইল reference-এ যোগ করা হচ্ছে
+                    const reference = `${paymentMethod}|Phone:${accountVal}|TXID:${transVal}|UserID:${data.userId || 'none'}|Email:${data.userEmail || 'none'}${faceValue ? `|FaceValue:$${faceValue}` : ''}`;
                     
                     const originalText = newVerify.textContent;
                     newVerify.disabled = true;
@@ -945,13 +977,26 @@
                         }
                         
                         const orderId = result.trx || data.orderId;
+                        
+                        // ★★★ ইউজার আইডি ও ইমেইল ডাটাবেজে সংরক্ষণ ★★★
+                        if (data.userId || data.userEmail) {
+                            await updateTransactionWithUserInfo(
+                                data.orderId, 
+                                data.userId, 
+                                data.userEmail, 
+                                accountVal, 
+                                transVal
+                            );
+                        }
+                        
                         paymentPanel.innerHTML = `
                             <div class="card" style="text-align: center; padding: 40px;">
                                 <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
                                 <p style="margin:20px 0;">আপনার অর্ডার প্রসেসিং হচ্ছে। ভাউচার পেতে কয়েক মিনিট অপেক্ষা করুন।</p>
                                 <div class="spinner" style="width:40px; height:40px; border-width:4px; margin:0 auto;"></div>
                                 <p style="margin-top:20px;">অর্ডার আইডি: ${orderId}</p>
-                                ${faceValue ? `<p style="margin-top:10px;">ফেস ভ্যালু: $${faceValue}</p>` : ''}
+                                ${data.userEmail ? `<p style="margin-top:5px;">ইমেইল: ${data.userEmail}</p>` : ''}
+                                ${faceValue ? `<p style="margin-top:5px;">ফেস ভ্যালু: $${faceValue}</p>` : ''}
                             </div>
                         `;
                         
@@ -973,6 +1018,7 @@
                                             </div>
                                             <button class="copy-btn" style="margin-top:10px;" onclick="navigator.clipboard.writeText('${voucherData.voucherCode}')">📋 কপি করুন</button>
                                             <p style="margin-top:20px;">আপনার অর্ডার সম্পন্ন হয়েছে।</p>
+                                            ${data.userEmail ? `<p>ইমেইল: ${data.userEmail}</p>` : ''}
                                             ${faceValue ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
                                         </div>
                                     `;
