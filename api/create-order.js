@@ -7,7 +7,7 @@ if (!admin.apps.length) {
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     }),
-    databaseURL: "https://easy-premium-default-rtdb.asia-southeast1.firebasedatabase.app"
+    databaseURL: "https://top-up-4db01-default-rtdb.asia-southeast1.firebasedatabase.app"
   });
 }
 const db = admin.database();
