@@ -376,35 +376,6 @@
             .verify-inside-btn { font-size: 16px; padding: 12px; }
             .pay-btn { font-size: 16px; padding: 14px; }
         }
-
-        .face-value-container {
-            background: rgba(255, 152, 0, 0.1);
-            border-radius: 40px;
-            padding: 14px 20px;
-            margin-bottom: 22px;
-            border: 1px solid rgba(255, 152, 0, 0.5);
-            display: none;
-        }
-        .face-value-container label {
-            color: #ff9800;
-            font-weight: 600;
-            display: block;
-            margin-bottom: 8px;
-        }
-        .face-value-container input {
-            width: 100%;
-            padding: 12px 15px;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,152,0,0.5);
-            border-radius: 50px;
-            color: white;
-            font-size: 16px;
-        }
-        .face-value-hint {
-            font-size: 13px;
-            color: #b0bec5;
-            margin-top: 5px;
-        }
     </style>
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -483,36 +454,28 @@
             }
         }
 
-        // ========== আপডেটেড ফাংশন: pricingPlans1 এবং pricingPlans2 উভয় জায়গায় খোঁজে ==========
         async function fetchPlanData(platformId) {
             try {
-                console.log("🔍 Fetching plan data for platformId:", platformId);
-                
-                // প্রথমে pricingPlans2 এ খোঁজা
                 const plans2 = await database.ref('publicData/pricingPlans2').once('value');
                 if (plans2.exists()) {
                     const allPlans = plans2.val();
                     for (let key in allPlans) {
                         if (key === platformId || allPlans[key].Products === platformId) {
-                            console.log(`✅ Found in pricingPlans2 with key: ${key}`);
                             return allPlans[key];
                         }
                     }
                 }
                 
-                // pricingPlans1 এ খোঁজা (এটা আগে ছিল না, যোগ করা হয়েছে)
                 const plans1 = await database.ref('publicData/pricingPlans1').once('value');
                 if (plans1.exists()) {
                     const allPlans = plans1.val();
                     for (let key in allPlans) {
                         if (key === platformId || allPlans[key].Products === platformId) {
-                            console.log(`✅ Found in pricingPlans1 with key: ${key}`);
                             return allPlans[key];
                         }
                     }
                 }
                 
-                console.log("❌ No plan data found for platformId:", platformId);
                 return null;
             } catch (e) {
                 console.error("Fetch error:", e);
@@ -543,7 +506,6 @@
                 return;
             }
 
-            // প্ল্যান ডাটা লোড
             const planData = await fetchPlanData(urlData.platformId);
             
             const serviceCharge = planData?.ServicCharge ? Number(planData.ServicCharge) : 0;
@@ -553,10 +515,8 @@
             const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
             const productSlug = planData?.Products || urlData.platformId;
             
-            // D ফিল্ড থেকে তথ্য নেওয়া (description বা D)
             const dField = planData?.D || planData?.description || '';
             
-            // D ফিল্ড থাকলে HTML তৈরি
             let dFieldHTML = '';
             if (dField) {
                 dFieldHTML = `
@@ -575,7 +535,6 @@
             if (isVariable) {
                 minFace = productSlug.includes('mastercard') ? 5 : 1;
                 
-                // ডাটাবেজ থেকে faceValue নিন
                 if (planData?.faceValue) {
                     faceValueFromDB = parseFloat(planData.faceValue);
                     if (faceValueFromDB >= minFace && faceValueFromDB <= maxFace) {
@@ -584,26 +543,9 @@
                         faceValueFromDB = null;
                     }
                 }
-                
-                // ফেস ভ্যালু কন্টেইনার দেখান
-                const faceContainer = document.getElementById('faceValueContainer');
-                const faceInput = document.getElementById('faceValueInput');
-                const faceHint = document.getElementById('faceValueHint');
-                
-                faceContainer.style.display = 'block';
-                faceHint.textContent = `ন্যূনতম $${minFace}, সর্বোচ্চ $${maxFace}`;
-                faceInput.min = minFace;
-                faceInput.max = maxFace;
-                
-                // ডাটাবেজ থেকে পাওয়া মান সেট করুন
-                if (faceValueFromDB) {
-                    faceInput.value = faceValueFromDB;
-                } else {
-                    faceInput.value = minFace;
-                }
+                // যদি faceValueFromDB না থাকে, ডিফল্ট minFace ব্যবহার করবে পরে
             }
 
-            // আউটপুট দেখান (D ফিল্ড সহ)
             output.innerHTML = `
                 <div class="card">
                     <h2 style="color:#ff9800; margin-bottom:15px; text-align:center;">📋 অর্ডার তথ্য</h2>
@@ -616,7 +558,6 @@
                 ${dFieldHTML}
             `;
 
-            // পেমেন্ট বাটন
             payBtn.classList.remove('hidden');
             payBtn.onclick = () => {
                 output.style.display = 'none';
@@ -624,7 +565,38 @@
                 paymentPanel.style.display = 'block';
             };
 
-            // VERIFY বাটন
+            // Radio button change event
+            const radios = document.querySelectorAll('input[name="payment_method"]');
+            const bkashBox = document.getElementById('box-bkash');
+            const nagadBox = document.getElementById('box-nagad');
+            const rocketBox = document.getElementById('box-rocket');
+            const methodItems = document.querySelectorAll('.wc_payment_method');
+
+            function updatePaymentBoxes(selectedValue) {
+                bkashBox.classList.remove('active-box');
+                nagadBox.classList.remove('active-box');
+                rocketBox.classList.remove('active-box');
+                methodItems.forEach(item => item.classList.remove('selected-method'));
+
+                if (selectedValue === 'woo_bkash') {
+                    bkashBox.classList.add('active-box');
+                    document.getElementById('method-bkash').classList.add('selected-method');
+                } else if (selectedValue === 'woo_nagad') {
+                    nagadBox.classList.add('active-box');
+                    document.getElementById('method-nagad').classList.add('selected-method');
+                } else if (selectedValue === 'woo_rocket') {
+                    rocketBox.classList.add('active-box');
+                    document.getElementById('method-rocket').classList.add('selected-method');
+                }
+            }
+            updatePaymentBoxes('woo_bkash');
+
+            radios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    updatePaymentBoxes(this.value);
+                });
+            });
+
             const verifyBtn = document.getElementById('verifyInsideBtn');
             verifyBtn.addEventListener('click', async function() {
                 const selected = document.querySelector('input[name="payment_method"]:checked');
@@ -653,22 +625,16 @@
                     return;
                 }
 
-                // ফেস ভ্যালু নিন
+                // ফেস ভ্যালু নির্ধারণ (শুধু ডাটাবেজ থেকে)
                 let faceValue = null;
                 if (isVariable) {
-                    const faceInput = document.getElementById('faceValueInput');
-                    if (!faceInput) {
-                        alert('ফেস ভ্যালু ইনপুট ফিল্ড পাওয়া যায়নি');
-                        return;
-                    }
-                    
-                    faceValue = parseFloat(faceInput.value);
-                    
-                    console.log("📊 Face value from input:", faceValue);
-                    
-                    if (isNaN(faceValue) || faceValue < minFace || faceValue > maxFace) {
-                        alert(`ফেস ভ্যালু $${minFace} - $${maxFace} এর মধ্যে দিন`);
-                        return;
+                    if (faceValueFromDB) {
+                        faceValue = faceValueFromDB;
+                        console.log(`✅ Using faceValue from DB: $${faceValue}`);
+                    } else {
+                        // ডিফল্ট minFace ব্যবহার (কিন্তু এটা হওয়া উচিত নয়, কারণ DB তে faceValue থাকার কথা)
+                        faceValue = minFace;
+                        console.warn(`⚠️ No faceValue in DB, using default: $${minFace}`);
                     }
                 }
 
@@ -679,7 +645,6 @@
                 this.innerHTML = '<span class="spinner"></span> প্রসেসিং...';
 
                 try {
-                    // API রিকোয়েস্ট বডি তৈরি
                     const requestBody = {
                         productSlug: productSlug,
                         amount: 1,
@@ -687,16 +652,9 @@
                         reference: reference
                     };
                     
-                    // ভেরিয়েবল প্রোডাক্ট হলে faceValue যোগ করুন
-                    if (isVariable) {
-                        if (!faceValue) {
-                            throw new Error('Face value is required for variable product');
-                        }
+                    if (isVariable && faceValue) {
                         requestBody.faceValue = faceValue;
-                        console.log("✅ Adding faceValue to request:", faceValue);
                     }
-
-                    console.log("📤 Sending request:", JSON.stringify(requestBody, null, 2));
 
                     const response = await fetch('/api/create-order', {
                         method: 'POST',
@@ -710,7 +668,6 @@
                         throw new Error(result.error || 'অর্ডার ব্যর্থ');
                     }
 
-                    // সাফল্য
                     paymentPanel.innerHTML = `
                         <div class="card" style="text-align:center; padding:40px;">
                             <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
@@ -721,14 +678,13 @@
                     `;
 
                 } catch (error) {
-                    console.error("❌ Error:", error);
+                    console.error('❌ Error:', error);
                     alert('অর্ডার ব্যর্থ: ' + error.message);
                     this.disabled = false;
                     this.innerHTML = 'VERIFY';
                 }
             });
 
-            // কপি বাটন
             document.querySelectorAll('.copy-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const num = this.dataset.number;
@@ -750,12 +706,7 @@
         <div id="output"></div>
 
         <div id="paymentPanel">
-            <div id="faceValueContainer" class="face-value-container" style="display: none;">
-                <label for="faceValueInput">ফেস ভ্যালু (USD) <span class="required-star">*</span></label>
-                <input type="number" id="faceValueInput" step="0.01" value="1">
-                <div id="faceValueHint" class="face-value-hint"></div>
-            </div>
-
+            <!-- ফেস ভ্যালু ইনপুট সরানো হয়েছে -->
             <ul class="wc_payment_methods">
                 <li class="wc_payment_method" id="method-bkash">
                     <input id="payment_method_woo_bkash" type="radio" name="payment_method" value="woo_bkash" checked>
