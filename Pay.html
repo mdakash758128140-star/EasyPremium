@@ -485,15 +485,28 @@
 
         async function fetchPlanData(platformId) {
             try {
-                const plans = await database.ref('publicData/pricingPlans2').once('value');
-                if (!plans.exists()) return null;
-                
-                const allPlans = plans.val();
-                for (let key in allPlans) {
-                    if (key === platformId || allPlans[key].Products === platformId) {
-                        return allPlans[key];
+                // প্রথমে pricingPlans2 এ খোঁজা
+                const plans2 = await database.ref('publicData/pricingPlans2').once('value');
+                if (plans2.exists()) {
+                    const allPlans = plans2.val();
+                    for (let key in allPlans) {
+                        if (key === platformId || allPlans[key].Products === platformId) {
+                            return allPlans[key];
+                        }
                     }
                 }
+                
+                // pricingPlans1 এ খোঁজা
+                const plans1 = await database.ref('publicData/pricingPlans1').once('value');
+                if (plans1.exists()) {
+                    const allPlans = plans1.val();
+                    for (let key in allPlans) {
+                        if (key === platformId || allPlans[key].Products === platformId) {
+                            return allPlans[key];
+                        }
+                    }
+                }
+                
                 return null;
             } catch (e) {
                 console.error("Fetch error:", e);
@@ -501,7 +514,6 @@
             }
         }
 
-        // ========== মূল ফাংশন ==========
         window.addEventListener('DOMContentLoaded', async () => {
             const output = document.getElementById('output');
             const payBtn = document.getElementById('payBtn');
@@ -538,16 +550,18 @@
             // ভেরিয়েবল প্রোডাক্ট চেক
             const isVariable = productSlug.includes('variable');
             let minFace = 1, maxFace = 1000;
+            let faceValueFromDB = null;
             
             if (isVariable) {
                 minFace = productSlug.includes('mastercard') ? 5 : 1;
                 
-                // 🔥 ডাটাবেজ থেকে faceValue নিন
-                let dbFaceValue = null;
+                // ডাটাবেজ থেকে faceValue নিন
                 if (planData?.faceValue) {
-                    dbFaceValue = parseFloat(planData.faceValue);
-                    if (dbFaceValue >= minFace && dbFaceValue <= maxFace) {
-                        console.log(`✅ Face value from DB: $${dbFaceValue}`);
+                    faceValueFromDB = parseFloat(planData.faceValue);
+                    if (faceValueFromDB >= minFace && faceValueFromDB <= maxFace) {
+                        console.log(`✅ Face value from DB: $${faceValueFromDB}`);
+                    } else {
+                        faceValueFromDB = null;
                     }
                 }
                 
@@ -562,8 +576,10 @@
                 faceInput.max = maxFace;
                 
                 // ডাটাবেজ থেকে পাওয়া মান সেট করুন
-                if (dbFaceValue) {
-                    faceInput.value = dbFaceValue;
+                if (faceValueFromDB) {
+                    faceInput.value = faceValueFromDB;
+                } else {
+                    faceInput.value = minFace;
                 }
             }
 
@@ -616,10 +632,15 @@
                     return;
                 }
 
-                // 🔥 ফেস ভ্যালু নিন
+                // ফেস ভ্যালু নিন
                 let faceValue = null;
                 if (isVariable) {
                     const faceInput = document.getElementById('faceValueInput');
+                    if (!faceInput) {
+                        alert('ফেস ভ্যালু ইনপুট ফিল্ড পাওয়া যায়নি');
+                        return;
+                    }
+                    
                     faceValue = parseFloat(faceInput.value);
                     
                     console.log("📊 Face value from input:", faceValue);
@@ -637,7 +658,7 @@
                 this.innerHTML = '<span class="spinner"></span> প্রসেসিং...';
 
                 try {
-                    // 🔥 API রিকোয়েস্ট বডি তৈরি
+                    // API রিকোয়েস্ট বডি তৈরি
                     const requestBody = {
                         productSlug: productSlug,
                         amount: 1,
@@ -645,13 +666,16 @@
                         reference: reference
                     };
                     
-                    // 🔥 ভেরিয়েবল প্রোডাক্ট হলে faceValue যোগ করুন
-                    if (isVariable && faceValue) {
+                    // ভেরিয়েবল প্রোডাক্ট হলে faceValue যোগ করুন - এইটাই মূল ফিক্স
+                    if (isVariable) {
+                        if (!faceValue) {
+                            throw new Error('Face value is required for variable product');
+                        }
                         requestBody.faceValue = faceValue;
                         console.log("✅ Adding faceValue to request:", faceValue);
                     }
 
-                    console.log("📤 Sending request:", requestBody);
+                    console.log("📤 Sending request:", JSON.stringify(requestBody, null, 2));
 
                     const response = await fetch('/api/create-order', {
                         method: 'POST',
