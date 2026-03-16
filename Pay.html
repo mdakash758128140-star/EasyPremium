@@ -643,7 +643,7 @@
                 this.innerHTML = '<span class="spinner"></span> প্রসেসিং...';
 
                 try {
-                    // ★★★ সঠিক API ফরম্যাট - items array সহ ★★★
+                    // ★★★ সঠিক API ফরম্যাট - সব required fields সহ ★★★
                     const items = [{
                         amount: 1,
                         productSlug: productSlug
@@ -656,8 +656,8 @@
                     
                     const requestBody = {
                         items: items,
-                        reference: reference,
-                        paymentCurrency: 'USD'
+                        paymentCurrency: 'USD',  // ← এইটা required
+                        reference: reference      // ← optional কিন্তু ভালো
                     };
 
                     console.log("📤 Sending request:", JSON.stringify(requestBody, null, 2));
