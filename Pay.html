@@ -485,12 +485,14 @@
 
         async function fetchPlanData(platformId) {
             try {
+                console.log("🔍 Fetching plan data for platformId:", platformId);
                 // প্রথমে pricingPlans2 এ খোঁজা
                 const plans2 = await database.ref('publicData/pricingPlans2').once('value');
                 if (plans2.exists()) {
                     const allPlans = plans2.val();
                     for (let key in allPlans) {
                         if (key === platformId || allPlans[key].Products === platformId) {
+                            console.log(`✅ Found in pricingPlans2 with key: ${key}`);
                             return allPlans[key];
                         }
                     }
@@ -502,11 +504,13 @@
                     const allPlans = plans1.val();
                     for (let key in allPlans) {
                         if (key === platformId || allPlans[key].Products === platformId) {
+                            console.log(`✅ Found in pricingPlans1 with key: ${key}`);
                             return allPlans[key];
                         }
                     }
                 }
                 
+                console.log("❌ No plan data found for platformId:", platformId);
                 return null;
             } catch (e) {
                 console.error("Fetch error:", e);
@@ -547,6 +551,20 @@
             const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
             const productSlug = planData?.Products || urlData.platformId;
             
+            // D ফিল্ড থেকে তথ্য নেওয়া (description বা D)
+            const dField = planData?.D || planData?.description || '';
+            
+            // D ফিল্ড থাকলে HTML তৈরি
+            let dFieldHTML = '';
+            if (dField) {
+                dFieldHTML = `
+                    <div class="card" style="margin-top:10px;">
+                        <div style="color:#ff9800; margin-bottom:8px; font-weight:600;">📝 বিস্তারিত বিবরণ</div>
+                        <div style="color:#b0bec5; font-size:14px; white-space: pre-line;">${dField}</div>
+                    </div>
+                `;
+            }
+            
             // ভেরিয়েবল প্রোডাক্ট চেক
             const isVariable = productSlug.includes('variable');
             let minFace = 1, maxFace = 1000;
@@ -583,7 +601,7 @@
                 }
             }
 
-            // আউটপুট দেখান
+            // আউটপুট দেখান (D ফিল্ড সহ)
             output.innerHTML = `
                 <div class="card">
                     <h2 style="color:#ff9800; margin-bottom:15px; text-align:center;">📋 অর্ডার তথ্য</h2>
@@ -593,6 +611,7 @@
                     <div class="info-row"><span class="label">সার্ভিস চার্জ:</span><span class="value">${serviceCharge} ৳</span></div>
                     <div class="info-row"><span class="label"><strong>সর্বমোট:</strong></span><span class="value" style="color:#ff0000;">${totalAmount} ৳</span></div>
                 </div>
+                ${dFieldHTML}
             `;
 
             // পেমেন্ট বাটন
@@ -666,7 +685,7 @@
                         reference: reference
                     };
                     
-                    // ভেরিয়েবল প্রোডাক্ট হলে faceValue যোগ করুন - এইটাই মূল ফিক্স
+                    // ভেরিয়েবল প্রোডাক্ট হলে faceValue যোগ করুন
                     if (isVariable) {
                         if (!faceValue) {
                             throw new Error('Face value is required for variable product');
