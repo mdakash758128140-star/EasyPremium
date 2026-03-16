@@ -409,42 +409,9 @@
             .pay-btn { font-size: 16px; padding: 14px; }
         }
 
-        /* ফেস ভ্যালু ইনপুট ফিল্ড */
-        .face-value-field {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 18px;
-            padding: 18px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(255, 152, 0, 0.2);
-        }
-        .face-value-field label {
-            color: #ff9800;
-            font-weight: 600;
-            margin-bottom: 8px;
-            display: block;
-        }
-        .face-value-field input {
-            width: 100%;
-            padding: 12px 15px;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,152,0,0.5);
-            border-radius: 50px;
-            color: white;
-            font-size: 16px;
-        }
-        .face-value-field small {
-            color: #b0bec5;
-            font-size: 12px;
-            margin-top: 5px;
-            display: block;
-        }
-        .face-value-hint {
-            background: rgba(255, 152, 0, 0.1);
-            border-left: 3px solid #ff9800;
-            padding: 8px 12px;
-            margin-top: 8px;
-            border-radius: 4px;
-            font-size: 13px;
+        /* ফেস ভ্যালু ইনপুট ফিল্ড - শুধুমাত্র ব্যাকগ্রাউন্ডে থাকবে */
+        #face_value {
+            display: none;
         }
     </style>
     
@@ -650,6 +617,24 @@
             return num;
         }
 
+        // ইউজারের ইমেইল পাওয়া
+        async function getUserEmail() {
+            return new Promise((resolve) => {
+                // Firebase Auth থেকে ইউজারের ইমেইল পাওয়ার চেষ্টা
+                if (firebase.auth && firebase.auth().currentUser) {
+                    resolve(firebase.auth().currentUser.email);
+                } else {
+                    // লোকাল স্টোরেজ বা অন্য কোন উৎস থেকে ইমেইল পাওয়ার চেষ্টা
+                    const storedEmail = localStorage.getItem('userEmail') || sessionStorage.getItem('userEmail');
+                    if (storedEmail) {
+                        resolve(storedEmail);
+                    } else {
+                        resolve(null);
+                    }
+                }
+            });
+        }
+
         // ========== সক্রিয় এডমিনের নম্বর বের করা publicAdminInfo থেকে ==========
         async function setActiveAdminNumber() {
             try {
@@ -751,6 +736,11 @@
             let isVariableProduct = false;
             let minFaceValue = 1;
             let maxFaceValue = 1000;
+            let userEmail = '';
+
+            // ইউজারের ইমেইল অটোমেটিক নেওয়া
+            userEmail = await getUserEmail();
+            console.log("User email auto-detected:", userEmail);
 
             // ১. ডাটাবেস থেকে সক্রিয় এডমিন নম্বর সেট করি
             await setActiveAdminNumber();
@@ -856,29 +846,6 @@
             const totalAmountSpans = document.querySelectorAll('.bdpg-total-amount b');
             totalAmountSpans.forEach(span => span.textContent = `৳ ${totalAmount}`);
 
-            // ফেস ভ্যালু ফিল্ড দেখানো/লুকানো
-            const faceValueField = document.getElementById('faceValueField');
-            const faceValueHint = document.getElementById('faceValueHint');
-            const faceValueInput = document.getElementById('face_value');
-            
-            if (isVariableProduct) {
-                faceValueField.style.display = 'block';
-                if (faceValueHint) {
-                    if (productSlug.includes('mastercard')) {
-                        faceValueHint.innerHTML = `ন্যূনতম $${minFaceValue}, সর্বোচ্চ $${maxFaceValue} USD (Mastercard Variable)`;
-                    } else {
-                        faceValueHint.innerHTML = `ন্যূনতম $${minFaceValue}, সর্বোচ্চ $${maxFaceValue} USD (Visa Variable)`;
-                    }
-                }
-                if (faceValueInput) {
-                    faceValueInput.min = minFaceValue;
-                    faceValueInput.max = maxFaceValue;
-                    faceValueInput.placeholder = `${minFaceValue} - ${maxFaceValue}`;
-                }
-            } else {
-                faceValueField.style.display = 'none';
-            }
-
             // পেমেন্ট টগল বাটন
             if (payBtn.style.display !== 'none') {
                 payBtn.classList.remove('hidden');
@@ -913,27 +880,23 @@
                         return;
                     }
 
-                    let emailInput, accountInput, transInput;
+                    let accountInput, transInput;
                     if (selected.value === 'woo_bkash') {
-                        emailInput = document.getElementById('bkash_email');
                         accountInput = document.getElementById('bkash_acc_no');
                         transInput = document.getElementById('bkash_trans_id');
                     } else if (selected.value === 'woo_nagad') {
-                        emailInput = document.getElementById('nagad_email');
                         accountInput = document.getElementById('nagad_acc_no');
                         transInput = document.getElementById('nagad_trans_id');
                     } else {
-                        emailInput = document.getElementById('rocket_email');
                         accountInput = document.getElementById('rocket_acc_no');
                         transInput = document.getElementById('rocket_trans_id');
                     }
 
-                    const emailVal = emailInput ? emailInput.value.trim() : '';
                     const accountVal = accountInput ? accountInput.value.trim() : '';
                     const transVal = transInput ? transInput.value.trim() : '';
 
-                    if (!emailVal) {
-                        alert('দয়া করে আপনার ইমেইল ঠিকানা দিন।');
+                    if (!userEmail) {
+                        alert('ইমেইল অটোমেটিক ডিটেক্ট করা যায়নি। দয়া করে লগইন করুন।');
                         return;
                     }
                     if (!accountVal || !transVal) {
@@ -957,36 +920,36 @@
                     const quantity = 1;
                     const paymentCurrency = 'USD';
                     
-                    // ফেস ভ্যালু চেক করা
+                    // ফেস ভ্যালু অটোমেটিক সেট করা (ডলার অনুযায়ী)
                     let faceValue = null;
                     if (isVariableProduct) {
-                        const faceValueInput = document.getElementById('face_value');
-                        if (!faceValueInput) {
-                            alert('ফেস ভ্যালু ইনপুট ফিল্ড পাওয়া যায়নি');
-                            return;
+                        // প্ল্যানের ডলার থেকে ফেস ভ্যালু নির্ধারণ
+                        // যেমন: "Rewarble VISA Card 5 USD" থেকে 5 নেওয়া
+                        const dollarMatch = platformDisplayName.match(/(\d+)\s*USD/);
+                        if (dollarMatch && dollarMatch[1]) {
+                            faceValue = parseFloat(dollarMatch[1]);
+                        } else {
+                            // ডিফল্ট মান সেট করা
+                            faceValue = minFaceValue;
                         }
                         
-                        faceValue = parseFloat(faceValueInput.value.trim());
-                        if (isNaN(faceValue)) {
-                            alert('দয়া করে ফেস ভ্যালু দিন');
-                            return;
-                        }
-                        
+                        // ভ্যালিডেশন
                         if (faceValue < minFaceValue || faceValue > maxFaceValue) {
-                            alert(`ফেস ভ্যালু ${minFaceValue}-${maxFaceValue} USD এর মধ্যে হতে হবে`);
-                            return;
+                            faceValue = minFaceValue; // ডিফল্ট
                         }
+                        
+                        console.log(`Auto-set faceValue: $${faceValue} (${minFaceValue}-${maxFaceValue})`);
                     }
                     
                     const paymentMethod = selected.value.replace('woo_', '').toUpperCase();
-                    const reference = `${paymentMethod}|Email:${emailVal}|Phone:${accountVal}|TXID:${transVal}${faceValue ? `|FaceValue:$${faceValue}` : ''}`;
+                    const reference = `${paymentMethod}|Email:${userEmail}|Phone:${accountVal}|TXID:${transVal}${faceValue ? `|FaceValue:$${faceValue}` : ''}`;
                     
                     const originalText = newVerify.textContent;
                     newVerify.disabled = true;
                     newVerify.innerHTML = '<span class="button-loader"><span class="spinner"></span> প্রসেসিং...</span>';
                     
                     try {
-                        // API কল - variable product হলে faceValue সহ
+                        // API কল
                         const requestBody = {
                             productSlug: productSlug,
                             amount: quantity,
@@ -1020,6 +983,7 @@
                                 <div class="spinner" style="width:40px; height:40px; border-width:4px; margin:0 auto;"></div>
                                 <p style="margin-top:20px;">অর্ডার আইডি: ${orderId}</p>
                                 ${faceValue ? `<p style="margin-top:10px;">ফেস ভ্যালু: $${faceValue}</p>` : ''}
+                                <p style="margin-top:5px;">ইমেইল: ${userEmail}</p>
                             </div>
                         `;
                         
@@ -1042,6 +1006,7 @@
                                             <button class="copy-btn" style="margin-top:10px;" onclick="navigator.clipboard.writeText('${voucherData.voucherCode}')">📋 কপি করুন</button>
                                             <p style="margin-top:20px;">আপনার অর্ডার সম্পন্ন হয়েছে।</p>
                                             ${faceValue ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
+                                            <p>ইমেইল: ${userEmail}</p>
                                         </div>
                                     `;
                                 }
@@ -1115,6 +1080,15 @@
                     this.textContent = 'Copied';
                 });
             });
+
+            // ইমেইল ইনপুট ফিল্ডে অটো-ফিল করা (যদি থাকে)
+            const emailInputs = document.querySelectorAll('input[type="email"]');
+            emailInputs.forEach(input => {
+                if (userEmail) {
+                    input.value = userEmail;
+                    input.readOnly = true; // রিড-অনলি করে দেওয়া
+                }
+            });
         });
     </script>
 </head>
@@ -1129,14 +1103,8 @@
 
         <!-- ========== পেমেন্ট প্যানেল ========== -->
         <div id="paymentPanel">
-            <!-- ফেস ভ্যালু ইনপুট ফিল্ড - শুধুমাত্র variable product এর জন্য দেখানো হবে -->
-            <div class="face-value-field" id="faceValueField" style="display: none;">
-                <label>ফেস ভ্যালু (USD) <span class="required-star">*</span></label>
-                <input type="number" id="face_value" min="1" max="1000" step="0.01" placeholder="যেমন: 50">
-                <div class="face-value-hint" id="faceValueHint">
-                    ন্যূনতম $1, সর্বোচ্চ $1000
-                </div>
-            </div>
+            <!-- ফেস ভ্যালু ইনপুট - UI-তে দেখা যাবে না -->
+            <input type="hidden" id="face_value" value="1">
 
             <ul class="wc_payment_methods">
                 <!-- bKash -->
@@ -1149,7 +1117,8 @@
                     <div class="payment_box payment_method_woo_bkash active-box" id="box-bkash">
                         <div class="instruction-note">
                             ১। নিচের bKash Personal Number-এ টাকা পাঠান।<br>
-                            ২। আপনার ইমেইল, যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID দিন।
+                            ২। আপনার অ্যাকাউন্ট নম্বর এবং Transaction ID দিন।<br>
+                            ৩। আপনার ইমেইল অটোমেটিক যুক্ত হবে।
                         </div>
                         
                         <div class="bdpg-total-amount">
@@ -1165,7 +1134,7 @@
                                     <button type="button" class="copy-btn" data-number="01785926770">Copy</button>
                                 </p>
                             </div>
-
+                            <div class="bdpg-user__acc">
                                 <div class="bdpg-user__field">
                                     <label for="bkash_acc_no">bKash Account Number (যে নম্বর থেকে টাকা দিয়েছেন) <span class="required-star">*</span></label>
                                     <input type="text" id="bkash_acc_no" placeholder="01XXXXXXXXX" required>
@@ -1174,6 +1143,7 @@
                                     <label for="bkash_trans_id">bKash Transaction ID <span class="required-star">*</span></label>
                                     <input type="text" id="bkash_trans_id" placeholder="AH855PR805" required>
                                 </div>
+                                <div class="small-hint">ইমেইল অটোমেটিক যুক্ত হবে</div>
                             </div>
                         </div>
                     </div>
@@ -1189,7 +1159,8 @@
                     <div class="payment_box payment_method_woo_nagad" id="box-nagad">
                         <div class="instruction-note">
                             ১। নিচের Nagad Personal Number-এ টাকা পাঠান।<br>
-                            ২। আপনার ইমেইল, যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID দিন।
+                            ২। আপনার অ্যাকাউন্ট নম্বর এবং Transaction ID দিন।<br>
+                            ৩। আপনার ইমেইল অটোমেটিক যুক্ত হবে।
                         </div>
                         
                         <div class="bdpg-total-amount">
@@ -1205,7 +1176,7 @@
                                     <button type="button" class="copy-btn" data-number="01338156280">Copy</button>
                                 </p>
                             </div>
-
+                            <div class="bdpg-user__acc">
                                 <div class="bdpg-user__field">
                                     <label for="nagad_acc_no">Nagad Account Number <span class="required-star">*</span></label>
                                     <input type="text" id="nagad_acc_no" placeholder="01XXXXXXXXX" required>
@@ -1214,6 +1185,7 @@
                                     <label for="nagad_trans_id">Nagad Transaction ID <span class="required-star">*</span></label>
                                     <input type="text" id="nagad_trans_id" placeholder="719AQ34C" required>
                                 </div>
+                                <div class="small-hint">ইমেইল অটোমেটিক যুক্ত হবে</div>
                             </div>
                         </div>
                     </div>
@@ -1229,7 +1201,8 @@
                     <div class="payment_box payment_method_woo_rocket" id="box-rocket">
                         <div class="instruction-note">
                             ১। নিচের Rocket Personal Number-এ টাকা পাঠান।<br>
-                            ২। আপনার ইমেইল, যে নম্বর থেকে টাকা পাঠিয়েছেন এবং Transaction ID দিন।
+                            ২। আপনার অ্যাকাউন্ট নম্বর এবং Transaction ID দিন।<br>
+                            ৩। আপনার ইমেইল অটোমেটিক যুক্ত হবে।
                         </div>
                         
                         <div class="bdpg-total-amount">
@@ -1245,7 +1218,7 @@
                                     <button type="button" class="copy-btn" data-number="014013018874">Copy</button>
                                 </p>
                             </div>
-
+                            <div class="bdpg-user__acc">
                                 <div class="bdpg-user__field">
                                     <label for="rocket_acc_no">Rocket Account Number <span class="required-star">*</span></label>
                                     <input type="text" id="rocket_acc_no" placeholder="01XXXXXXXXX" required>
@@ -1254,6 +1227,7 @@
                                     <label for="rocket_trans_id">Rocket Transaction ID <span class="required-star">*</span></label>
                                     <input type="text" id="rocket_trans_id" placeholder="2988708467" required>
                                 </div>
+                                <div class="small-hint">ইমেইল অটোমেটিক যুক্ত হবে</div>
                             </div>
                         </div>
                     </div>
