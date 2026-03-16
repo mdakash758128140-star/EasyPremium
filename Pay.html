@@ -13,7 +13,6 @@
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
     
     <style>
-        /* পুরনো CSS ঠিক একই থাকবে */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         html, body { 
@@ -105,6 +104,7 @@
             word-break: break-word;
         }
         
+        /* ফিক্সড পেমেন্ট টগল বাটন */
         .pay-btn { 
             position: fixed; 
             bottom: 0; 
@@ -130,12 +130,14 @@
             box-shadow: 0 -5px 25px rgba(255, 152, 0, 0.5);
         }
         
+        /* পেমেন্ট প্যানেল - শুরুতে লুকানো */
         #paymentPanel {
             display: none;
             margin-top: 20px;
             margin-bottom: 20px;
         }
         
+        /* ডার্ক থিমে পেমেন্ট UI স্টাইল */
         .wc_payment_methods {
             list-style: none;
             margin: 0 0 20px 0;
@@ -200,6 +202,32 @@
             font-size: 26px;
             margin-left: 8px;
             color: #ff0000;
+        }
+        .price-breakdown {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 18px;
+            border-radius: 18px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 152, 0, 0.2);
+        }
+        .breakdown-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 16px;
+        }
+        .breakdown-row.total {
+            font-weight: bold;
+            color: #ff9800;
+            border-top: 1px dashed rgba(255,152,0,0.3);
+            margin-top: 8px;
+            padding-top: 12px;
+        }
+        .breakdown-label {
+            color: #b0bec5;
+        }
+        .breakdown-value {
+            color: #fff;
         }
         .bdpg-available-accounts {
             background: rgba(0, 0, 0, 0.3);
@@ -315,6 +343,7 @@
         .required-star { color: #ff6666; margin-left: 4px; }
         .small-hint { font-size: 13px; color: #aaa; margin-top: 4px; }
 
+        /* পেমেন্ট প্যানেলের ভিতরের ভেরিফাই বাটন */
         .verify-inside-btn {
             background: linear-gradient(45deg, #ff9800, #ff2222);
             color: white;
@@ -360,6 +389,7 @@
             animation: spin 1s linear infinite;
         }
 
+        /* মোবাইল সাইজে ফন্ট ছোট করা */
         @media (max-width: 480px) {
             body { padding: 10px; padding-bottom: 75px; }
             .header h1 { font-size: 24px; }
@@ -379,7 +409,7 @@
             .pay-btn { font-size: 16px; padding: 14px; }
         }
 
-        /* ফেস ভ্যালু ইনপুট ফিল্ড - UI তে দেখা যাবে */
+        /* ফেস ভ্যালু ইনপুট ফিল্ড */
         .face-value-container {
             background: rgba(255, 152, 0, 0.1);
             border-radius: 40px;
@@ -745,6 +775,7 @@
             let isVariableProduct = false;
             let minFaceValue = 1;
             let maxFaceValue = 1000;
+            let faceValueFromDB = null; // ডাটাবেজ থেকে পাওয়া faceValue
 
             // ১. ডাটাবেস থেকে সক্রিয় এডমিন নম্বর সেট করি
             await setActiveAdminNumber();
@@ -808,6 +839,12 @@
                     minFaceValue = 1;
                     maxFaceValue = 1000;
                 }
+                
+                // ★★★ ডাটাবেজ থেকে faceValue নেওয়া ★★★
+                if (planData && planData.faceValue) {
+                    faceValueFromDB = parseFloat(planData.faceValue);
+                    console.log(`✅ Face value from database: $${faceValueFromDB}`);
+                }
             }
             
             let dFieldHTML = '';
@@ -869,7 +906,14 @@
                 if (faceValueInput) {
                     faceValueInput.min = minFaceValue;
                     faceValueInput.max = maxFaceValue;
-                    faceValueInput.value = minFaceValue; // ডিফল্ট মান সেট
+                    
+                    // ★★★ ডাটাবেজ থেকে পাওয়া faceValue সেট করা ★★★
+                    if (faceValueFromDB && faceValueFromDB >= minFaceValue && faceValueFromDB <= maxFaceValue) {
+                        faceValueInput.value = faceValueFromDB;
+                        console.log(`✅ Setting face value input to $${faceValueFromDB}`);
+                    } else {
+                        faceValueInput.value = minFaceValue; // ডিফল্ট মান
+                    }
                 }
             } else {
                 faceValueContainer.style.display = 'none';
@@ -945,21 +989,26 @@
                     const quantity = 1;
                     const paymentCurrency = 'USD';
                     
-                    // ★★★ ফেস ভ্যালু চেক - এটাই মূল সমস্যা ★★★
+                    // ★★★ ফেস ভ্যালু নির্ধারণ ★★★
                     let faceValue = null;
                     if (isVariableProduct) {
-                        const faceValueInput = document.getElementById('faceValueInput');
-                        if (!faceValueInput) {
-                            alert('ফেস ভ্যালু ইনপুট ফিল্ড পাওয়া যায়নি');
-                            return;
+                        // প্রথমে ডাটাবেজ থেকে পাওয়া মান ব্যবহার করার চেষ্টা
+                        if (faceValueFromDB && faceValueFromDB >= minFaceValue && faceValueFromDB <= maxFaceValue) {
+                            faceValue = faceValueFromDB;
+                            console.log(`✅ Using face value from database: $${faceValue}`);
+                        } else {
+                            // না থাকলে ইনপুট ফিল্ড থেকে নিন
+                            const faceValueInput = document.getElementById('faceValueInput');
+                            if (faceValueInput) {
+                                faceValue = parseFloat(faceValueInput.value);
+                            }
                         }
                         
-                        faceValue = parseFloat(faceValueInput.value);
-                        if (isNaN(faceValue) || faceValue < minFaceValue || faceValue > maxFaceValue) {
+                        // ভ্যালিডেশন
+                        if (!faceValue || isNaN(faceValue) || faceValue < minFaceValue || faceValue > maxFaceValue) {
                             alert(`দয়া করে সঠিক ফেস ভ্যালু দিন ($${minFaceValue} - $${maxFaceValue})`);
                             return;
                         }
-                        console.log(`✅ Face value set: $${faceValue}`);
                     }
                     
                     const paymentMethod = selected.value.replace('woo_', '').toUpperCase();
