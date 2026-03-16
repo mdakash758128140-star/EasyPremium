@@ -1,4 +1,3 @@
-// api/check-firebase.js
 const admin = require('firebase-admin');
 
 export default async function handler(req, res) {
