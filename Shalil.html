@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Easy Premium - Order Cancel System</title>
+    <title>Easy Premium - Relograde Order Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <style>
-        /* পুরনো CSS ঠিক আগের মতোই থাকবে (আমি এখানে সম্পূর্ণ দিচ্ছি, তবে আপনার দেওয়া CSS-ই) */
         * {
             margin: 0;
             padding: 0;
@@ -24,7 +23,6 @@
             color: #fff;
         }
         
-        /* Login Screen */
         .login-screen {
             display: flex;
             justify-content: center;
@@ -112,7 +110,6 @@
             min-height: 20px;
         }
         
-        /* Admin Panel */
         .admin-panel {
             display: none;
         }
@@ -175,7 +172,6 @@
             box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
         }
         
-        /* Main Content */
         .main-content {
             padding: 30px;
             max-width: 1400px;
@@ -198,7 +194,6 @@
             font-size: 1.5rem;
         }
         
-        /* Stats Cards */
         .form-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -226,7 +221,6 @@
             color: #b0bec5;
         }
         
-        /* Orders Table */
         .orders-table {
             width: 100%;
             background: rgba(255, 255, 255, 0.05);
@@ -269,7 +263,6 @@
             color: #4caf50;
         }
         
-        /* WhatsApp Button */
         .whatsapp-btn {
             background: rgba(37, 211, 102, 0.2);
             color: #25D366;
@@ -292,7 +285,6 @@
             box-shadow: 0 5px 15px rgba(37, 211, 102, 0.2);
         }
         
-        /* Cancel Button */
         .btn-cancel {
             background: rgba(220, 53, 69, 0.2);
             color: #dc3545;
@@ -333,7 +325,6 @@
             transform: translateY(-2px);
         }
         
-        /* Filter Section */
         .filter-section {
             display: flex;
             gap: 15px;
@@ -380,7 +371,6 @@
             box-shadow: 0 0 10px rgba(255, 87, 34, 0.3);
         }
         
-        /* System Info */
         .system-info {
             background: rgba(0, 188, 212, 0.1);
             border-left: 4px solid #00bcd4;
@@ -389,7 +379,6 @@
             margin-top: 20px;
         }
         
-        /* Loading Spinner */
         .loading-spinner {
             text-align: center;
             padding: 40px;
@@ -410,7 +399,6 @@
             100% { transform: rotate(360deg); }
         }
         
-        /* Toast Notification */
         .toast {
             position: fixed;
             top: 20px;
@@ -429,21 +417,48 @@
             to { transform: translateX(0); opacity: 1; }
         }
         
-        /* No Data */
         .no-data {
             text-align: center;
             padding: 40px;
             color: #b0bec5;
         }
         
-        /* Button Group */
         .btn-group {
             display: flex;
             gap: 5px;
             flex-wrap: wrap;
         }
         
-        /* Responsive */
+        .reference-text {
+            font-size: 0.75rem;
+            color: #b0bec5;
+            max-width: 200px;
+            word-break: break-word;
+            white-space: normal;
+            font-family: monospace;
+        }
+        
+        .refresh-btn {
+            background: rgba(0, 188, 212, 0.2);
+            color: #00bcd4;
+            border: 1px solid #00bcd4;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 15px;
+        }
+        
+        .refresh-btn:hover {
+            background: rgba(0, 188, 212, 0.3);
+            transform: translateY(-2px);
+        }
+        
         @media (max-width: 768px) {
             .admin-header {
                 flex-direction: column;
@@ -479,6 +494,10 @@
             .btn-group {
                 flex-direction: column;
             }
+            
+            .reference-text {
+                max-width: 150px;
+            }
         }
         
         @media (max-width: 480px) {
@@ -513,7 +532,7 @@
                 </div>
                 <div class="logo-text">
                     <h1>Easy Premium</h1>
-                    <p>Order Cancel System</p>
+                    <p>Relograde Order Management</p>
                 </div>
             </div>
             
@@ -545,16 +564,26 @@
                 </div>
             </div>
             
-            <button id="logoutBtn" class="logout-btn">
-                <i class="fas fa-sign-out-alt"></i> লগ আউট
-            </button>
+            <div style="display: flex; gap: 10px;">
+                <button id="refreshOrdersBtn" class="refresh-btn">
+                    <i class="fas fa-sync-alt"></i> রিফ্রেশ
+                </button>
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> লগ আউট
+                </button>
+            </div>
         </header>
         
         <!-- Main Content -->
         <div class="main-content">
             <!-- Dashboard Stats Section -->
             <div class="section">
-                <h2 class="section-title">অর্ডার ড্যাশবোর্ড</h2>
+                <h2 class="section-title">
+                    Relograde অর্ডার ড্যাশবোর্ড
+                    <span style="font-size: 0.9rem; color: #00bcd4; margin-left: 15px;">
+                        <i class="fas fa-database"></i> সরাসরি Relograde API থেকে
+                    </span>
+                </h2>
                 
                 <div class="form-row">
                     <div class="stats-card">
@@ -583,9 +612,9 @@
                 </div>
             </div>
             
-            <!-- Order Management Section -->
+            <!-- Relograde Orders Section -->
             <div class="section">
-                <h2 class="section-title">অর্ডার ম্যানেজমেন্ট</h2>
+                <h2 class="section-title">Relograde Console থেকে অর্ডার তালিকা</h2>
                 
                 <!-- Filter Section -->
                 <div class="filter-section">
@@ -601,7 +630,7 @@
                     
                     <div class="filter-item">
                         <label class="form-label">সার্চ করুন</label>
-                        <input type="text" id="orderSearch" class="form-input" placeholder="অর্ডার আইডি / ফোন / নাম">
+                        <input type="text" id="orderSearch" class="form-input" placeholder="TRX ID / রেফারেন্স">
                     </div>
                     
                     <div class="filter-item">
@@ -621,49 +650,25 @@
                     <table class="orders-table">
                         <thead>
                             <tr>
-                                <th>অর্ডার আইডি</th>
-                                <th>গ্রাহক</th>
-                                <th>WhatsApp</th>
-                                <th>প্ল্যাটফর্ম</th>
-                                <th>দাম</th>
-                                <th>তারিখ</th>
+                                <th>TRX ID</th>
+                                <th>অর্ডার তারিখ</th>
                                 <th>স্ট্যাটাস</th>
-                                <th>একশন</th>
+                                <th>আইটেম</th>
+                                <th>মোট দাম</th>
+                                <th>রেফারেন্স</th>
+                                <th>পেমেন্ট কারেন্সি</th>
                             </tr>
                         </thead>
                         <tbody id="ordersTable">
                             <tr>
-                                <td colspan="8" class="loading-spinner">
+                                <td colspan="7" class="loading-spinner">
                                     <div class="spinner"></div>
-                                    <p>অর্ডার লোড হচ্ছে...</p>
+                                    <p>Relograde API থেকে অর্ডার লোড হচ্ছে...</p>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Cancel Confirmation Modal -->
-    <div id="cancelModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center;">
-        <div style="background: rgba(30,30,46,0.95); padding: 30px; border-radius: 15px; max-width: 500px; width: 90%; border: 3px solid #dc3545;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #dc3545;"></i>
-                <h3 style="color: #ff9800; margin-top: 15px;">অর্ডার ক্যানসেল করুন</h3>
-            </div>
-            
-            <p style="color: #fff; margin-bottom: 20px; text-align: center;" id="cancelOrderInfo">
-                আপনি কি এই অর্ডারটি ক্যানসেল করতে চান?
-            </p>
-            
-            <div style="display: flex; gap: 15px;">
-                <button id="confirmCancelBtn" class="btn-cancel" style="flex: 1; padding: 12px;">
-                    <i class="fas fa-times-circle"></i> হ্যাঁ, ক্যানসেল করুন
-                </button>
-                <button id="closeCancelModalBtn" class="btn-pending" style="flex: 1; padding: 12px;">
-                    <i class="fas fa-arrow-left"></i> ফিরে যান
-                </button>
             </div>
         </div>
     </div>
@@ -697,6 +702,7 @@
         const adminPanel = document.getElementById('adminPanel');
         const googleLoginBtn = document.getElementById('googleLoginBtn');
         const loginError = document.getElementById('loginError');
+        const refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
         
         const adminName = document.getElementById('adminName');
         const adminEmail = document.getElementById('adminEmail');
@@ -715,21 +721,11 @@
         const orderFilter = document.getElementById('orderFilter');
         const orderSearch = document.getElementById('orderSearch');
         const dateFilter = document.getElementById('dateFilter');
-        
-        // Modal Elements
-        const cancelModal = document.getElementById('cancelModal');
-        const cancelOrderInfo = document.getElementById('cancelOrderInfo');
-        const confirmCancelBtn = document.getElementById('confirmCancelBtn');
-        const closeCancelModalBtn = document.getElementById('closeCancelModalBtn');
 
         // Variables
         let orders = [];
         let currentAdminEmail = null;
-        let currentOrderToCancel = null;
-        let onlineStatusInterval = null; // interval ID for online status updates
-
-        // Base URL for payment page
-        const BASE_URL = 'https://easy-premium.com/Pay.html';
+        let onlineStatusInterval = null;
 
         // Allowed Admin Emails
         const ALLOWED_ADMIN_EMAILS = [
@@ -740,61 +736,6 @@
             'allwork204571@gmail.com'
         ];
 
-        // ===== পরিবর্তিত অংশ: Platform ID mapping - সঠিক Firebase IDs ব্যবহার করুন (Amazon-এর কেস ঠিক করা হয়েছে) =====
-        const PLATFORM_ID_MAP = {
-            // Amazon - সঠিক কেস (ছোট-বড় মিশ্রণ)
-            'amazon': '-PLkNnA2eEiS6X9K8Z',
-            'amazon prime': '-PLkNnA2eEiS6X9K8Z',
-            'prime': '-PLkNnA2eEiS6X9K8Z',
-            
-            // YouTube
-            'youtube': '-PLyYOUTUBE_ID', // আপনার আসল YouTube ID দিন
-            'youtube premium': '-PLyYOUTUBE_ID',
-            
-            // Netflix
-            'netflix': '-PLnNETFLIX_ID', // আপনার আসল Netflix ID দিন
-            'netflix premium': '-PLnNETFLIX_ID',
-            
-            // Facebook
-            'facebook': '-PLfFACEBOOK_ID', // আপনার আসল Facebook ID দিন
-            'facebook premium': '-PLfFACEBOOK_ID',
-            
-            // Instagram
-            'instagram': '-PLiINSTAGRAM_ID', // আপনার আসল Instagram ID দিন
-            'instagram premium': '-PLiINSTAGRAM_ID',
-            
-            // Telegram
-            'telegram': '-PLtTELEGRAM_ID', // আপনার আসল Telegram ID দিন
-            'telegram premium': '-PLtTELEGRAM_ID',
-            
-            // Spotify
-            'spotify': '-PLsSPOTIFY_ID', // আপনার আসল Spotify ID দিন
-            'spotify premium': '-PLsSPOTIFY_ID',
-            
-            // WhatsApp
-            'whatsapp': '-PLwWHATSAPP_ID', // আপনার আসল WhatsApp ID দিন
-            'whatsapp business': '-PLwWHATSAPP_ID',
-            
-            // TikTok
-            'tiktok': '-PLtTIKTOK_ID', // আপনার আসল TikTok ID দিন
-            'tiktok coins': '-PLtTIKTOK_ID'
-        };
-
-        // ===== Generate encrypted data string for payment link =====
-        function generateEncryptedData(orderId, platform, price) {
-            try {
-                const platformId = getPlatformId(platform);
-                const timestamp = Date.now();
-                const dataString = `${orderId}|${platformId}|${price}|${timestamp}`;
-                let encodedData = btoa(dataString);
-                encodedData = encodeURIComponent(encodedData);
-                return encodedData;
-            } catch (error) {
-                console.error("Generate encrypted data error:", error);
-                return '';
-            }
-        }
-
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             initializeApp();
@@ -803,6 +744,16 @@
         function initializeApp() {
             checkAdminAuth();
             setupEventListeners();
+        }
+        
+        function setupEventListeners() {
+            googleLoginBtn.addEventListener('click', handleGoogleLogin);
+            logoutBtn.addEventListener('click', handleLogout);
+            refreshOrdersBtn.addEventListener('click', loadOrdersFromRelograde);
+            
+            orderFilter.addEventListener('change', filterAndDisplayOrders);
+            orderSearch.addEventListener('input', filterAndDisplayOrders);
+            dateFilter.addEventListener('change', filterAndDisplayOrders);
         }
         
         // Check admin authentication
@@ -815,18 +766,12 @@
                         currentAdminEmail = user.email;
                         await loadAdminData(user);
                         showAdminPanel();
-                        initializeOrderSystem();
-
-                        // ✅ প্রতি মিনিটে অনলাইন স্ট্যাটাস আপডেট শুরু করি
-                        startOnlineStatusUpdates(user);
-
-                        const isSuperAdmin = [
-                            'mdsojib1388888@gmail.com',
-                            'shahsultanshakil204571@gmail.com',
-                            'allwork204571@gmail.com'
-                        ].includes(user.email);
                         
-                        console.log("Admin Role:", isSuperAdmin ? "Super Admin" : "Admin");
+                        // প্রতি মিনিটে অনলাইন স্ট্যাটাস আপডেট
+                        startOnlineStatusUpdates(user);
+                        
+                        // Relograde থেকে অর্ডার লোড
+                        loadOrdersFromRelograde();
                         
                     } else {
                         console.log("Email not allowed:", user.email);
@@ -835,7 +780,6 @@
                         showToast('এই Gmail এড্রেস এডমিন এক্সেস নেই', 'error');
                     }
                 } else {
-                    // অনলাইন স্ট্যাটাস আপডেট বন্ধ করি (যদি চালু থাকে)
                     if (onlineStatusInterval) {
                         clearInterval(onlineStatusInterval);
                         onlineStatusInterval = null;
@@ -845,79 +789,44 @@
             });
         }
 
-        // ✅ নতুন ফাংশন: প্রতি মিনিটে অনলাইন স্ট্যাটাস আপডেট করা
         function startOnlineStatusUpdates(user) {
-            // প্রথমবার এখনই আপডেট করি
             updateOnlineStatus(user);
-
-            // প্রতি ৬০ সেকেন্ডে আপডেট করার জন্য interval সেট করি
             if (onlineStatusInterval) {
                 clearInterval(onlineStatusInterval);
             }
             onlineStatusInterval = setInterval(() => {
                 updateOnlineStatus(user);
-            }, 60000); // ৬০ সেকেন্ড
+            }, 60000);
         }
 
-        // ✅ নতুন ফাংশন: publicAdminInfo/{uid} আপডেট করা
         async function updateOnlineStatus(user) {
             if (!user) return;
-
             const uid = user.uid;
             try {
-                // adminUsers থেকে নাম ও নম্বর সংগ্রহ
                 const adminSnapshot = await database.ref(`adminUsers/${uid}`).once('value');
                 const adminData = adminSnapshot.val();
-
                 let name = user.displayName || 'Admin';
                 let number = null;
-
                 if (adminData && adminData.name) {
                     name = adminData.name;
                 }
                 if (adminData && adminData.number) {
                     number = adminData.number;
                 } else {
-                    console.warn(`No phone number found for admin ${uid}, status will not be published.`);
-                    return; // ফোন নম্বর না থাকলে আপডেট না করাই ভালো
+                    console.warn(`No phone number found for admin ${uid}`);
+                    return;
                 }
-
                 const publicInfo = {
                     name: name,
                     number: number,
-                    lastActive: new Date().toISOString() // ISO ফরম্যাট
+                    lastActive: new Date().toISOString()
                 };
-
                 await database.ref(`publicAdminInfo/${uid}`).set(publicInfo);
-                console.log(`Online status updated for ${name} (${uid}) at ${publicInfo.lastActive}`);
-
             } catch (error) {
                 console.error("Error updating online status:", error);
             }
         }
         
-        // Setup event listeners
-        function setupEventListeners() {
-            googleLoginBtn.addEventListener('click', handleGoogleLogin);
-            logoutBtn.addEventListener('click', handleLogout);
-            
-            orderFilter.addEventListener('change', loadOrders);
-            orderSearch.addEventListener('input', loadOrders);
-            dateFilter.addEventListener('change', loadOrders);
-            
-            closeCancelModalBtn.addEventListener('click', function() {
-                cancelModal.style.display = 'none';
-                currentOrderToCancel = null;
-            });
-            
-            confirmCancelBtn.addEventListener('click', function() {
-                if (currentOrderToCancel) {
-                    cancelOrder(currentOrderToCancel);
-                }
-            });
-        }
-        
-        // Handle Google login
         async function handleGoogleLogin() {
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
@@ -940,15 +849,12 @@
             }
         }
         
-        // Handle logout
         async function handleLogout() {
             try {
-                // অনলাইন স্ট্যাটাস আপডেট বন্ধ করি
                 if (onlineStatusInterval) {
                     clearInterval(onlineStatusInterval);
                     onlineStatusInterval = null;
                 }
-
                 await auth.signOut();
                 showLoginScreen();
                 showToast('সফলভাবে লগ আউট হয়েছে', 'success');
@@ -957,7 +863,6 @@
             }
         }
         
-        // Load admin data
         async function loadAdminData(user) {
             adminName.textContent = user.displayName || user.email;
             adminEmail.textContent = user.email;
@@ -983,7 +888,6 @@
             }
         }
         
-        // Save admin login info
         async function saveAdminLogin(user) {
             try {
                 await database.ref('adminLogs').push({
@@ -997,91 +901,78 @@
             }
         }
         
-        // Show login screen
         function showLoginScreen() {
             loginScreen.style.display = 'flex';
             adminPanel.style.display = 'none';
             currentAdminEmail = null;
         }
         
-        // Show admin panel
         function showAdminPanel() {
             loginScreen.style.display = 'none';
             adminPanel.style.display = 'block';
-        }
-        
-        // Initialize order system
-        function initializeOrderSystem() {
-            loadOrders();
             updateSystemInfo();
         }
         
-        // Load orders
-        function loadOrders() {
+        // Relograde API থেকে অর্ডার লোড
+        async function loadOrdersFromRelograde() {
             ordersTable.innerHTML = `
                 <tr>
-                    <td colspan="8" class="loading-spinner">
+                    <td colspan="7" class="loading-spinner">
                         <div class="spinner"></div>
-                        <p>অর্ডার লোড হচ্ছে...</p>
+                        <p>Relograde API থেকে অর্ডার লোড হচ্ছে...</p>
                     </td>
                 </tr>
             `;
             
-            database.ref('transactions').on('value', (snapshot) => {
-                const data = snapshot.val();
-                orders = [];
+            try {
+                const response = await fetch('/api/relograde-orders');
+                const result = await response.json();
                 
-                if (!data) {
-                    ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার পাওয়া যায়নি</td></tr>';
-                    updateOrderStats([]);
-                    return;
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to fetch orders');
                 }
                 
-                Object.entries(data).forEach(([id, order]) => {
-                    orders.push({
-                        id: id,
-                        ...order
-                    });
-                });
+                orders = result.data || [];
+                console.log(`Loaded ${orders.length} orders from Relograde`);
                 
-                // Apply filters
-                let filteredOrders = filterOrders(orders);
+                filterAndDisplayOrders();
                 
-                // Sort by date (newest first)
-                filteredOrders.sort((a, b) => {
-                    const dateA = a.orderDate || a.timestamp || 0;
-                    const dateB = b.orderDate || b.timestamp || 0;
-                    return new Date(dateB) - new Date(dateA);
-                });
-                
-                displayOrders(filteredOrders);
-                updateOrderStats(orders);
-            });
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                ordersTable.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="no-data">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ff9800; margin-bottom: 15px;"></i>
+                            <p>অর্ডার লোড করতে সমস্যা হয়েছে: ${error.message}</p>
+                            <button onclick="loadOrdersFromRelograde()" class="refresh-btn" style="margin-top: 15px;">
+                                <i class="fas fa-sync-alt"></i> আবার চেষ্টা করুন
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
         }
         
-        // Filter orders
-        function filterOrders(ordersList) {
-            let filtered = [...ordersList];
+        // ফিল্টার এবং ডিসপ্লে
+        function filterAndDisplayOrders() {
+            let filtered = [...orders];
             
             const statusValue = orderFilter.value;
-            if (statusValue === 'pending') {
-                filtered = filtered.filter(order => order.status === 'pending');
-            } else if (statusValue === 'cancelled') {
-                filtered = filtered.filter(order => order.status === 'cancelled');
-            } else if (statusValue === 'completed') {
-                filtered = filtered.filter(order => 
-                    order.status === 'completed' || order.status === 'success'
-                );
+            if (statusValue !== 'all') {
+                filtered = filtered.filter(order => {
+                    const status = (order.orderStatus || '').toLowerCase();
+                    if (statusValue === 'pending') return status === 'created' || status === 'pending';
+                    if (statusValue === 'cancelled') return status === 'cancelled';
+                    if (statusValue === 'completed') return status === 'finished' || status === 'completed';
+                    return true;
+                });
             }
             
             const searchValue = orderSearch.value.toLowerCase();
             if (searchValue) {
                 filtered = filtered.filter(order => 
-                    (order.orderId && order.orderId.toLowerCase().includes(searchValue)) ||
-                    (order.userName && order.userName.toLowerCase().includes(searchValue)) ||
-                    (order.phoneNumber && order.phoneNumber.includes(searchValue)) ||
-                    (order.whatsappNumber && order.whatsappNumber.includes(searchValue)) ||
-                    (order.platform && order.platform.toLowerCase().includes(searchValue))
+                    (order.trx && order.trx.toLowerCase().includes(searchValue)) ||
+                    (order.reference && order.reference.toLowerCase().includes(searchValue))
                 );
             }
             
@@ -1091,7 +982,7 @@
                 today.setHours(0, 0, 0, 0);
                 
                 filtered = filtered.filter(order => {
-                    const orderDate = new Date(order.orderDate || order.timestamp || 0);
+                    const orderDate = new Date(order.dateCreated || 0);
                     orderDate.setHours(0, 0, 0, 0);
                     
                     if (dateValue === 'today') {
@@ -1113,22 +1004,20 @@
                 });
             }
             
-            return filtered;
+            displayOrders(filtered);
+            updateStats(filtered);
         }
         
-        // Display orders
         function displayOrders(ordersList) {
             if (ordersList.length === 0) {
-                ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার পাওয়া যায়নি</td></tr>';
+                ordersTable.innerHTML = '<tr><td colspan="7" class="no-data">কোন অর্ডার পাওয়া যায়নি</td></tr>';
                 return;
             }
             
             let html = '';
             
             ordersList.forEach(order => {
-                const displayOrderId = order.orderId || order.id;
-                
-                const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString('bn-BD', {
+                const orderDate = order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD', {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
@@ -1137,61 +1026,38 @@
                 }) : 'তারিখ নেই';
                 
                 let statusClass = 'status-pending';
-                let statusText = 'পেন্ডিং';
+                let statusText = order.orderStatus || 'unknown';
                 
-                if (order.status === 'cancelled') {
-                    statusClass = 'status-cancelled';
-                    statusText = 'ক্যানসেল';
-                } else if (order.status === 'completed' || order.status === 'success') {
+                if (statusText === 'finished' || statusText === 'completed') {
                     statusClass = 'status-completed';
                     statusText = 'সম্পূর্ণ';
+                } else if (statusText === 'cancelled') {
+                    statusClass = 'status-cancelled';
+                    statusText = 'ক্যানসেল';
+                } else if (statusText === 'created') {
+                    statusClass = 'status-pending';
+                    statusText = 'পেন্ডিং';
                 }
                 
-                const whatsappNumber = order.whatsappNumber || order.phoneNumber || 'নাম্বার নেই';
+                const items = order.items || [];
+                const itemsList = items.map(item => 
+                    `${item.product?.name || item.productSlug} x${item.amount}`
+                ).join('<br>');
                 
-                let actionButtons = '';
+                const totalPrice = order.priceInclVat || order.priceAmount || 0;
+                const currency = order.priceCurrency || 'USD';
                 
-                if (order.status === 'pending') {
-                    actionButtons = `
-                        <div class="btn-group">
-                            <button class="btn-cancel" onclick="showCancelModal('${order.id}', '${order.userName || ''}', '${order.platform || ''}')">
-                                <i class="fas fa-times-circle"></i> ক্যানসেল
-                            </button>
-                        </div>
-                    `;
-                } else if (order.status === 'cancelled') {
-                    actionButtons = `
-                        <div class="btn-group">
-                            <button class="btn-pending" onclick="updateOrderStatus('${order.id}', 'pending')">
-                                <i class="fas fa-undo-alt"></i> পেন্ডিং করুন
-                            </button>
-                        </div>
-                    `;
-                } else {
-                    actionButtons = `
-                        <span style="color: #4caf50; font-size: 0.85rem;">
-                            <i class="fas fa-check-circle"></i> সম্পূর্ণ
-                        </span>
-                    `;
-                }
+                const reference = order.reference || '—';
                 
                 html += `
                     <tr>
-                        <td style="font-family: monospace; font-size: 0.85rem;">${displayOrderId.substring(0, 8)}...</td>
-                        <td>
-                            <div style="font-weight: 600;">${order.userName || 'নাম নেই'}</div>
-                            <div style="font-size: 0.8rem; color: #b0bec5;">${order.phoneNumber || 'ফোন নেই'}</div>
-                        </td>
-                        <td>
-                            <button class="whatsapp-btn" onclick="sendWhatsAppMessage('${order.id}', '${whatsappNumber}', '${order.userName || ''}', '${order.platform || ''}', '${order.price || ''}')">
-                                <i class="fab fa-whatsapp"></i> WhatsApp
-                            </button>
-                        </td>
-                        <td>${order.platform || 'প্ল্যাটফর্ম নেই'}</td>
-                        <td style="color: #00bcd4; font-weight: 600;">${order.price || '৳ -'}</td>
-                        <td style="font-size: 0.8rem;">${orderDate}</td>
+                        <td style="font-family: monospace; font-size: 0.9rem;">${order.trx || 'N/A'}</td>
+                        <td style="font-size: 0.85rem;">${orderDate}</td>
                         <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                        <td>${actionButtons}</td>
+                        <td><div style="max-width: 200px; font-size: 0.85rem;">${itemsList}</div></td>
+                        <td style="color: #00bcd4; font-weight: 600;">${totalPrice} ${currency}</td>
+                        <td><div class="reference-text" title="${reference}">${reference.substring(0, 30)}${reference.length > 30 ? '...' : ''}</div></td>
+                        <td>${order.paymentCurrency || 'USD'}</td>
                     </tr>
                 `;
             });
@@ -1199,165 +1065,15 @@
             ordersTable.innerHTML = html;
         }
         
-        // Platform Name থেকে Platform ID বের করার ফাংশন
-        function getPlatformId(platformName) {
-            if (!platformName) return 'unknown';
-            
-            const lowerPlatform = platformName.toLowerCase().trim();
-            
-            for (const [key, value] of Object.entries(PLATFORM_ID_MAP)) {
-                if (lowerPlatform.includes(key)) {
-                    console.log(`✅ Platform mapped: ${platformName} -> ${value}`);
-                    return value;
-                }
-            }
-            
-            console.warn(`⚠️ No mapping found for platform: ${platformName}`);
-            return lowerPlatform.replace(/\s+/g, '');
-        }
-        
-        // Generate payment link
-        function generatePaymentLink(orderId, platform, price) {
-            const encryptedData = generateEncryptedData(orderId, platform, price);
-            return `${BASE_URL}?data=${encryptedData}&v=2`;
-        }
-        
-        // Generate WhatsApp message
-        function generateWhatsAppMessage(orderId, userName, platform, price) {
-            const paymentLink = generatePaymentLink(orderId, platform, price);
-            
-            const message = `আসসালামু আলাইকুম ${userName},
-
-আপনার অর্ডারটি কনফার্ম করতে নিচের লিংকে ক্লিক করুন:
-
-অর্ডার আইডি: ${orderId}
-প্ল্যাটফর্ম: ${platform}
-মূল্য: ${price}
-
-পেমেন্ট কনফার্ম লিংক:
-${paymentLink}
-
-ধন্যবাদান্তে,
-Easy Premium Team`;
-
-            return message;
-        }
-        
-        // Send WhatsApp message
-        function sendWhatsAppMessage(orderId, phoneNumber, userName, platform, price) {
-            const order = orders.find(o => o.id === orderId);
-            if (!order) {
-                showToast('অর্ডার পাওয়া যায়নি', 'error');
-                return;
-            }
-            
-            const displayOrderId = order.orderId || orderId;
-            
-            const cleanNumber = phoneNumber.replace(/\D/g, '');
-            if (!cleanNumber) {
-                showToast('ভ্যালিড ফোন নম্বর পাওয়া যায়নি', 'error');
-                return;
-            }
-            
-            const message = generateWhatsAppMessage(displayOrderId, userName, platform, price);
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = `https://wa.me/88${cleanNumber}?text=${encodedMessage}`;
-            
-            window.open(whatsappUrl, '_blank');
-            
-            database.ref('whatsappLogs').push({
-                orderId: orderId,
-                phoneNumber: cleanNumber,
-                sentAt: firebase.database.ServerValue.TIMESTAMP,
-                sentBy: currentAdminEmail
-            }).catch(error => console.error("Error logging WhatsApp:", error));
-            
-            showToast('WhatsApp মেসেজ পাঠানোর জন্য ওপেন হচ্ছে...', 'success');
-        }
-        
-        // Show cancel modal
-        function showCancelModal(orderId, userName, platform) {
-            currentOrderToCancel = orderId;
-            cancelOrderInfo.innerHTML = `
-                <strong style="color: #ff9800;">অর্ডার আইডি:</strong> ${orderId}<br>
-                <strong style="color: #ff9800;">গ্রাহক:</strong> ${userName || 'নাম নেই'}<br>
-                <strong style="color: #ff9800;">প্ল্যাটফর্ম:</strong> ${platform || 'N/A'}<br><br>
-                আপনি কি এই অর্ডারটি ক্যানসেল করতে চান?
-            `;
-            cancelModal.style.display = 'flex';
-        }
-        
-        // Cancel order
-        function cancelOrder(orderId) {
-            const updates = {
-                status: 'cancelled',
-                cancelledAt: firebase.database.ServerValue.TIMESTAMP,
-                cancelledBy: currentAdminEmail,
-                cancelReason: 'এডমিন দ্বারা ক্যানসেল করা হয়েছে'
-            };
-            
-            database.ref(`transactions/${orderId}`).update(updates)
-                .then(() => {
-                    const order = orders.find(o => o.id === orderId);
-                    if (order && order.userId) {
-                        return database.ref(`userOrders/${order.userId}/${orderId}`).update({
-                            status: 'cancelled',
-                            updatedAt: firebase.database.ServerValue.TIMESTAMP
-                        });
-                    }
-                })
-                .then(() => {
-                    showToast('অর্ডার সফলভাবে ক্যানসেল করা হয়েছে', 'success');
-                    cancelModal.style.display = 'none';
-                    currentOrderToCancel = null;
-                    
-                    database.ref('adminLogs').push({
-                        action: 'order_cancelled',
-                        orderId: orderId,
-                        admin: currentAdminEmail,
-                        timestamp: firebase.database.ServerValue.TIMESTAMP
-                    });
-                })
-                .catch(error => {
-                    console.error("Cancel order error:", error);
-                    showToast('অর্ডার ক্যানসেল করতে সমস্যা হয়েছে', 'error');
-                });
-        }
-        
-        // Update order status
-        function updateOrderStatus(orderId, newStatus) {
-            const updates = {
-                status: newStatus,
-                updatedAt: firebase.database.ServerValue.TIMESTAMP,
-                updatedBy: currentAdminEmail
-            };
-            
-            database.ref(`transactions/${orderId}`).update(updates)
-                .then(() => {
-                    const order = orders.find(o => o.id === orderId);
-                    if (order && order.userId) {
-                        return database.ref(`userOrders/${order.userId}/${orderId}`).update({
-                            status: newStatus,
-                            updatedAt: firebase.database.ServerValue.TIMESTAMP
-                        });
-                    }
-                })
-                .then(() => {
-                    showToast('অর্ডার স্ট্যাটাস আপডেট হয়েছে', 'success');
-                })
-                .catch(error => {
-                    console.error("Update order error:", error);
-                    showToast('আপডেট করতে সমস্যা হয়েছে', 'error');
-                });
-        }
-        
-        // Update order stats
-        function updateOrderStats(ordersList) {
+        function updateStats(ordersList) {
             const total = ordersList.length;
-            const pending = ordersList.filter(order => order.status === 'pending').length;
-            const cancelled = ordersList.filter(order => order.status === 'cancelled').length;
+            const pending = ordersList.filter(order => {
+                const status = order.orderStatus || '';
+                return status === 'created' || status === 'pending';
+            }).length;
+            const cancelled = ordersList.filter(order => order.orderStatus === 'cancelled').length;
             const completed = ordersList.filter(order => 
-                order.status === 'completed' || order.status === 'success'
+                order.orderStatus === 'finished' || order.orderStatus === 'completed'
             ).length;
             
             totalOrdersEl.textContent = total;
@@ -1366,22 +1082,19 @@ Easy Premium Team`;
             completedOrdersEl.textContent = completed;
         }
         
-        // Update system info
         function updateSystemInfo() {
             const now = new Date();
             const info = `
                 <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
                     <div><strong>বর্তমান সময়:</strong> ${now.toLocaleString('bn-BD')}</div>
                     <div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div>
-                    <div><strong>সিস্টেম:</strong> অর্ডার ক্যানসেল ম্যানেজমেন্ট</div>
+                    <div><strong>ডাটা সোর্স:</strong> <span style="color: #4caf50;">Relograde API (লাইভ)</span></div>
                     <div><strong>স্ট্যাটাস:</strong> <span style="color: #4caf50;">অনলাইন</span></div>
                 </div>
             `;
-            
             systemInfo.innerHTML = info;
         }
         
-        // Show toast notification
         function showToast(message, type = 'info') {
             const existingToast = document.querySelector('.toast');
             if (existingToast) {
