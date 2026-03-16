@@ -408,6 +408,44 @@
             .verify-inside-btn { font-size: 16px; padding: 12px; }
             .pay-btn { font-size: 16px; padding: 14px; }
         }
+
+        /* ফেস ভ্যালু ইনপুট ফিল্ড */
+        .face-value-field {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 152, 0, 0.2);
+        }
+        .face-value-field label {
+            color: #ff9800;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .face-value-field input {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,152,0,0.5);
+            border-radius: 50px;
+            color: white;
+            font-size: 16px;
+        }
+        .face-value-field small {
+            color: #b0bec5;
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+        }
+        .face-value-hint {
+            background: rgba(255, 152, 0, 0.1);
+            border-left: 3px solid #ff9800;
+            padding: 8px 12px;
+            margin-top: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
     </style>
     
     <!-- Firebase SDK -->
@@ -668,13 +706,13 @@
                 console.log("🔍 Fetching plan data for platformId:", platformId);
                 
                 // প্রথমে pricingPlans2 এ খোঁজা
-                const plansSnapshot = await database.ref('publicData/pricingPlans2').once('value');
-                if (plansSnapshot.exists()) {
-                    const allPlans = plansSnapshot.val();
+                const plans2Snapshot = await database.ref('publicData/pricingPlans2').once('value');
+                if (plans2Snapshot.exists()) {
+                    const allPlans = plans2Snapshot.val();
                     for (let key in allPlans) {
                         const plan = allPlans[key];
                         if (key === platformId || plan.Products === platformId) {
-                            console.log(`✅ Found plan with key: ${key}`);
+                            console.log(`✅ Found plan in pricingPlans2 with key: ${key}`);
                             return plan;
                         }
                     }
@@ -709,6 +747,10 @@
             
             let paymentTimer = null;
             let planData = null;
+            let productSlug = '';
+            let isVariableProduct = false;
+            let minFaceValue = 1;
+            let maxFaceValue = 1000;
 
             // ১. ডাটাবেস থেকে সক্রিয় এডমিন নম্বর সেট করি
             await setActiveAdminNumber();
@@ -747,6 +789,25 @@
             let platformDisplayName = data.platformId.replace(/_/g, ' ').toUpperCase();
             if (planData && planData.name) {
                 platformDisplayName = planData.name;
+            }
+            
+            // productSlug নির্ধারণ
+            if (planData && planData.Products) {
+                productSlug = planData.Products;
+            } else {
+                productSlug = data.platformId;
+            }
+            
+            // variable product চেক এবং range নির্ধারণ
+            isVariableProduct = productSlug.includes('variable');
+            if (isVariableProduct) {
+                if (productSlug.includes('mastercard')) {
+                    minFaceValue = 5;
+                    maxFaceValue = 1000;
+                } else {
+                    minFaceValue = 1;
+                    maxFaceValue = 1000;
+                }
             }
             
             let dFieldHTML = '';
@@ -794,6 +855,29 @@
             // ৪. পেমেন্ট প্যানেলে মোট টাকা আপডেট করা
             const totalAmountSpans = document.querySelectorAll('.bdpg-total-amount b');
             totalAmountSpans.forEach(span => span.textContent = `৳ ${totalAmount}`);
+
+            // ফেস ভ্যালু ফিল্ড দেখানো/লুকানো
+            const faceValueField = document.getElementById('faceValueField');
+            const faceValueHint = document.getElementById('faceValueHint');
+            const faceValueInput = document.getElementById('face_value');
+            
+            if (isVariableProduct) {
+                faceValueField.style.display = 'block';
+                if (faceValueHint) {
+                    if (productSlug.includes('mastercard')) {
+                        faceValueHint.innerHTML = `ন্যূনতম $${minFaceValue}, সর্বোচ্চ $${maxFaceValue} USD (Mastercard Variable)`;
+                    } else {
+                        faceValueHint.innerHTML = `ন্যূনতম $${minFaceValue}, সর্বোচ্চ $${maxFaceValue} USD (Visa Variable)`;
+                    }
+                }
+                if (faceValueInput) {
+                    faceValueInput.min = minFaceValue;
+                    faceValueInput.max = maxFaceValue;
+                    faceValueInput.placeholder = `${minFaceValue} - ${maxFaceValue}`;
+                }
+            } else {
+                faceValueField.style.display = 'none';
+            }
 
             // পেমেন্ট টগল বাটন
             if (payBtn.style.display !== 'none') {
@@ -870,39 +954,56 @@
                         return;
                     }
                     
-                    // ★★★ সঠিক productSlug নির্ধারণ ★★★
-                    let productSlug = data.platformId;
-                    if (planData && planData.Products) {
-                        productSlug = planData.Products; // যেমন "rewarble-ww-usd-5"
-                        console.log("✅ Using productSlug from DB:", productSlug);
-                    } else {
-                        console.warn("⚠️ Using platformId as productSlug:", productSlug);
+                    const quantity = 1;
+                    const paymentCurrency = 'USD';
+                    
+                    // ফেস ভ্যালু চেক করা
+                    let faceValue = null;
+                    if (isVariableProduct) {
+                        const faceValueInput = document.getElementById('face_value');
+                        if (!faceValueInput) {
+                            alert('ফেস ভ্যালু ইনপুট ফিল্ড পাওয়া যায়নি');
+                            return;
+                        }
+                        
+                        faceValue = parseFloat(faceValueInput.value.trim());
+                        if (isNaN(faceValue)) {
+                            alert('দয়া করে ফেস ভ্যালু দিন');
+                            return;
+                        }
+                        
+                        if (faceValue < minFaceValue || faceValue > maxFaceValue) {
+                            alert(`ফেস ভ্যালু ${minFaceValue}-${maxFaceValue} USD এর মধ্যে হতে হবে`);
+                            return;
+                        }
                     }
                     
-                    const quantity = 1;
-                    
-                    // ★★★ গুরুত্বপূর্ণ: paymentCurrency এখন 'usd' ★★★
-                    // Relograde API BDT সাপোর্ট করে না, তাই 'usd' ব্যবহার করছি
-                    const paymentCurrency = 'usd';
-                    
                     const paymentMethod = selected.value.replace('woo_', '').toUpperCase();
-                    const reference = `${paymentMethod}|Email:${emailVal}|Phone:${accountVal}|TXID:${transVal}`;
+                    const reference = `${paymentMethod}|Email:${emailVal}|Phone:${accountVal}|TXID:${transVal}${faceValue ? `|FaceValue:$${faceValue}` : ''}`;
                     
                     const originalText = newVerify.textContent;
                     newVerify.disabled = true;
                     newVerify.innerHTML = '<span class="button-loader"><span class="spinner"></span> প্রসেসিং...</span>';
                     
                     try {
-                        // API কল - এখন paymentCurrency: 'usd' পাঠাচ্ছি
+                        // API কল - variable product হলে faceValue সহ
+                        const requestBody = {
+                            productSlug: productSlug,
+                            amount: quantity,
+                            paymentCurrency: paymentCurrency,
+                            reference: reference
+                        };
+                        
+                        if (isVariableProduct && faceValue) {
+                            requestBody.faceValue = faceValue;
+                        }
+                        
+                        console.log("Sending request:", requestBody);
+                        
                         const response = await fetch('/api/create-order', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                productSlug: productSlug,
-                                amount: quantity,
-                                paymentCurrency: paymentCurrency,
-                                reference: reference
-                            })
+                            body: JSON.stringify(requestBody)
                         });
                         
                         const result = await response.json();
@@ -918,6 +1019,7 @@
                                 <p style="margin:20px 0;">আপনার অর্ডার প্রসেসিং হচ্ছে। ভাউচার পেতে কয়েক মিনিট অপেক্ষা করুন।</p>
                                 <div class="spinner" style="width:40px; height:40px; border-width:4px; margin:0 auto;"></div>
                                 <p style="margin-top:20px;">অর্ডার আইডি: ${orderId}</p>
+                                ${faceValue ? `<p style="margin-top:10px;">ফেস ভ্যালু: $${faceValue}</p>` : ''}
                             </div>
                         `;
                         
@@ -939,6 +1041,7 @@
                                             </div>
                                             <button class="copy-btn" style="margin-top:10px;" onclick="navigator.clipboard.writeText('${voucherData.voucherCode}')">📋 কপি করুন</button>
                                             <p style="margin-top:20px;">আপনার অর্ডার সম্পন্ন হয়েছে।</p>
+                                            ${faceValue ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
                                         </div>
                                     `;
                                 }
@@ -1026,6 +1129,15 @@
 
         <!-- ========== পেমেন্ট প্যানেল ========== -->
         <div id="paymentPanel">
+            <!-- ফেস ভ্যালু ইনপুট ফিল্ড - শুধুমাত্র variable product এর জন্য দেখানো হবে -->
+            <div class="face-value-field" id="faceValueField" style="display: none;">
+                <label>ফেস ভ্যালু (USD) <span class="required-star">*</span></label>
+                <input type="number" id="face_value" min="1" max="1000" step="0.01" placeholder="যেমন: 50">
+                <div class="face-value-hint" id="faceValueHint">
+                    ন্যূনতম $1, সর্বোচ্চ $1000
+                </div>
+            </div>
+
             <ul class="wc_payment_methods">
                 <!-- bKash -->
                 <li class="wc_payment_method" id="method-bkash">
