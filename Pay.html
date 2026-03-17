@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>পেমেন্ট তথ্য · Easy Premium</title>
+    <title>পেমেন্ট পৃষ্ঠা · Easy Premium</title>
     <meta name="theme-color" content="#0a0a1a">
     
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:; style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval';">
@@ -358,6 +358,74 @@
             animation: spin 1s linear infinite;
         }
 
+        .whatsapp-support {
+            background: rgba(37, 211, 102, 0.1);
+            border: 1px solid #25D366;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .whatsapp-support img {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .whatsapp-support p {
+            color: #25D366;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .whatsapp-support a {
+            color: #25D366;
+            text-decoration: none;
+            font-weight: 700;
+        }
+        
+        .timer-section {
+            background: rgba(255, 152, 0, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid #ff9800;
+        }
+        
+        .timer {
+            font-size: 32px;
+            font-weight: 700;
+            color: #ff9800;
+            margin: 10px 0;
+        }
+        
+        .warning-text {
+            color: #ff6666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .payment-summary {
+            background: linear-gradient(45deg, #ff9800, #ff2222);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .payment-summary h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .payment-summary .amount {
+            font-size: 36px;
+            font-weight: 700;
+        }
+        
         @media (max-width: 480px) {
             body { padding: 10px; padding-bottom: 75px; }
             .header h1 { font-size: 24px; }
@@ -375,6 +443,8 @@
             .bdpg-user__field input { padding: 12px 15px; font-size: 14px; }
             .verify-inside-btn { font-size: 16px; padding: 12px; }
             .pay-btn { font-size: 16px; padding: 14px; }
+            .timer { font-size: 28px; }
+            .payment-summary .amount { font-size: 30px; }
         }
     </style>
     
@@ -483,6 +553,26 @@
             }
         }
 
+        // Timer function
+        function startTimer(duration, display) {
+            let timer = duration, minutes, seconds;
+            const interval = setInterval(function () {
+                minutes = parseInt(timer / 60, 10);
+                seconds = parseInt(timer % 60, 10);
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                display.textContent = minutes + ":" + seconds;
+
+                if (--timer < 0) {
+                    clearInterval(interval);
+                    display.textContent = "00:00";
+                    document.querySelector('.warning-text').innerHTML = '⏰ সময় শেষ! পুনরায় চেষ্টা করুন।';
+                }
+            }, 1000);
+        }
+
         window.addEventListener('DOMContentLoaded', async () => {
             const output = document.getElementById('output');
             const payBtn = document.getElementById('payBtn');
@@ -543,10 +633,34 @@
                         faceValueFromDB = null;
                     }
                 }
-                // যদি faceValueFromDB না থাকে, ডিফল্ট minFace ব্যবহার করবে পরে
+            }
+
+            // Start timer
+            const timerDisplay = document.getElementById('timer');
+            if (timerDisplay) {
+                startTimer(600, timerDisplay); // 10 minutes = 600 seconds
             }
 
             output.innerHTML = `
+                <div class="payment-summary">
+                    <h3>মোট প্রদেয় পরিমাণ</h3>
+                    <div class="amount">৳ ${totalAmount}</div>
+                </div>
+
+                <div class="timer-section">
+                    <div>⏳ পেমেন্ট সম্পন্ন করার সময় বাকি</div>
+                    <div class="timer" id="timer">10:00</div>
+                    <div class="warning-text">১০ মিনিটের মধ্যে পেমেন্ট সম্পন্ন করুন</div>
+                </div>
+
+                <div class="whatsapp-support">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
+                    <div>
+                        <p>সাহায্যের জন্য WhatsApp এ যোগাযোগ করুন</p>
+                        <a href="https://wa.me/8801770584994" target="_blank">+8801770584994</a>
+                    </div>
+                </div>
+
                 <div class="card">
                     <h2 style="color:#ff9800; margin-bottom:15px; text-align:center;">📋 অর্ডার তথ্য</h2>
                     <div class="info-row"><span class="label">অর্ডার আইডি:</span><span class="value">${urlData.orderId}</span></div>
@@ -554,8 +668,19 @@
                     <div class="info-row"><span class="label">মূল্য:</span><span class="value">${productPrice} ৳</span></div>
                     <div class="info-row"><span class="label">সার্ভিস চার্জ:</span><span class="value">${serviceCharge} ৳</span></div>
                     <div class="info-row"><span class="label"><strong>সর্বমোট:</strong></span><span class="value" style="color:#ff0000;">${totalAmount} ৳</span></div>
+                    ${isVariable && faceValueFromDB ? `<div class="info-row"><span class="label">ফেস ভ্যালু:</span><span class="value">$${faceValueFromDB}</span></div>` : ''}
                 </div>
                 ${dFieldHTML}
+
+                <div class="card">
+                    <h3 style="color:#ff9800; margin-bottom:15px;">📌 পেমেন্ট নির্দেশিকা</h3>
+                    <ul style="color: #b0bec5; line-height: 1.8; padding-left: 20px;">
+                        <li>✓ সঠিক অ্যাকাউন্ট নম্বরে টাকা পাঠান</li>
+                        <li>✓ ট্রানজেকশন আইডি সংগ্রহ করুন</li>
+                        <li>✓ নিচের ফর্ম পূরণ করে VERIFY বাটনে ক্লিক করুন</li>
+                        <li>✓ পেমেন্ট কনফার্ম হয়ে গেলে ইমেইলে লিংক পাবেন</li>
+                    </ul>
+                </div>
             `;
 
             payBtn.classList.remove('hidden');
@@ -625,16 +750,13 @@
                     return;
                 }
 
-                // ফেস ভ্যালু নির্ধারণ (শুধু ডাটাবেজ থেকে)
+                // ফেস ভ্যালু নির্ধারণ
                 let faceValue = null;
                 if (isVariable) {
                     if (faceValueFromDB) {
                         faceValue = faceValueFromDB;
-                        console.log(`✅ Using faceValue from DB: $${faceValue}`);
                     } else {
-                        // ডিফল্ট minFace ব্যবহার (কিন্তু এটা হওয়া উচিত নয়, কারণ DB তে faceValue থাকার কথা)
                         faceValue = minFace;
-                        console.warn(`⚠️ No faceValue in DB, using default: $${minFace}`);
                     }
                 }
 
@@ -650,7 +772,7 @@
                         amount: 1,
                         paymentCurrency: 'USD',
                         reference: reference,
-                        firebaseOrderId: urlData.orderId  // 🔥 ফায়ারবেস অর্ডার আইডি পাঠানো হচ্ছে
+                        firebaseOrderId: urlData.orderId
                     };
                     
                     if (isVariable && faceValue) {
@@ -669,16 +791,16 @@
                         throw new Error(result.error || 'অর্ডার ব্যর্থ');
                     }
 
-                    // ✅ অটোমেটিক ব্রাউজারে লিংক ওপেন করুন
+                    // অটোমেটিক ব্রাউজারে লিংক ওপেন
                     if (result.link) {
                         window.location.href = result.link;
                     } else {
-                        // ফ্যালব্যাক: আগের মতো দেখান
                         paymentPanel.innerHTML = `
                             <div class="card" style="text-align:center; padding:40px;">
                                 <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
                                 <p>অর্ডার আইডি: ${result.trx || urlData.orderId}</p>
                                 ${isVariable ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
+                                <p>ইমেইলে কনফার্মেশন পাঠানো হয়েছে</p>
                                 <div class="spinner"></div>
                             </div>
                         `;
@@ -707,20 +829,19 @@
     <div class="container">
         <div class="header">
             <h1>EASY PREMIUM</h1>
-            <p>পেমেন্ট কনফার্মেশন</p>
+            <p>পেমেন্ট পৃষ্ঠা</p>
         </div>
         
         <div id="output"></div>
 
         <div id="paymentPanel">
-            <!-- ফেস ভ্যালু ইনপুট সরানো হয়েছে -->
             <ul class="wc_payment_methods">
                 <li class="wc_payment_method" id="method-bkash">
                     <input id="payment_method_woo_bkash" type="radio" name="payment_method" value="woo_bkash" checked>
                     <label for="payment_method_woo_bkash">bKash Personal <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Bkash.png"></label>
                     <div class="payment_box active-box" id="box-bkash">
                         <div class="instruction-note">bKash Personal Number-এ টাকা পাঠান। অ্যাকাউন্ট নম্বর এবং Transaction ID দিন।</div>
-                        <div class="bdpg-total-amount">আপনাকে মোট <b>৳ 154</b> পাঠাতে হবে</div>
+                        <div class="bdpg-total-amount">আপনাকে মোট <b>৳ <span id="bkash-amount">154</span></b> পাঠাতে হবে</div>
                         <div class="bdpg-available-accounts">
                             <div class="bdpg-s__acc"><p><span class="account-type-text">Personal</span><br><strong>bKash:</strong> <b class="account-number-text">01785926770</b> <button type="button" class="copy-btn">Copy</button></p></div>
                             <div class="bdpg-user__acc">
@@ -736,7 +857,7 @@
                     <label for="payment_method_woo_nagad">Nagad Personal <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Nagad.png"></label>
                     <div class="payment_box" id="box-nagad">
                         <div class="instruction-note">Nagad Personal Number-এ টাকা পাঠান। অ্যাকাউন্ট নম্বর এবং Transaction ID দিন।</div>
-                        <div class="bdpg-total-amount">আপনাকে মোট <b>৳ 154</b> পাঠাতে হবে</div>
+                        <div class="bdpg-total-amount">আপনাকে মোট <b>৳ <span id="nagad-amount">154</span></b> পাঠাতে হবে</div>
                         <div class="bdpg-available-accounts">
                             <div class="bdpg-s__acc"><p><span class="account-type-text">Personal</span><br><strong>Nagad:</strong> <b class="account-number-text">01338156280</b> <button type="button" class="copy-btn">Copy</button></p></div>
                             <div class="bdpg-user__acc">
@@ -752,7 +873,7 @@
                     <label for="payment_method_woo_rocket">Rocket Personal <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Rocket.png"></label>
                     <div class="payment_box" id="box-rocket">
                         <div class="instruction-note">Rocket Personal Number-এ টাকা পাঠান। অ্যাকাউন্ট নম্বর এবং Transaction ID দিন।</div>
-                        <div class="bdpg-total-amount">আপনাকে মোট <b>৳ 154</b> পাঠাতে হবে</div>
+                        <div class="bdpg-total-amount">আপনাকে মোট <b>৳ <span id="rocket-amount">154</span></b> পাঠাতে হবে</div>
                         <div class="bdpg-available-accounts">
                             <div class="bdpg-s__acc"><p><span class="account-type-text">Personal</span><br><strong>Rocket:</strong> <b class="account-number-text">014013018874</b> <button type="button" class="copy-btn">Copy</button></p></div>
                             <div class="bdpg-user__acc">
