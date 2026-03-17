@@ -17,7 +17,6 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
 
   // Extract data from request body
-  // firebaseOrderId = আপনার ফায়ারবেস অর্ডার আইডি (যেমন: RELONT3QN2T3MNCFD62)
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId } = req.body;
 
   // Validate required fields
@@ -32,7 +31,6 @@ export default async function handler(req, res) {
 
   try {
     // Parse reference to extract payment details
-    // Reference format: "METHOD|Phone:NUMBER|TXID:TRANSACTION_ID|UserID:USER_ID|Email:EMAIL"
     let paymentMethod = 'UNKNOWN';
     let phone = '', txid = '', userId = '', email = '';
     
@@ -48,12 +46,9 @@ export default async function handler(req, res) {
       });
     }
 
-    // ✅ ফায়ারবেস অর্ডার আইডি ব্যবহার করুন (যদি দেওয়া থাকে)
-    // যদি firebaseOrderId না থাকে, তাহলে নতুন জেনারেট করুন
-    const finalOrderId = firebaseOrderId || 'REL' + Math.random().toString(36).substring(2, 15).toUpperCase() + 
-                         Date.now().toString(36).toUpperCase();
+    // Use Firebase order ID if provided
+    const finalOrderId = firebaseOrderId || 'REL' + Math.random().toString(36).substring(2, 15).toUpperCase();
 
-    // Get current time
     const currentTime = new Date().toISOString();
 
     // Prepare data for Base64 encoding
@@ -83,15 +78,12 @@ export default async function handler(req, res) {
       const faceValueNum = parseFloat(faceValue);
       if (!isNaN(faceValueNum) && faceValueNum > 0) {
         items[0].faceValue = faceValueNum;
-      } else {
-        return res.status(400).json({ error: 'Face value must be a positive number' });
       }
     }
 
-    // ✅ Relograde API-তে পাঠানোর জন্য reference তৈরি করুন
-    // এখানে আমরা ফায়ারবেস অর্ডার আইডি এবং অন্যান্য তথ্য সংযুক্ত করছি
+    // Create reference for Relograde API with Firebase order ID
     const relogradeReference = JSON.stringify({
-      firebaseOrderId: finalOrderId,        // আপনার ফায়ারবেস অর্ডার আইডি
+      firebaseOrderId: finalOrderId,
       paymentMethod: paymentMethod,
       phone: phone,
       txid: txid,
@@ -104,7 +96,7 @@ export default async function handler(req, res) {
     const requestBody = {
       items,
       paymentCurrency: paymentCurrency.toLowerCase(),
-      reference: relogradeReference  // এখানে আপনার কাস্টম ডাটা JSON স্ট্রিং হিসেবে পাঠানো হচ্ছে
+      reference: relogradeReference
     };
 
     // Call Relograde API
@@ -128,20 +120,16 @@ export default async function handler(req, res) {
     const jsonString = JSON.stringify(orderData);
     const base64Data = Buffer.from(jsonString).toString('base64');
     
-    // Create the URL with Base64 encoded data
-    // Determine base URL based on environment
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
-    
-    const orderLink = `${baseUrl}https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
+    // ✅ ফিক্সড লিংক - শুধুমাত্র easy-premium.com ডোমেইন ব্যবহার করা হয়েছে
+    // কোন extra ডোমেইন যোগ হচ্ছে না
+    const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
-    // Return success response with the generated link
+    // Return success response
     return res.status(200).json({
       success: true,
-      trx: finalOrderId,                    // আপনার ফায়ারবেস অর্ডার আইডি
+      trx: finalOrderId,
       message: 'Order created successfully',
-      link: orderLink,
+      link: orderLink,  // ✅ এই লিংকটি ক্লায়েন্টে পাঠানো হবে
       relogradeResponse: relogradeData,
       orderData: {
         orderId: finalOrderId,
