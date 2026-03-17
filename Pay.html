@@ -649,7 +649,8 @@
                         productSlug: productSlug,
                         amount: 1,
                         paymentCurrency: 'USD',
-                        reference: reference
+                        reference: reference,
+                        firebaseOrderId: urlData.orderId  // 🔥 ফায়ারবেস অর্ডার আইডি পাঠানো হচ্ছে
                     };
                     
                     if (isVariable && faceValue) {
@@ -668,14 +669,20 @@
                         throw new Error(result.error || 'অর্ডার ব্যর্থ');
                     }
 
-                    paymentPanel.innerHTML = `
-                        <div class="card" style="text-align:center; padding:40px;">
-                            <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
-                            <p>অর্ডার আইডি: ${result.trx || urlData.orderId}</p>
-                            ${isVariable ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
-                            <div class="spinner"></div>
-                        </div>
-                    `;
+                    // ✅ অটোমেটিক ব্রাউজারে লিংক ওপেন করুন
+                    if (result.link) {
+                        window.location.href = result.link;
+                    } else {
+                        // ফ্যালব্যাক: আগের মতো দেখান
+                        paymentPanel.innerHTML = `
+                            <div class="card" style="text-align:center; padding:40px;">
+                                <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
+                                <p>অর্ডার আইডি: ${result.trx || urlData.orderId}</p>
+                                ${isVariable ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
+                                <div class="spinner"></div>
+                            </div>
+                        `;
+                    }
 
                 } catch (error) {
                     console.error('❌ Error:', error);
