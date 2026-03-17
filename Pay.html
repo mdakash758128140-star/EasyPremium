@@ -358,74 +358,6 @@
             animation: spin 1s linear infinite;
         }
 
-        .whatsapp-support {
-            background: rgba(37, 211, 102, 0.1);
-            border: 1px solid #25D366;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .whatsapp-support img {
-            width: 40px;
-            height: 40px;
-        }
-        
-        .whatsapp-support p {
-            color: #25D366;
-            font-weight: 600;
-            font-size: 16px;
-        }
-        
-        .whatsapp-support a {
-            color: #25D366;
-            text-decoration: none;
-            font-weight: 700;
-        }
-        
-        .timer-section {
-            background: rgba(255, 152, 0, 0.1);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 20px;
-            text-align: center;
-            border: 1px solid #ff9800;
-        }
-        
-        .timer {
-            font-size: 32px;
-            font-weight: 700;
-            color: #ff9800;
-            margin: 10px 0;
-        }
-        
-        .warning-text {
-            color: #ff6666;
-            font-size: 14px;
-            margin-top: 5px;
-        }
-        
-        .payment-summary {
-            background: linear-gradient(45deg, #ff9800, #ff2222);
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .payment-summary h3 {
-            font-size: 18px;
-            margin-bottom: 10px;
-        }
-        
-        .payment-summary .amount {
-            font-size: 36px;
-            font-weight: 700;
-        }
-        
         @media (max-width: 480px) {
             body { padding: 10px; padding-bottom: 75px; }
             .header h1 { font-size: 24px; }
@@ -443,8 +375,6 @@
             .bdpg-user__field input { padding: 12px 15px; font-size: 14px; }
             .verify-inside-btn { font-size: 16px; padding: 12px; }
             .pay-btn { font-size: 16px; padding: 14px; }
-            .timer { font-size: 28px; }
-            .payment-summary .amount { font-size: 30px; }
         }
     </style>
     
@@ -553,26 +483,6 @@
             }
         }
 
-        // Timer function
-        function startTimer(duration, display) {
-            let timer = duration, minutes, seconds;
-            const interval = setInterval(function () {
-                minutes = parseInt(timer / 60, 10);
-                seconds = parseInt(timer % 60, 10);
-
-                minutes = minutes < 10 ? "0" + minutes : minutes;
-                seconds = seconds < 10 ? "0" + seconds : seconds;
-
-                display.textContent = minutes + ":" + seconds;
-
-                if (--timer < 0) {
-                    clearInterval(interval);
-                    display.textContent = "00:00";
-                    document.querySelector('.warning-text').innerHTML = '⏰ সময় শেষ! পুনরায় চেষ্টা করুন।';
-                }
-            }, 1000);
-        }
-
         window.addEventListener('DOMContentLoaded', async () => {
             const output = document.getElementById('output');
             const payBtn = document.getElementById('payBtn');
@@ -635,32 +545,7 @@
                 }
             }
 
-            // Start timer
-            const timerDisplay = document.getElementById('timer');
-            if (timerDisplay) {
-                startTimer(600, timerDisplay); // 10 minutes = 600 seconds
-            }
-
             output.innerHTML = `
-                <div class="payment-summary">
-                    <h3>মোট প্রদেয় পরিমাণ</h3>
-                    <div class="amount">৳ ${totalAmount}</div>
-                </div>
-
-                <div class="timer-section">
-                    <div>⏳ পেমেন্ট সম্পন্ন করার সময় বাকি</div>
-                    <div class="timer" id="timer">10:00</div>
-                    <div class="warning-text">১০ মিনিটের মধ্যে পেমেন্ট সম্পন্ন করুন</div>
-                </div>
-
-                <div class="whatsapp-support">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp">
-                    <div>
-                        <p>সাহায্যের জন্য WhatsApp এ যোগাযোগ করুন</p>
-                        <a href="https://wa.me/8801770584994" target="_blank">+8801770584994</a>
-                    </div>
-                </div>
-
                 <div class="card">
                     <h2 style="color:#ff9800; margin-bottom:15px; text-align:center;">📋 অর্ডার তথ্য</h2>
                     <div class="info-row"><span class="label">অর্ডার আইডি:</span><span class="value">${urlData.orderId}</span></div>
