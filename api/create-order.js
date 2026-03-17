@@ -16,6 +16,11 @@ export default async function handler(req, res) {
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
 
+  // EmailJS configuration
+  const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_uknjS0j';
+  const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || 'template_gdvntij';
+  const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || 'U1IOSVkl_OR1gRFVn';
+
   // Extract data from request body
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId } = req.body;
 
@@ -50,13 +55,24 @@ export default async function handler(req, res) {
     const finalOrderId = firebaseOrderId || 'REL' + Math.random().toString(36).substring(2, 15).toUpperCase();
 
     const currentTime = new Date().toISOString();
+    
+    // Format date for Bangladesh
+    const formattedDate = new Date(currentTime).toLocaleDateString('bn-BD', {
+      timeZone: 'Asia/Dhaka',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    // Format price with currency
+    const formattedPrice = `${amountInt} ${paymentCurrency}`;
 
     // Prepare data for Base64 encoding
     const orderData = {
       OrderId: finalOrderId,
       PaymentMethods: paymentMethod,
-      PaymentNumber: phone,
-      PaymentTrxID: txid,
+      PaymentNumber: phone || 'N/A',
+      PaymentTrxID: txid || 'N/A',
       Time: currentTime,
       email: email,
       platformId: productSlug,
@@ -120,16 +136,80 @@ export default async function handler(req, res) {
     const jsonString = JSON.stringify(orderData);
     const base64Data = Buffer.from(jsonString).toString('base64');
     
-    // ✅ ফিক্সড লিংক - শুধুমাত্র easy-premium.com ডোমেইন ব্যবহার করা হয়েছে
-    // কোন extra ডোমেইন যোগ হচ্ছে না
+    // ✅ ফিক্সড লিংক - শুধুমাত্র easy-premium.com ডোমেইন
     const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
+
+    // ✅ ইমেইজ পাঠানোর ফাংশন - আপনার টেমপ্লেট অনুযায়ী
+    async function sendEmailWithLink() {
+      if (!email) {
+        console.log('No email provided, skipping email notification');
+        return false;
+      }
+
+      try {
+        // EmailJS API endpoint
+        const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
+        
+        // Prepare email template parameters - আপনার টেমপ্লেট অনুযায়ী
+        const templateParams = {
+          to_name: userId || 'Valued Customer',
+          order_id: finalOrderId,
+          platform: productSlug,
+          price: formattedPrice,
+          price2: '০ ৳', // Service charge (if needed)
+          order_date: formattedDate,
+          payment_link: orderLink,
+          to_email: email,
+          from_name: 'Easy Premium',
+          reply_to: 'support@easy-premium.com'
+        };
+
+        // Send email via EmailJS
+        const emailResponse = await fetch(emailjsUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            service_id: EMAILJS_SERVICE_ID,
+            template_id: EMAILJS_TEMPLATE_ID,
+            user_id: EMAILJS_PUBLIC_KEY,
+            template_params: templateParams
+          })
+        });
+
+        const responseText = await emailResponse.text();
+        
+        if (!emailResponse.ok) {
+          console.error('EmailJS error response:', responseText);
+          return false;
+        }
+
+        console.log(`✅ Email sent successfully to ${email}`);
+        console.log('EmailJS response:', responseText);
+        return true;
+      } catch (emailError) {
+        console.error('Error sending email:', emailError);
+        return false;
+      }
+    }
+
+    // ইমেইল পাঠান (async - কিন্তু response এর জন্য অপেক্ষা না করে)
+    let emailSent = false;
+    if (email) {
+      sendEmailWithLink().then(sent => {
+        emailSent = sent;
+        console.log(`📧 Order confirmation email ${sent ? 'sent' : 'failed'} to ${email}`);
+      });
+    }
 
     // Return success response
     return res.status(200).json({
       success: true,
       trx: finalOrderId,
       message: 'Order created successfully',
-      link: orderLink,  // ✅ এই লিংকটি ক্লায়েন্টে পাঠানো হবে
+      link: orderLink,
+      emailSent: email ? true : false,
       relogradeResponse: relogradeData,
       orderData: {
         orderId: finalOrderId,
