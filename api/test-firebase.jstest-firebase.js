@@ -1,7 +1,7 @@
 // api/test-firebase.js
 const admin = require('firebase-admin');
 
-// Firebase Service Account (আপনার JSON থেকে)
+
 const serviceAccount = {
   type: "service_account",
   project_id: "easy-premium",
