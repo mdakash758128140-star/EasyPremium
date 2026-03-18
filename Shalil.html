@@ -239,6 +239,16 @@
         .orders-table td {
             padding: 15px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .orders-table tr:hover td {
+            background: rgba(255, 152, 0, 0.1);
+        }
+        
+        .orders-table tr:active td {
+            background: rgba(255, 152, 0, 0.2);
         }
         
         .status-badge {
@@ -392,6 +402,146 @@
         .error-container i {
             font-size: 3rem;
             margin-bottom: 15px;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10001;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 2px solid #ff9800;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #ff9800;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .modal-close:hover {
+            color: #ff5722;
+            transform: scale(1.1);
+        }
+        
+        .modal-title {
+            color: #ff9800;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255, 152, 0, 0.3);
+        }
+        
+        .modal-info {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .modal-info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 152, 0, 0.2);
+        }
+        
+        .modal-info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .modal-info-label {
+            color: #b0bec5;
+            font-weight: 600;
+        }
+        
+        .modal-info-value {
+            color: #ffb74d;
+            font-weight: 700;
+            text-align: right;
+            max-width: 60%;
+            word-break: break-word;
+        }
+        
+        .link-box {
+            background: rgba(0, 188, 212, 0.1);
+            border: 2px solid #00bcd4;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            word-break: break-all;
+        }
+        
+        .link-box a {
+            color: #00bcd4;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        
+        .link-box a:hover {
+            text-decoration: underline;
+        }
+        
+        .copy-link-btn {
+            background: linear-gradient(45deg, #4caf50, #45a049);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+        
+        .copy-link-btn:hover {
+            background: linear-gradient(45deg, #45a049, #4caf50);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .timestamp-note {
+            background: rgba(255, 152, 0, 0.1);
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #b0bec5;
+        }
+        
+        .timestamp-note strong {
+            color: #ff9800;
         }
         
         @media (max-width: 768px) {
@@ -598,6 +748,67 @@
         </div>
     </div>
 
+    <!-- 🔥 অর্ডার ডিটেইলস মোডাল - নতুন যোগ করা হয়েছে -->
+    <div class="modal" id="orderModal">
+        <div class="modal-content">
+            <button class="modal-close" id="closeModalBtn">&times;</button>
+            
+            <h2 class="modal-title">
+                <i class="fas fa-link" style="margin-right: 10px;"></i>
+                অর্ডার লিংক জেনারেট
+            </h2>
+            
+            <div class="modal-info" id="modalOrderInfo">
+                <div class="modal-info-item">
+                    <span class="modal-info-label">TRX ID:</span>
+                    <span class="modal-info-value" id="modalTrx">-</span>
+                </div>
+                <div class="modal-info-item">
+                    <span class="modal-info-label">স্ট্যাটাস:</span>
+                    <span class="modal-info-value" id="modalStatus">-</span>
+                </div>
+                <div class="modal-info-item">
+                    <span class="modal-info-label">আইটেম:</span>
+                    <span class="modal-info-value" id="modalItems">-</span>
+                </div>
+                <div class="modal-info-item">
+                    <span class="modal-info-label">মোট দাম:</span>
+                    <span class="modal-info-value" id="modalPrice">-</span>
+                </div>
+                <div class="modal-info-item">
+                    <span class="modal-info-label">রেফারেন্স:</span>
+                    <span class="modal-info-value" id="modalReference">-</span>
+                </div>
+                <div class="modal-info-item">
+                    <span class="modal-info-label">তারিখ:</span>
+                    <span class="modal-info-value" id="modalDate">-</span>
+                </div>
+                <div class="modal-info-item">
+                    <span class="modal-info-label">কারেন্সি:</span>
+                    <span class="modal-info-value" id="modalCurrency">-</span>
+                </div>
+            </div>
+            
+            <!-- 🔥 জেনারেটেড লিংক -->
+            <div id="linkContainer">
+                <div class="link-box" id="generatedLinkBox">
+                    <a href="#" id="generatedLink" target="_blank">লিংক জেনারেট হচ্ছে...</a>
+                </div>
+                
+                <button class="copy-link-btn" id="copyLinkBtn">
+                    <i class="fas fa-copy" style="margin-right: 8px;"></i>
+                    লিংক কপি করুন
+                </button>
+            </div>
+            
+            <!-- 🔥 টাইমস্ট্যাম্প নোট -->
+            <div class="timestamp-note" id="timestampNote">
+                <strong><i class="far fa-clock" style="margin-right: 5px;"></i>লিংক ওপেন করার সময়:</strong> 
+                <span id="accessTime">-</span>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Firebase Configuration
         const firebaseConfig = {
@@ -646,11 +857,26 @@
         const orderFilter = document.getElementById('orderFilter');
         const orderSearch = document.getElementById('orderSearch');
         const dateFilter = document.getElementById('dateFilter');
+        
+        // Modal Elements
+        const orderModal = document.getElementById('orderModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const modalTrx = document.getElementById('modalTrx');
+        const modalStatus = document.getElementById('modalStatus');
+        const modalItems = document.getElementById('modalItems');
+        const modalPrice = document.getElementById('modalPrice');
+        const modalReference = document.getElementById('modalReference');
+        const modalDate = document.getElementById('modalDate');
+        const modalCurrency = document.getElementById('modalCurrency');
+        const generatedLink = document.getElementById('generatedLink');
+        const copyLinkBtn = document.getElementById('copyLinkBtn');
+        const accessTime = document.getElementById('accessTime');
 
         // Variables
         let orders = [];
         let currentAdminEmail = null;
         let onlineStatusInterval = null;
+        let currentOrder = null;
 
         // Allowed Admin Emails
         const ALLOWED_ADMIN_EMAILS = [
@@ -682,6 +908,18 @@
             orderFilter.addEventListener('change', filterAndDisplayOrders);
             orderSearch.addEventListener('input', filterAndDisplayOrders);
             dateFilter.addEventListener('change', filterAndDisplayOrders);
+            
+            closeModalBtn.addEventListener('click', () => {
+                orderModal.classList.remove('active');
+            });
+            
+            window.addEventListener('click', (e) => {
+                if (e.target === orderModal) {
+                    orderModal.classList.remove('active');
+                }
+            });
+            
+            copyLinkBtn.addEventListener('click', copyLinkToClipboard);
         }
         
         function checkAdminAuth() {
@@ -954,7 +1192,7 @@
             
             let html = '';
             
-            ordersList.slice(0, 50).forEach(order => { // Show only first 50
+            ordersList.slice(0, 50).forEach(order => {
                 const orderDate = order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD', {
                     year: 'numeric',
                     month: 'short',
@@ -987,7 +1225,7 @@
                 const reference = order.reference || '—';
                 
                 html += `
-                    <tr>
+                    <tr onclick="showOrderModal('${order.trx || ''}')" style="cursor: pointer;">
                         <td style="font-family: monospace; font-size: 0.9rem;">${order.trx || 'N/A'}</td>
                         <td style="font-size: 0.85rem;">${orderDate}</td>
                         <td><span class="status-badge ${statusClass}">${statusText}</span></td>
@@ -1000,6 +1238,126 @@
             });
             
             ordersTable.innerHTML = html;
+        }
+        
+        // 🔥 অর্ডার মোডাল দেখানোর ফাংশন
+        window.showOrderModal = function(trxId) {
+            const order = orders.find(o => o.trx === trxId);
+            if (!order) {
+                showToast('অর্ডার পাওয়া যায়নি', 'error');
+                return;
+            }
+            
+            currentOrder = order;
+            
+            // মোডালে তথ্য দেখান
+            modalTrx.textContent = order.trx || 'N/A';
+            
+            let statusText = order.orderStatus || 'unknown';
+            if (statusText === 'finished') {
+                statusText = 'সম্পূর্ণ';
+            } else if (statusText === 'cancelled') {
+                statusText = 'ক্যানসেল';
+            } else if (statusText === 'created') {
+                statusText = 'পেন্ডিং';
+            }
+            modalStatus.textContent = statusText;
+            
+            const items = order.items || [];
+            const itemsList = items.map(item => 
+                `${item.product?.name || item.productSlug} x${item.amount}`
+            ).join(', ') || '—';
+            modalItems.textContent = itemsList;
+            
+            const totalPrice = order.priceInclVat || order.priceAmount || 0;
+            const currency = order.priceCurrency || 'USD';
+            modalPrice.textContent = `${totalPrice} ${currency}`;
+            modalCurrency.textContent = order.paymentCurrency || currency;
+            
+            const reference = order.reference || '—';
+            modalReference.textContent = reference;
+            
+            const orderDate = order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            }) : 'তারিখ নেই';
+            modalDate.textContent = orderDate;
+            
+            // 🔥 Base64 লিংক জেনারেট
+            generateOrderLink(order);
+            
+            // মোডাল দেখান
+            orderModal.classList.add('active');
+        };
+        
+        // 🔥 Base64 লিংক জেনারেট করার ফাংশন
+        function generateOrderLink(order) {
+            const now = new Date();
+            
+            // অর্ডার ডাটা প্রস্তুত
+            const orderData = {
+                OrderId: order.trx || 'N/A',
+                PaymentMethods: 'Relograde',
+                PaymentNumber: 'N/A',
+                PaymentTrxID: order.trx || 'N/A',
+                Time: now.toISOString(),
+                email: 'admin@easy-premium.com',
+                platformId: order.items?.[0]?.productSlug || 'unknown',
+                platformName: order.items?.[0]?.product?.name || order.items?.[0]?.productSlug || 'Unknown',
+                uid: 'admin',
+                amount: order.priceAmount || 0,
+                currency: order.priceCurrency || 'USD',
+                serviceCharge: 0,
+                totalAmount: order.priceInclVat || order.priceAmount || 0,
+                faceValue: null,
+                status: order.orderStatus || 'pending',
+                reference: order.reference || '',
+                adminAccess: true,
+                accessedBy: currentAdminEmail,
+                accessedAt: now.toISOString()
+            };
+            
+            // Base64 এ এনকোড
+            const jsonString = JSON.stringify(orderData);
+            const base64Data = btoa(unescape(encodeURIComponent(jsonString)));
+            
+            // লিংক তৈরি
+            const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
+            
+            generatedLink.href = orderLink;
+            generatedLink.textContent = orderLink;
+            
+            // টাইমস্ট্যাম্প নোট আপডেট
+            const banglaTime = now.toLocaleString('bn-BD', {
+                timeZone: 'Asia/Dhaka',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            accessTime.textContent = `${banglaTime} (এডমিন: ${currentAdminEmail || 'Unknown'})`;
+        }
+        
+        // 🔥 লিংক কপি করার ফাংশন
+        function copyLinkToClipboard() {
+            const link = generatedLink.href;
+            if (!link || link === '#') {
+                showToast('কোন লিংক জেনারেট হয়নি', 'error');
+                return;
+            }
+            
+            navigator.clipboard.writeText(link).then(() => {
+                showToast('লিংক কপি করা হয়েছে!', 'success');
+            }).catch(() => {
+                showToast('কপি করতে সমস্যা হয়েছে', 'error');
+            });
         }
         
         function updateStats(ordersList) {
