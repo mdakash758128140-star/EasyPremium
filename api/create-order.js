@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
   const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
-  // Extract data from request body
+  // Extract data from request body - এডমিন নম্বর যোগ করা হয়েছে
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId, serviceCharge, adminNumber } = req.body;
 
   // Validate required fields
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Parse reference to extract payment details
+    // Parse reference to extract payment details - এডমিন নম্বর যোগ করা হয়েছে
     let paymentMethod = 'UNKNOWN';
     let phone = '', txid = '', userId = '', email = '', refAdminNumber = '';
     
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // ✅ এডমিন নম্বর নির্ধারণ
+    // ✅ এডমিন নম্বর নির্ধারণ (প্রথমে request body থেকে, তারপর reference থেকে)
     const finalAdminNumber = adminNumber || refAdminNumber || '01785926770';
 
     // Use Firebase order ID if provided
@@ -69,21 +69,13 @@ export default async function handler(req, res) {
       day: 'numeric'
     });
 
-    // ✅ সার্ভিস চার্জ
-    const serviceChargeInt = serviceCharge ? parseInt(serviceCharge) : 0;
-    
-    // ✅ মোট মূল্য
-    const totalAmount = amountInt + serviceChargeInt;
-
-    // Format price with currency - USD
-    const formattedPrice = `${amountInt} USD`;
-    const formattedServiceCharge = `${serviceChargeInt} USD`;
-    const formattedTotalPrice = `${totalAmount} USD`;
+    // Format price with currency
+    const formattedPrice = `${amountInt} ${paymentCurrency}`;
 
     // Get platform name
     const platformName = productSlug.includes('variable') ? 'Rewarble Visa Variable USD' : productSlug;
 
-    // Prepare data for Base64 encoding
+    // Prepare data for Base64 encoding - এডমিন নম্বর যোগ করা হয়েছে
     const orderData = {
       OrderId: finalOrderId,
       PaymentMethods: paymentMethod,
@@ -92,21 +84,18 @@ export default async function handler(req, res) {
       Time: currentTime,
       email: email,
       platformId: productSlug,
-      platformName: platformName,
       uid: userId || 'guest',
       amount: amountInt,
-      currency: 'USD',  // ✅ USD ব্যবহার করা হয়েছে
-      serviceCharge: serviceChargeInt,
-      totalAmount: totalAmount,
+      currency: paymentCurrency,
       faceValue: faceValue || null,
       status: 'pending',
-      adminNumber: finalAdminNumber
+      adminNumber: finalAdminNumber  // ✅ এডমিন নম্বর
     };
 
-    // ✅ FIX: Relograde API-তে সবসময় amount: 1 পাঠাতে হবে (quantity)
+    // Create items array for Relograde API - কোয়ান্টিটি ফিক্স
     const items = [{
       productSlug,
-      amount: 1  // ✅ quantity = 1
+      amount: 1  // ✅ quantity = 1 (এটাই সঠিক)
     }];
 
     // Add faceValue if provided and valid
@@ -117,7 +106,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ✅ Create reference for Relograde API with all details
+    // Create reference for Relograde API with all details - এডমিন নম্বর সহ
     const relogradeReference = JSON.stringify({
       firebaseOrderId: finalOrderId,
       paymentMethod: paymentMethod,
@@ -126,11 +115,9 @@ export default async function handler(req, res) {
       userId: userId,
       email: email,
       timestamp: currentTime,
-      actualAmount: amountInt,        // ✅ আসল মূল্য (614 USD)
-      serviceCharge: serviceChargeInt,
-      totalAmount: totalAmount,
-      adminNumber: finalAdminNumber,
-      quantity: 1
+      adminNumber: finalAdminNumber,  // ✅ এডমিন নম্বর
+      actualAmount: amountInt,        // আসল মূল্য
+      quantity: 1                      // quantity = 1
     });
 
     // Prepare request for Relograde API
@@ -164,7 +151,7 @@ export default async function handler(req, res) {
     // ✅ ফিক্সড লিংক
     const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
-    // ✅ ইমেইল পাঠানোর ফাংশন
+    // ✅ ইমেইল পাঠানোর ফাংশন - এডমিন নম্বর সহ
     async function sendEmailWithLink() {
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
         console.log('❌ EmailJS credentials missing');
@@ -180,18 +167,16 @@ export default async function handler(req, res) {
         // EmailJS API endpoint
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
-        // ✅ টেমপ্লেট প্যারামিটার - USD সহ
+        // টেমপ্লেট প্যারামিটার - এডমিন নম্বর সহ
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
           order_id: finalOrderId,
           platform: platformName,
-          price: formattedPrice,                 // 614 USD
-          service_charge: formattedServiceCharge, // 0 USD
-          total_price: formattedTotalPrice,       // 614 USD
+          price: formattedPrice,
           order_date: formattedDate,
           payment_link: orderLink,
-          admin_number: finalAdminNumber,
+          admin_number: finalAdminNumber,  // ✅ এডমিন নম্বর
           from_name: 'Easy Premium',
           reply_to: 'support@easy-premium.com'
         };
@@ -248,12 +233,8 @@ export default async function handler(req, res) {
         time: currentTime,
         email: email,
         platformId: productSlug,
-        platformName: platformName,
-        amount: amountInt,
-        serviceCharge: serviceChargeInt,
-        totalAmount: totalAmount,
         faceValue: faceValue || null,
-        adminNumber: finalAdminNumber
+        adminNumber: finalAdminNumber  // ✅ এডমিন নম্বর
       }
     });
 
