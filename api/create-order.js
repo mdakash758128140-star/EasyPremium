@@ -110,6 +110,7 @@ export default async function handler(req, res) {
       txid: txid,
       userId: userId,
       email: email,
+      admin: admin,
       timestamp: currentTime
     });
 
