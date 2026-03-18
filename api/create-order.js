@@ -75,10 +75,10 @@ export default async function handler(req, res) {
     // ✅ মোট মূল্য
     const totalAmount = amountInt + serviceChargeInt;
 
-    // Format price with currency
-    const formattedPrice = `${amountInt} ৳`;
-    const formattedServiceCharge = `${serviceChargeInt} ৳`;
-    const formattedTotalPrice = `${totalAmount} ৳`;
+    // Format price with currency - USD
+    const formattedPrice = `${amountInt} USD`;
+    const formattedServiceCharge = `${serviceChargeInt} USD`;
+    const formattedTotalPrice = `${totalAmount} USD`;
 
     // Get platform name
     const platformName = productSlug.includes('variable') ? 'Rewarble Visa Variable USD' : productSlug;
@@ -95,18 +95,18 @@ export default async function handler(req, res) {
       platformName: platformName,
       uid: userId || 'guest',
       amount: amountInt,
-      currency: 'BDT',
+      currency: 'USD',  // ✅ USD ব্যবহার করা হয়েছে
       serviceCharge: serviceChargeInt,
       totalAmount: totalAmount,
       faceValue: faceValue || null,
       status: 'pending',
-      adminNumber: finalAdminNumber  // ✅ এডমিন নম্বর
+      adminNumber: finalAdminNumber
     };
 
     // ✅ FIX: Relograde API-তে সবসময় amount: 1 পাঠাতে হবে (quantity)
     const items = [{
       productSlug,
-      amount: 1  // ✅ quantity = 1 (এটাই ঠিক)
+      amount: 1  // ✅ quantity = 1
     }];
 
     // Add faceValue if provided and valid
@@ -126,11 +126,11 @@ export default async function handler(req, res) {
       userId: userId,
       email: email,
       timestamp: currentTime,
-      actualAmount: amountInt,        // ✅ আসল মূল্য (614)
+      actualAmount: amountInt,        // ✅ আসল মূল্য (614 USD)
       serviceCharge: serviceChargeInt,
       totalAmount: totalAmount,
-      adminNumber: finalAdminNumber,   // ✅ এডমিন নম্বর
-      quantity: 1                      // ✅ quantity = 1
+      adminNumber: finalAdminNumber,
+      quantity: 1
     });
 
     // Prepare request for Relograde API
@@ -180,18 +180,18 @@ export default async function handler(req, res) {
         // EmailJS API endpoint
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
-        // ✅ টেমপ্লেট প্যারামিটার - সব তথ্য সহ
+        // ✅ টেমপ্লেট প্যারামিটার - USD সহ
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
           order_id: finalOrderId,
           platform: platformName,
-          price: formattedPrice,
-          service_charge: formattedServiceCharge,
-          total_price: formattedTotalPrice,
+          price: formattedPrice,                 // 614 USD
+          service_charge: formattedServiceCharge, // 0 USD
+          total_price: formattedTotalPrice,       // 614 USD
           order_date: formattedDate,
           payment_link: orderLink,
-          admin_number: finalAdminNumber,  // ✅ এডমিন নম্বর
+          admin_number: finalAdminNumber,
           from_name: 'Easy Premium',
           reply_to: 'support@easy-premium.com'
         };
@@ -253,7 +253,7 @@ export default async function handler(req, res) {
         serviceCharge: serviceChargeInt,
         totalAmount: totalAmount,
         faceValue: faceValue || null,
-        adminNumber: finalAdminNumber  // ✅ এডমিন নম্বর
+        adminNumber: finalAdminNumber
       }
     });
 
