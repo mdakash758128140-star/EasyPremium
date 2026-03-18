@@ -143,7 +143,7 @@ export default async function handler(req, res) {
     const base64Data = Buffer.from(jsonString).toString('base64');
     
     // ✅ ফিক্সড লিংক
-    const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
+    const orderLink = `https://www.easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
     // ✅ ইমেইল পাঠানোর ফাংশন - Private Key সহ
     async function sendEmailWithLink() {
