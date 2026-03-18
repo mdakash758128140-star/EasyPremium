@@ -49,6 +49,7 @@ export default async function handler(req, res) {
         if (part.startsWith('TXID:')) txid = part.replace('TXID:', '');
         if (part.startsWith('UserID:')) userId = part.replace('UserID:', '');
         if (part.startsWith('Email:')) email = part.replace('Email:', '');
+        if (part.startsWith('Admin:')) email = part.replace('Admin:', '');
       });
     }
 
