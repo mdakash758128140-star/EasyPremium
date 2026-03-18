@@ -1,7 +1,7 @@
 {
   "redirects": [
     {
-      "source": "/((?!Pay\\.html|index\\.html|robots\\.txt|favicon\\.ico).+)",
+      "source": "/((?!Pay\\.html|Checking\\.html|index\\.html|AccountDelete\\.html|Shalil\\.html|Admin\\.html|Profile\\.html).*)",
       "destination": "https://www.easy-premium.com",
       "permanent": true
     }
