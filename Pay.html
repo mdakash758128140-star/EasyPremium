@@ -12,7 +12,6 @@
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
     
     <style>
-        /* আপনার দেওয়া সম্পূর্ণ CSS অপরিবর্তিত থাকবে */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         html, body { 
@@ -129,10 +128,8 @@
             box-shadow: 0 -5px 25px rgba(255, 152, 0, 0.5);
         }
         
-        .pay-btn.disabled, .pay-btn:disabled {
-            opacity: 0.5;
-            pointer-events: none;
-            cursor: not-allowed;
+        .pay-btn.hidden {
+            display: none !important;
         }
         
         #paymentPanel {
@@ -365,18 +362,6 @@
             animation: spin 1s linear infinite;
         }
 
-        /* নতুন: এডমিন অফলাইন মেসেজ */
-        .admin-offline-message {
-            background: rgba(255, 0, 0, 0.2);
-            border: 1px solid #ff4444;
-            color: #ff8888;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 20px;
-            display: none;
-        }
-
         @media (max-width: 480px) {
             body { padding: 10px; padding-bottom: 75px; }
             .header h1 { font-size: 24px; }
@@ -443,97 +428,84 @@
             return num;
         }
 
-        // এডমিন অনলাইন/অফলাইন ট্র্যাক করার ভেরিয়েবল
-        let isAnyAdminOnline = false;
-        const payBtn = document.getElementById('payBtn');
-        const verifyBtn = document.getElementById('verifyInsideBtn');
-        const adminOfflineMessage = document.createElement('div'); // আমরা পরে যোগ করব
-
-        function updateAdminStatus() {
-            const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
-            
-            // publicAdminInfo রেফারেন্সে রিয়েল-টাইম লিসেনার
-            database.ref('publicAdminInfo').on('value', (snapshot) => {
+        async function setActiveAdminNumber() {
+            try {
+                const snapshot = await database.ref('publicAdminInfo').once('value');
                 const admins = snapshot.val() || {};
-                let onlineFound = false;
-                let latestNumber = null;
+                const now = new Date();
+                const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+                
+                let activeNumber = null;
                 let latestTime = 0;
 
                 for (let uid in admins) {
                     const admin = admins[uid];
-                    if (admin.lastActive) {
-                        const lastActive = new Date(admin.lastActive);
-                        if (lastActive >= new Date(Date.now() - 60 * 1000)) {
-                            onlineFound = true;
-                            if (lastActive.getTime() > latestTime) {
-                                latestTime = lastActive.getTime();
-                                latestNumber = admin.number;
-                            }
-                        }
+                    if (!admin.lastActive) continue;
+                    const lastActive = new Date(admin.lastActive);
+                    if (lastActive >= oneMinuteAgo && lastActive.getTime() > latestTime) {
+                        latestTime = lastActive.getTime();
+                        activeNumber = admin.number;
                     }
                 }
 
-                isAnyAdminOnline = onlineFound;
-
-                // এডমিন নম্বর আপডেট করা (যদি থাকে)
-                const formattedNumber = latestNumber ? formatPhoneNumber(latestNumber) : '01785926770';
-                document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formattedNumber);
-                document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formattedNumber));
-
-                // বাটনগুলোর অবস্থা পরিবর্তন
-                toggleButtonsBasedOnAdminStatus();
-            });
-        }
-
-        function toggleButtonsBasedOnAdminStatus() {
-            // পেমেন্ট কনফার্ম বাটন (payBtn) এবং VERIFY বাটন (verifyBtn) এর দৃশ্যমানতা/সক্রিয়তা
-            if (!isAnyAdminOnline) {
-                // এডমিন অফলাইন: বাটন নিষ্ক্রিয়/লুকান
-                if (payBtn) {
-                    payBtn.disabled = true;
-                    payBtn.classList.add('disabled');
-                    payBtn.style.opacity = '0.5';
-                    payBtn.style.pointerEvents = 'none';
-                }
-                if (verifyBtn) {
-                    verifyBtn.disabled = true;
-                    verifyBtn.style.opacity = '0.5';
-                    verifyBtn.style.pointerEvents = 'none';
-                }
-                // অফলাইন মেসেজ দেখান
-                if (!document.getElementById('adminOfflineMsg')) {
-                    const msg = document.createElement('div');
-                    msg.id = 'adminOfflineMsg';
-                    msg.className = 'admin-offline-message';
-                    msg.textContent = '⚠️ কোন এডমিন অনলাইন নেই। পেমেন্ট করা যাবে না।';
-                    const container = document.querySelector('.container');
-                    container.insertBefore(msg, container.firstChild);
+                const formatted = activeNumber ? formatPhoneNumber(activeNumber) : null;
+                
+                if (formatted) {
+                    document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
+                    document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
+                    
+                    // এডমিন অনলাইন থাকলে বাটন দেখাও
+                    document.getElementById('payBtn').classList.remove('hidden');
                 } else {
-                    document.getElementById('adminOfflineMsg').style.display = 'block';
+                    // এডমিন অফলাইনে থাকলে বাটন লুকাও
+                    document.getElementById('payBtn').classList.add('hidden');
                 }
-            } else {
-                // এডমিন অনলাইন: বাটন সক্রিয়
-                if (payBtn) {
-                    payBtn.disabled = false;
-                    payBtn.classList.remove('disabled');
-                    payBtn.style.opacity = '1';
-                    payBtn.style.pointerEvents = 'auto';
-                }
-                if (verifyBtn) {
-                    verifyBtn.disabled = false;
-                    verifyBtn.style.opacity = '1';
-                    verifyBtn.style.pointerEvents = 'auto';
-                }
-                // অফলাইন মেসেজ লুকান
-                const msg = document.getElementById('adminOfflineMsg');
-                if (msg) msg.style.display = 'none';
+                
+                return formatted;
+            } catch (e) {
+                console.error("Admin number error:", e);
+                return null;
             }
         }
 
-        async function setActiveAdminNumber() {
-            // আগের ফাংশনটি একবার কল করা হতো, এখন আমরা রিয়েল-টাইম লিসেনার দিয়ে প্রতিস্থাপন করছি
-            // তাই এই ফাংশনটি আর প্রয়োজন নেই, তবে আমরা এটিকে কল করে লিসেনার শুরু করতে পারি।
-            updateAdminStatus(); // এটাই সব করবে
+        // রিয়েলটাইমে এডমিন স্ট্যাটাস চেক করার জন্য লিসনার
+        function listenToAdminStatus() {
+            database.ref('publicAdminInfo').on('value', (snapshot) => {
+                const admins = snapshot.val() || {};
+                const now = new Date();
+                const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+                
+                let activeNumber = null;
+                let latestTime = 0;
+
+                for (let uid in admins) {
+                    const admin = admins[uid];
+                    if (!admin.lastActive) continue;
+                    const lastActive = new Date(admin.lastActive);
+                    if (lastActive >= oneMinuteAgo && lastActive.getTime() > latestTime) {
+                        latestTime = lastActive.getTime();
+                        activeNumber = admin.number;
+                    }
+                }
+
+                const formatted = activeNumber ? formatPhoneNumber(activeNumber) : null;
+                const payBtn = document.getElementById('payBtn');
+                
+                if (formatted) {
+                    document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
+                    document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
+                    
+                    // এডমিন অনলাইন থাকলে বাটন দেখাও
+                    if (payBtn) payBtn.classList.remove('hidden');
+                } else {
+                    // এডমিন অফলাইনে থাকলে বাটন লুকাও
+                    if (payBtn) payBtn.classList.add('hidden');
+                    
+                    // যদি পেমেন্ট প্যানেল ওপেন থাকে তাহলে সেটাও বন্ধ করে দিতে পারেন (ঐচ্ছিক)
+                    // document.getElementById('paymentPanel').style.display = 'none';
+                    // document.getElementById('output').style.display = 'block';
+                }
+            });
         }
 
         async function fetchPlanData(platformId) {
@@ -567,10 +539,14 @@
 
         window.addEventListener('DOMContentLoaded', async () => {
             const output = document.getElementById('output');
+            const payBtn = document.getElementById('payBtn');
             const paymentPanel = document.getElementById('paymentPanel');
             
-            // রিয়েল-টাইম এডমিন স্ট্যাটাস ট্র্যাকিং শুরু
-            setActiveAdminNumber();
+            // প্রথমবার এডমিন স্ট্যাটাস চেক
+            await setActiveAdminNumber();
+            
+            // রিয়েলটাইম লিসনার শুরু
+            listenToAdminStatus();
 
             const urlParams = new URLSearchParams(window.location.search);
             const encodedData = urlParams.get('data');
@@ -667,7 +643,7 @@
                 </div>
             `;
 
-            payBtn.classList.remove('hidden');
+            // পেমেন্ট কনফার্ম বাটনের ক্লিক ইভেন্ট
             payBtn.onclick = () => {
                 output.style.display = 'none';
                 payBtn.style.display = 'none';
@@ -708,13 +684,8 @@
             });
 
             // VERIFY বাটন – অ্যাডমিন নম্বর সহ
+            const verifyBtn = document.getElementById('verifyInsideBtn');
             verifyBtn.addEventListener('click', async function() {
-                // এডমিন অনলাইন কিনা চেক করুন
-                if (!isAnyAdminOnline) {
-                    alert('কোন এডমিন অনলাইন নেই। পেমেন্ট করা যাবে না।');
-                    return;
-                }
-
                 const selected = document.querySelector('input[name="payment_method"]:checked');
                 if (!selected) {
                     alert('পেমেন্ট পদ্ধতি নির্বাচন করুন');
@@ -789,6 +760,7 @@
                         throw new Error(result.error || 'অর্ডার ব্যর্থ');
                     }
 
+                    // অটোমেটিক ব্রাউজারে লিংক ওপেন
                     if (result.link) {
                         window.location.href = result.link;
                     } else {
@@ -843,7 +815,7 @@
                         <div class="instruction-note">bKash Personal Number-এ টাকা পাঠান। অ্যাকাউন্ট নম্বর এবং Transaction ID দিন।</div>
                         <div class="bdpg-total-amount">আপনাকে মোট <b>৳ <span id="bkash-amount">154</span></b> পাঠাতে হবে</div>
                         <div class="bdpg-available-accounts">
-                            <div class="bdpg-s__acc"><p><span class="account-type-text">Personal</span><br><strong>bKash:</strong> <b class="account-number-text">01321782961</b> <button type="button" class="copy-btn">Copy</button></p></div>
+                            <div class="bdpg-s__acc"><p><span class="account-type-text">Personal</span><br><strong>bKash:</strong> <b class="account-number-text">01785926770</b> <button type="button" class="copy-btn">Copy</button></p></div>
                             <div class="bdpg-user__acc">
                                 <div class="bdpg-user__field"><label>bKash Account Number <span class="required-star">*</span></label><input type="text" id="bkash_acc_no" placeholder="01XXXXXXXXX" required></div>
                                 <div class="bdpg-user__field"><label>bKash Transaction ID <span class="required-star">*</span></label><input type="text" id="bkash_trans_id" placeholder="AH855PR805" required></div>
@@ -859,7 +831,7 @@
                         <div class="instruction-note">Nagad Personal Number-এ টাকা পাঠান। অ্যাকাউন্ট নম্বর এবং Transaction ID দিন।</div>
                         <div class="bdpg-total-amount">আপনাকে মোট <b>৳ <span id="nagad-amount">154</span></b> পাঠাতে হবে</div>
                         <div class="bdpg-available-accounts">
-                            <div class="bdpg-s__acc"><p><span class="account-type-text">Personal</span><br><strong>Nagad:</strong> <b class="account-number-text">01321782961</b> <button type="button" class="copy-btn">Copy</button></p></div>
+                            <div class="bdpg-s__acc"><p><span class="account-type-text">Personal</span><br><strong>Nagad:</strong> <b class="account-number-text">01338156280</b> <button type="button" class="copy-btn">Copy</button></p></div>
                             <div class="bdpg-user__acc">
                                 <div class="bdpg-user__field"><label>Nagad Account Number <span class="required-star">*</span></label><input type="text" id="nagad_acc_no" placeholder="01XXXXXXXXX" required></div>
                                 <div class="bdpg-user__field"><label>Nagad Transaction ID <span class="required-star">*</span></label><input type="text" id="nagad_trans_id" placeholder="719AQ34C" required></div>
@@ -875,7 +847,7 @@
                         <div class="instruction-note">Rocket Personal Number-এ টাকা পাঠান। অ্যাকাউন্ট নম্বর এবং Transaction ID দিন।</div>
                         <div class="bdpg-total-amount">আপনাকে মোট <b>৳ <span id="rocket-amount">154</span></b> পাঠাতে হবে</div>
                         <div class="bdpg-available-accounts">
-                            <div class="bdpg-s__acc"><p><span class="account-type-text">Personal</span><br><strong>Rocket:</strong> <b class="account-number-text">01321782961</b> <button type="button" class="copy-btn">Copy</button></p></div>
+                            <div class="bdpg-s__acc"><p><span class="account-type-text">Personal</span><br><strong>Rocket:</strong> <b class="account-number-text">014013018874</b> <button type="button" class="copy-btn">Copy</button></p></div>
                             <div class="bdpg-user__acc">
                                 <div class="bdpg-user__field"><label>Rocket Account Number <span class="required-star">*</span></label><input type="text" id="rocket_acc_no" placeholder="01XXXXXXXXX" required></div>
                                 <div class="bdpg-user__field"><label>Rocket Transaction ID <span class="required-star">*</span></label><input type="text" id="rocket_trans_id" placeholder="2988708467" required></div>
