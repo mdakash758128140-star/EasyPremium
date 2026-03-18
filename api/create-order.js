@@ -20,10 +20,10 @@ export default async function handler(req, res) {
   const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
   const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
   const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
-  const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;  // Private Key
+  const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
-  // Extract data from request body
-  const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId } = req.body;
+  // Extract data from request body – serviceCharge ও adminNumber যোগ করা হয়েছে
+  const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId, serviceCharge, adminNumber } = req.body;
 
   // Validate required fields
   if (!productSlug || !amount || !paymentCurrency) {
@@ -36,9 +36,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Parse reference to extract payment details
+    // Parse reference to extract payment details – এডমিন নম্বরের জন্য অংশ
     let paymentMethod = 'UNKNOWN';
-    let phone = '', txid = '', userId = '', email = '';
+    let phone = '', txid = '', userId = '', email = '', refAdminNumber = '';
     
     if (reference) {
       const referenceParts = reference.split('|');
@@ -49,8 +49,16 @@ export default async function handler(req, res) {
         if (part.startsWith('TXID:')) txid = part.replace('TXID:', '');
         if (part.startsWith('UserID:')) userId = part.replace('UserID:', '');
         if (part.startsWith('Email:')) email = part.replace('Email:', '');
+        if (part.startsWith('AdminNumber:')) refAdminNumber = part.replace('AdminNumber:', '');
       });
     }
+
+    // ✅ এডমিন নম্বর নির্ধারণ
+    const finalAdminNumber = adminNumber || refAdminNumber || '01785926770';
+    // ✅ সার্ভিস চার্জ (যদি না থাকে তাহলে 0)
+    const serviceChargeInt = serviceCharge ? parseInt(serviceCharge) : 0;
+    // ✅ মোট মূল্য (শুধু প্রদর্শনের জন্য)
+    const totalAmount = amountInt + serviceChargeInt;
 
     // Use Firebase order ID if provided
     const finalOrderId = firebaseOrderId || 'REL' + Math.random().toString(36).substring(2, 15).toUpperCase();
@@ -65,13 +73,13 @@ export default async function handler(req, res) {
       day: 'numeric'
     });
 
-    // Format price with currency
+    // Format price with currency – (শুধু ইমেইলের জন্য)
     const formattedPrice = `${amountInt} ${paymentCurrency}`;
 
     // Get platform name
     const platformName = productSlug.includes('variable') ? 'Rewarble Visa Variable USD' : productSlug;
 
-    // Prepare data for Base64 encoding
+    // Prepare data for Base64 encoding – এডমিন নম্বর ও সার্ভিস চার্জ সহ
     const orderData = {
       OrderId: finalOrderId,
       PaymentMethods: paymentMethod,
@@ -84,13 +92,16 @@ export default async function handler(req, res) {
       amount: amountInt,
       currency: paymentCurrency,
       faceValue: faceValue || null,
-      status: 'pending'
+      status: 'pending',
+      adminNumber: finalAdminNumber,
+      serviceCharge: serviceChargeInt,
+      totalAmount: totalAmount
     };
 
-    // Create items array for Relograde API
+    // ✅ FIX: Relograde API-তে সবসময় amount: 1 (quantity) পাঠাতে হবে
     const items = [{
       productSlug,
-      amount: amountInt
+      amount: 1
     }];
 
     // Add faceValue if provided and valid
@@ -101,7 +112,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // Create reference for Relograde API with Firebase order ID
+    // ✅ Create reference for Relograde API with all details (actualAmount, serviceCharge, adminNumber)
     const relogradeReference = JSON.stringify({
       firebaseOrderId: finalOrderId,
       paymentMethod: paymentMethod,
@@ -109,7 +120,12 @@ export default async function handler(req, res) {
       txid: txid,
       userId: userId,
       email: email,
-      timestamp: currentTime
+      timestamp: currentTime,
+      actualAmount: amountInt,        // আসল দাম (যেমন 614)
+      serviceCharge: serviceChargeInt,
+      totalAmount: totalAmount,
+      adminNumber: finalAdminNumber,
+      quantity: 1
     });
 
     // Prepare request for Relograde API
@@ -143,7 +159,7 @@ export default async function handler(req, res) {
     // ✅ ফিক্সড লিংক
     const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
-    // ✅ ইমেইল পাঠানোর ফাংশন - Private Key সহ
+    // ✅ ইমেইল পাঠানোর ফাংশন – এডমিন নম্বর ও সার্ভিস চার্জ সহ
     async function sendEmailWithLink() {
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
         console.log('❌ EmailJS credentials missing');
@@ -159,7 +175,7 @@ export default async function handler(req, res) {
         // EmailJS API endpoint
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
-        // টেমপ্লেট প্যারামিটার
+        // টেমপ্লেট প্যারামিটার – সব তথ্য সহ
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
@@ -167,13 +183,16 @@ export default async function handler(req, res) {
           platform: platformName,
           order_date: formattedDate,
           payment_link: orderLink,
+          admin_number: finalAdminNumber,
+          price: `${amountInt} ${paymentCurrency}`,
+          service_charge: `${serviceChargeInt} ${paymentCurrency}`,
+          total_price: `${totalAmount} ${paymentCurrency}`,
           from_name: 'Easy Premium',
           reply_to: 'support@easy-premium.com'
         };
 
-        console.log('📧 Sending email with Private Key...');
+        console.log('📧 Sending email with admin number:', finalAdminNumber);
 
-        // 🔥 Private Key সহ API কল
         const emailResponse = await fetch(emailjsUrl, {
           method: 'POST',
           headers: {
@@ -184,7 +203,7 @@ export default async function handler(req, res) {
             template_id: EMAILJS_TEMPLATE_ID,
             user_id: EMAILJS_PUBLIC_KEY,
             template_params: templateParams,
-            accessToken: EMAILJS_PRIVATE_KEY  // Private Key এখানে
+            accessToken: EMAILJS_PRIVATE_KEY
           })
         });
 
@@ -224,7 +243,10 @@ export default async function handler(req, res) {
         time: currentTime,
         email: email,
         platformId: productSlug,
-        faceValue: faceValue || null
+        faceValue: faceValue || null,
+        adminNumber: finalAdminNumber,
+        serviceCharge: serviceChargeInt,
+        totalAmount: totalAmount
       }
     });
 
