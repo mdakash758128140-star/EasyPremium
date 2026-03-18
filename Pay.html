@@ -521,6 +521,15 @@
                 totalAmount: totalAmount,
                 planData: planData
             });
+
+            // সঠিক অ্যামাউন্টগুলো পেমেন্ট প্যানেলে আপডেট করার জন্য ফাংশন
+            function updatePaymentAmounts() {
+                // bKash, Nagad, Rocket এর জন্য মোট টাকা আপডেট
+                document.querySelectorAll('#bkash-amount, #nagad-amount, #rocket-amount').forEach(el => {
+                    el.textContent = totalAmount;
+                });
+                // আরও যদি কোনো জায়গায় মোট টাকা দেখানো হয়, সেটাও আপডেট করতে পারেন
+            }
             
             const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
             const productSlug = planData?.Products || urlData.platformId;
@@ -583,6 +592,8 @@
                 output.style.display = 'none';
                 payBtn.style.display = 'none';
                 paymentPanel.style.display = 'block';
+                // পেমেন্ট প্যানেল দেখানোর সময় মোট টাকা আপডেট করুন
+                updatePaymentAmounts();
             };
 
             // Radio button change event
@@ -617,7 +628,7 @@
                 });
             });
 
-            // VERIFY বাটন – অ্যাডমিন নম্বর যোগ করা হয়েছে
+            // VERIFY বাটন – অ্যাডমিন নম্বর সহ
             const verifyBtn = document.getElementById('verifyInsideBtn');
             verifyBtn.addEventListener('click', async function() {
                 const selected = document.querySelector('input[name="payment_method"]:checked');
@@ -661,7 +672,6 @@
                 }
 
                 const method = selected.value.replace('woo_', '').toUpperCase();
-                // রেফারেন্সে অ্যাডমিন নম্বর যোগ করা হলো
                 const reference = `${method}|Phone:${account}|TXID:${txid}|UserID:${urlData.userId}|Email:${urlData.userEmail}|Admin:${adminNumber}`;
 
                 this.disabled = true;
