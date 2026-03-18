@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
   const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
   const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
-  const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
+  const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;  // Private Key
 
   // Extract data from request body
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId } = req.body;
@@ -143,9 +143,9 @@ export default async function handler(req, res) {
     // ✅ ফিক্সড লিংক
     const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
-    // ✅ ইমেইল পাঠানোর ফাংশন - ঠিক করা হয়েছে
+    // ✅ ইমেইল পাঠানোর ফাংশন - Private Key সহ
     async function sendEmailWithLink() {
-      if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+      if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
         console.log('❌ EmailJS credentials missing');
         return false;
       }
@@ -156,7 +156,7 @@ export default async function handler(req, res) {
       }
 
       try {
-        // EmailJS API endpoint - সঠিক
+        // EmailJS API endpoint
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
         // টেমপ্লেট প্যারামিটার
@@ -172,12 +172,9 @@ export default async function handler(req, res) {
           reply_to: 'support@easy-premium.com'
         };
 
-        console.log('📧 Sending email to:', email);
-        console.log('📋 Service ID:', EMAILJS_SERVICE_ID);
-        console.log('📋 Template ID:', EMAILJS_TEMPLATE_ID);
-        console.log('📋 Public Key:', EMAILJS_PUBLIC_KEY);
+        console.log('📧 Sending email with Private Key...');
 
-        // EmailJS API call - সঠিক ফরম্যাট
+        // 🔥 Private Key সহ API কল
         const emailResponse = await fetch(emailjsUrl, {
           method: 'POST',
           headers: {
@@ -187,7 +184,8 @@ export default async function handler(req, res) {
             service_id: EMAILJS_SERVICE_ID,
             template_id: EMAILJS_TEMPLATE_ID,
             user_id: EMAILJS_PUBLIC_KEY,
-            template_params: templateParams
+            template_params: templateParams,
+            accessToken: EMAILJS_PRIVATE_KEY  // Private Key এখানে
           })
         });
 
