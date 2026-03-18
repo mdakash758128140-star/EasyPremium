@@ -918,7 +918,40 @@
             flex: 1;
         }
         
-        /* লোডিং স্পিনার */
+        /* লোডিং স্পিনার (ওভারলে) */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 10000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .loading-spinner-big {
+            border: 6px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 6px solid #ff9800;
+            width: 70px;
+            height: 70px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        .loading-text {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+        
+        /* লোডিং স্পিনার (ছোট) */
         .loading-spinner {
             text-align: center;
             padding: 40px 20px;
@@ -1415,6 +1448,12 @@
         </div>
     </div>
 
+    <!-- লোডিং ওভারলে (নতুন) -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner-big"></div>
+        <div class="loading-text">অর্ডার প্রস্তুত হচ্ছে...</div>
+    </div>
+
     <!-- Header -->
     <header class="header">
         <div class="header-left">
@@ -1536,6 +1575,7 @@
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
         const searchResults = document.getElementById('searchResults');
+        const loadingOverlay = document.getElementById('loadingOverlay'); // নতুন লোডিং ওভারলে
         
         // ================== ভেরিয়েবল ==================
         let allPlatforms = [];
@@ -1644,7 +1684,13 @@
             if (!user) return;
             
             try {
+                // লোডিং ওভারলে দেখান
+                loadingOverlay.style.display = 'flex';
+                
                 const orderId = `EP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                
+                // বর্তমান টাইমস্ট্যাম্প (এডমিনের সময়) – ক্লায়েন্টের লোকাল টাইম সংরক্ষণ করা হচ্ছে
+                const adminGeneratedAt = new Date().toISOString(); // ISO format, পরে সহজেই ডিকোড করা যায়
                 
                 // পেমেন্ট লিংক জেনারেট (ইউজার আইডি ও ইমেইল সহ base64)
                 const dataObj = {
@@ -1653,10 +1699,11 @@
                     price: purchaseData.price.replace(/[^\d]/g, ''),
                     timestamp: Date.now(),
                     userId: user.uid,
-                    email: user.email || ''
+                    email: user.email || '',
+                    adminGeneratedAt: adminGeneratedAt // নতুন: এডমিন যখন লিংক জেনারেট করল
                 };
                 
-                const dataString = `${dataObj.orderId}|${dataObj.platformId}|${dataObj.price}|${dataObj.timestamp}|${dataObj.userId}|${dataObj.email}`;
+                const dataString = `${dataObj.orderId}|${dataObj.platformId}|${dataObj.price}|${dataObj.timestamp}|${dataObj.userId}|${dataObj.email}|${dataObj.adminGeneratedAt}`;
                 let encodedData = btoa(dataString);
                 encodedData = encodeURIComponent(encodedData);
                 
@@ -1673,7 +1720,8 @@
                     orderDate: new Date().toISOString(),
                     status: 'pending',
                     paymentLink: paymentLink,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                    timestamp: firebase.database.ServerValue.TIMESTAMP,
+                    adminGeneratedAt: adminGeneratedAt // ফায়ারবেসেও সংরক্ষণ করা যায় (ঐচ্ছিক)
                 };
                 
                 const transRef = database.ref('transactions').push();
@@ -1688,9 +1736,13 @@
                     platformId: purchaseData.platformId
                 });
                 
-                window.location.href = paymentLink;
+                // রিডাইরেক্ট করার আগে একটু দেরি (ঐচ্ছিক)
+                setTimeout(() => {
+                    window.location.href = paymentLink;
+                }, 300);
                 
             } catch (error) {
+                loadingOverlay.style.display = 'none'; // এরর হলে লোডিং বন্ধ
                 alert('অর্ডার ব্যর্থ: ' + error.message);
             }
         }
