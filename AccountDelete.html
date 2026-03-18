@@ -1158,7 +1158,7 @@
                         await currentUser.delete();
                         await auth.signOut();
                         hideLoading();
-                        createModal('success', "✅ সফল!", "আপনার অ্যাকাউন্ট সফলভাবে মুছে ফেলা হয়েছে!<br><br>আপনার সকল তথ্য Firebase থেকে মুছে গেছে।<br><br>আপনি এখন হোমপেজে যাচ্ছেন...", "ঠিক আছে", () => window.location.href = "index.html");
+                        createModal('success', " সফল!", "আপনার অ্যাকাউন্ট সফলভাবে মুছে ফেলা হয়েছে!<br><br>আপনার সকল তথ্য Firebase থেকে মুছে গেছে।<br><br>আপনি এখন হোমপেজে যাচ্ছেন...", "ঠিক আছে", () => window.location.href = "index.html");
                     } catch (error) {
                         hideLoading();
                         let errorMsg = error.message.includes('requires-recent-login') ? "⚠️ সাম্প্রতিক লগইন প্রয়োজন!<br><br>সুরক্ষার জন্য আপনাকে লগআউট করা হচ্ছে। দয়া করে পুনরায় লগইন করুন এবং আবার চেষ্টা করুন।" : "অ্যাকাউন্ট ডিলিট করতে সমস্যা হয়েছে: " + error.message;
