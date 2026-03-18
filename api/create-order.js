@@ -20,10 +20,10 @@ export default async function handler(req, res) {
   const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
   const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
   const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
-  const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
+  const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;  // Private Key
 
   // Extract data from request body
-  const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId, serviceCharge } = req.body;
+  const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId } = req.body;
 
   // Validate required fields
   if (!productSlug || !amount || !paymentCurrency) {
@@ -65,26 +65,11 @@ export default async function handler(req, res) {
       day: 'numeric'
     });
 
-    // সার্ভিস চার্জ (ডিফল্ট 0)
-    const serviceChargeValue = serviceCharge ? parseInt(serviceCharge) : 0;
-    
-    // মোট মূল্য = পণ্যের মূল্য + সার্ভিস চার্জ
-    const totalAmount = amountInt + serviceChargeValue;
-    
-    // বাংলাদেশি টাকায় মূল্য দেখান
-    const formattedPrice = `${amountInt} ৳`;
-    const formattedServiceCharge = `${serviceChargeValue} ৳`;
-    const formattedTotalPrice = `${totalAmount} ৳`;
+    // Format price with currency
+    const formattedPrice = `${amountInt} ${paymentCurrency}`;
 
-    // প্ল্যাটফর্ম নাম ফরম্যাট করা
-    let platformDisplayName = productSlug;
-    if (productSlug.includes('rewarble-visa-variable')) {
-      platformDisplayName = 'Rewarble Visa Variable USD';
-    } else if (productSlug.includes('rewarble-visa-ww-usd-5')) {
-      platformDisplayName = 'Rewarble Visa WW USD $5';
-    } else {
-      platformDisplayName = productSlug.replace(/-/g, ' ').toUpperCase();
-    }
+    // Get platform name
+    const platformName = productSlug.includes('variable') ? 'Rewarble Visa Variable USD' : productSlug;
 
     // Prepare data for Base64 encoding
     const orderData = {
@@ -95,12 +80,9 @@ export default async function handler(req, res) {
       Time: currentTime,
       email: email,
       platformId: productSlug,
-      platformName: platformDisplayName,
       uid: userId || 'guest',
       amount: amountInt,
-      currency: 'BDT',
-      serviceCharge: serviceChargeValue,
-      totalAmount: totalAmount,
+      currency: paymentCurrency,
       faceValue: faceValue || null,
       status: 'pending'
     };
@@ -127,9 +109,7 @@ export default async function handler(req, res) {
       txid: txid,
       userId: userId,
       email: email,
-      timestamp: currentTime,
-      serviceCharge: serviceChargeValue,
-      totalAmount: totalAmount
+      timestamp: currentTime
     });
 
     // Prepare request for Relograde API
@@ -163,7 +143,7 @@ export default async function handler(req, res) {
     // ✅ ফিক্সড লিংক
     const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
-    // ✅ ইমেইল পাঠানোর ফাংশন - সমস্ত তথ্য সহ
+    // ✅ ইমেইল পাঠানোর ফাংশন - Private Key সহ
     async function sendEmailWithLink() {
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
         console.log('❌ EmailJS credentials missing');
@@ -179,24 +159,22 @@ export default async function handler(req, res) {
         // EmailJS API endpoint
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
-        // টেমপ্লেট প্যারামিটার - সব তথ্য সহ (বাংলাদেশি ফরম্যাটে)
+        // টেমপ্লেট প্যারামিটার
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
-          order_id: finalOrderId,                    // RELONSJUB8HFZ2FJS4F
-          platform: platformDisplayName,              // Rewarble Visa WW USD $5
-          price: formattedPrice,                      // 614 ৳
-          service_charge: formattedServiceCharge,     // 200 ৳
-          total_price: formattedTotalPrice,           // 814 ৳
-          order_date: formattedDate,                  // ১৮ মার্চ, ২০২৬
+          order_id: finalOrderId,
+          platform: platformName,
+          price: formattedPrice,
+          order_date: formattedDate,
           payment_link: orderLink,
           from_name: 'Easy Premium',
           reply_to: 'support@easy-premium.com'
         };
 
-        console.log('📧 Sending email with all details:', templateParams);
+        console.log('📧 Sending email with Private Key...');
 
-        // Private Key সহ API কল
+        // 🔥 Private Key সহ API কল
         const emailResponse = await fetch(emailjsUrl, {
           method: 'POST',
           headers: {
@@ -207,7 +185,7 @@ export default async function handler(req, res) {
             template_id: EMAILJS_TEMPLATE_ID,
             user_id: EMAILJS_PUBLIC_KEY,
             template_params: templateParams,
-            accessToken: EMAILJS_PRIVATE_KEY
+            accessToken: EMAILJS_PRIVATE_KEY  // Private Key এখানে
           })
         });
 
@@ -247,10 +225,6 @@ export default async function handler(req, res) {
         time: currentTime,
         email: email,
         platformId: productSlug,
-        platformName: platformDisplayName,
-        amount: amountInt,
-        serviceCharge: serviceChargeValue,
-        totalAmount: totalAmount,
         faceValue: faceValue || null
       }
     });
