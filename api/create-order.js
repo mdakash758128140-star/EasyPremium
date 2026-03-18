@@ -12,14 +12,9 @@ export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  console.log('🔵 API called with method:', req.method);
-
   // Get API key from environment variables
   const apiKey = process.env.RELOGRADE_API_KEY;
-  if (!apiKey) {
-    console.error('🔴 RELOGRADE_API_KEY not configured');
-    return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
-  }
+  if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
 
   // EmailJS configuration
   const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
@@ -27,44 +22,18 @@ export default async function handler(req, res) {
   const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
   const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
-  console.log('📧 EmailJS Config:', {
-    service: EMAILJS_SERVICE_ID ? '✅' : '❌',
-    template: EMAILJS_TEMPLATE_ID ? '✅' : '❌',
-    publicKey: EMAILJS_PUBLIC_KEY ? '✅' : '❌',
-    privateKey: EMAILJS_PRIVATE_KEY ? '✅' : '❌'
-  });
-
   // Extract data from request body
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId, serviceCharge, adminNumber } = req.body;
 
-  console.log('📦 Request body:', { 
-    productSlug, 
-    amount, 
-    paymentCurrency, 
-    reference, 
-    faceValue, 
-    firebaseOrderId, 
-    serviceCharge,
-    adminNumber 
-  });
-
   // Validate required fields
   if (!productSlug || !amount || !paymentCurrency) {
-    console.error('🔴 Missing required fields');
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   const amountInt = parseInt(amount);
   if (isNaN(amountInt) || amountInt <= 0) {
-    console.error('🔴 Invalid amount:', amount);
     return res.status(400).json({ error: 'Amount must be a positive integer' });
   }
-
-  // সার্ভিস চার্জ
-  const serviceChargeInt = serviceCharge ? parseInt(serviceCharge) : 0;
-  
-  // মোট মূল্য (প্রদর্শনের জন্য)
-  const totalAmount = amountInt + serviceChargeInt;
 
   try {
     // Parse reference to extract payment details
@@ -84,17 +53,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // এডমিন নম্বর (request body থেকে বা reference থেকে)
+    // ✅ এডমিন নম্বর নির্ধারণ (প্রথমে request body থেকে, তারপর reference থেকে)
     const finalAdminNumber = adminNumber || refAdminNumber || '01785926770';
-
-    console.log('👤 Parsed data:', { 
-      paymentMethod, 
-      phone, 
-      txid, 
-      userId, 
-      email,
-      adminNumber: finalAdminNumber 
-    });
 
     // Use Firebase order ID if provided
     const finalOrderId = firebaseOrderId || 'REL' + Math.random().toString(36).substring(2, 15).toUpperCase();
@@ -109,20 +69,19 @@ export default async function handler(req, res) {
       day: 'numeric'
     });
 
-    // Format prices with currency (BDT)
+    // সার্ভিস চার্জ
+    const serviceChargeInt = serviceCharge ? parseInt(serviceCharge) : 0;
+    
+    // মোট মূল্য (প্রদর্শনের জন্য)
+    const totalAmount = amountInt + serviceChargeInt;
+
+    // Format price with currency
     const formattedPrice = `${amountInt} ৳`;
     const formattedServiceCharge = `${serviceChargeInt} ৳`;
     const formattedTotalPrice = `${totalAmount} ৳`;
 
     // Get platform name
-    let platformName = productSlug;
-    if (productSlug.includes('rewarble-visa-variable')) {
-      platformName = 'Rewarble Visa Variable USD';
-    } else if (productSlug.includes('rewarble-visa-ww-usd-5')) {
-      platformName = 'Rewarble Visa WW USD $5';
-    } else {
-      platformName = productSlug.replace(/-/g, ' ').toUpperCase();
-    }
+    const platformName = productSlug.includes('variable') ? 'Rewarble Visa Variable USD' : productSlug;
 
     // Prepare data for Base64 encoding
     const orderData = {
@@ -141,13 +100,13 @@ export default async function handler(req, res) {
       totalAmount: totalAmount,
       faceValue: faceValue || null,
       status: 'pending',
-      adminNumber: activeAdminNumber
+      adminNumber: finalAdminNumber  // ✅ এডমিন নম্বর সংরক্ষণ
     };
 
-    // 🔥 FIX: Relograde API-তে সবসময় amount: 1 পাঠাতে হবে
+    // 🔥 Relograde API-তে সবসময় amount: 1 পাঠাতে হবে (quantity)
     const items = [{
       productSlug,
-      amount: 1  // ✅ সবসময় 1 থাকবে (quantity)
+      amount: 1  // ✅ quantity = 1
     }];
 
     // Add faceValue if provided and valid
@@ -158,7 +117,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // Create reference for Relograde API with all details
+    // Create reference for Relograde API with all details including admin number
     const relogradeReference = JSON.stringify({
       firebaseOrderId: finalOrderId,
       paymentMethod: paymentMethod,
@@ -167,11 +126,11 @@ export default async function handler(req, res) {
       userId: userId,
       email: email,
       timestamp: currentTime,
-      actualAmount: amountInt,        // আসল মূল্য (614)
+      actualAmount: amountInt,        // আসল মূল্য
       serviceCharge: serviceChargeInt,
       totalAmount: totalAmount,
-      adminNumber: finalAdminNumber,
-      quantity: 1                      // quantity = 1
+      quantity: 1,                     // quantity = 1
+      adminNumber: finalAdminNumber    // ✅ এডমিন নম্বর
     });
 
     // Prepare request for Relograde API
@@ -180,8 +139,6 @@ export default async function handler(req, res) {
       paymentCurrency: paymentCurrency.toLowerCase(),
       reference: relogradeReference
     };
-
-    console.log('🔄 Calling Relograde API with:', JSON.stringify(requestBody, null, 2));
 
     // Call Relograde API
     const response = await fetch('https://connect.relograde.com/api/1.02/order', {
@@ -195,12 +152,10 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('🔴 Relograde API error:', response.status, errorText);
       throw new Error(`Relograde API responded with status ${response.status}: ${errorText}`);
     }
 
     const relogradeData = await response.json();
-    console.log('✅ Relograde API success:', relogradeData);
 
     // Convert order data to JSON and then to Base64
     const jsonString = JSON.stringify(orderData);
@@ -209,15 +164,15 @@ export default async function handler(req, res) {
     // ✅ ফিক্সড লিংক
     const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
-    // ✅ ইমেইল পাঠানোর ফাংশন
+    // ✅ ইমেইল পাঠানোর ফাংশন - এডমিন নম্বর সহ
     async function sendEmailWithLink() {
-      if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
-        console.log('❌ EmailJS credentials missing, skipping email');
+      if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
+        console.log('❌ EmailJS credentials missing');
         return false;
       }
 
       if (!email) {
-        console.log('❌ No email provided, skipping');
+        console.log('❌ No email provided');
         return false;
       }
 
@@ -225,7 +180,7 @@ export default async function handler(req, res) {
         // EmailJS API endpoint
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
-        // টেমপ্লেট প্যারামিটার
+        // টেমপ্লেট প্যারামিটার - এডমিন নম্বর সহ সব তথ্য
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
@@ -236,31 +191,25 @@ export default async function handler(req, res) {
           total_price: formattedTotalPrice,
           order_date: formattedDate,
           payment_link: orderLink,
-          admin_number: finalAdminNumber,
+          admin_number: finalAdminNumber,  // ✅ এডমিন নম্বর
           from_name: 'Easy Premium',
           reply_to: 'support@easy-premium.com'
         };
 
-        console.log('📧 Sending email with params:', templateParams);
-
-        const requestBody = {
-          service_id: EMAILJS_SERVICE_ID,
-          template_id: EMAILJS_TEMPLATE_ID,
-          user_id: EMAILJS_PUBLIC_KEY,
-          template_params: templateParams
-        };
-
-        // Private Key থাকলে যোগ করুন
-        if (EMAILJS_PRIVATE_KEY) {
-          requestBody.accessToken = EMAILJS_PRIVATE_KEY;
-        }
+        console.log('📧 Sending email with admin number:', finalAdminNumber);
 
         const emailResponse = await fetch(emailjsUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(requestBody)
+          body: JSON.stringify({
+            service_id: EMAILJS_SERVICE_ID,
+            template_id: EMAILJS_TEMPLATE_ID,
+            user_id: EMAILJS_PUBLIC_KEY,
+            template_params: templateParams,
+            accessToken: EMAILJS_PRIVATE_KEY
+          })
         });
 
         const responseText = await emailResponse.text();
@@ -304,18 +253,15 @@ export default async function handler(req, res) {
         serviceCharge: serviceChargeInt,
         totalAmount: totalAmount,
         faceValue: faceValue || null,
-        adminNumber: finalAdminNumber,
-        quantity: 1
+        adminNumber: finalAdminNumber  // ✅ এডমিন নম্বর
       }
     });
 
   } catch (error) {
-    console.error('❌ Fatal Error:', error.message);
-    console.error('Stack:', error.stack);
+    console.error('❌ Error:', error.message);
     return res.status(500).json({ 
       error: 'Failed to create order',
-      details: error.message,
-      stack: error.stack
+      details: error.message 
     });
   }
 }
