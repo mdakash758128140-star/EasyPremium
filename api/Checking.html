@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>অর্ডার তথ্য · Easy Premium</title>
+    <meta name="theme-color" content="#0a0a1a">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            background: #0a0a1a;
+            width: 100%;
+            min-height: 100vh;
+            color: #fff;
+            font-family: 'Segoe UI', 'Noto Sans Bengali', sans-serif;
+        }
+        
+        body {
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            background: linear-gradient(135deg, #0a0a1a 0%, #121230 50%, #1a1a3a 100%);
+            background-attachment: fixed;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .header h1 {
+            color: #ff9800;
+            font-size: 32px;
+            text-shadow: 0 2px 10px rgba(255, 152, 0, 0.3);
+        }
+        
+        .header p {
+            color: #00bcd4;
+            font-size: 18px;
+            margin-top: 5px;
+        }
+        
+        .card {
+            background: rgba(20, 20, 40, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .success-badge {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .success-badge i {
+            font-size: 4rem;
+            color: #4caf50;
+            background: rgba(76, 175, 80, 0.2);
+            padding: 15px;
+            border-radius: 50%;
+        }
+        
+        .success-badge h2 {
+            color: #4caf50;
+            margin-top: 10px;
+            font-size: 1.8rem;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 12px 10px;
+            margin: 20px 0;
+        }
+        
+        .info-label {
+            color: #b0bec5;
+            font-weight: 600;
+            font-size: 1rem;
+            padding: 8px 0;
+            border-bottom: 1px dashed rgba(255, 152, 0, 0.2);
+        }
+        
+        .info-value {
+            color: #ffb74d;
+            font-weight: 600;
+            font-size: 1rem;
+            padding: 8px 0;
+            border-bottom: 1px dashed rgba(255, 152, 0, 0.2);
+            word-break: break-word;
+            text-align: right;
+        }
+        
+        .highlight {
+            color: #ff9800;
+            font-weight: 700;
+        }
+        
+        .amount-box {
+            background: rgba(255, 152, 0, 0.15);
+            border-radius: 50px;
+            padding: 18px;
+            text-align: center;
+            margin: 20px 0;
+            border: 1px solid #ff9800;
+        }
+        
+        .amount-box .label {
+            color: #b0bec5;
+            font-size: 1.1rem;
+        }
+        
+        .amount-box .value {
+            color: #ff0000;
+            font-size: 2rem;
+            font-weight: 800;
+            margin-left: 10px;
+        }
+        
+        .note {
+            background: rgba(0, 188, 212, 0.1);
+            border-left: 5px solid #00bcd4;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            color: #b0bec5;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        
+        .footer {
+            text-align: center;
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 152, 0, 0.2);
+        }
+        
+        .print-btn {
+            background: linear-gradient(45deg, #ff9800, #ff2222);
+            color: white;
+            border: none;
+            padding: 16px 30px;
+            border-radius: 60px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
+            margin: 20px auto 0;
+            display: block;
+            transition: 0.3s;
+            border: 1px solid #ff9800;
+        }
+        
+        .print-btn:hover {
+            background: linear-gradient(45deg, #ff2222, #0008ff);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(255, 152, 0, 0.4);
+        }
+        
+        .loading, .error {
+            text-align: center;
+            padding: 50px;
+            background: rgba(20,20,40,0.9);
+            border-radius: 20px;
+            border: 1px solid rgba(255,152,0,0.3);
+        }
+        
+        .loading .spinner {
+            border: 5px solid rgba(255,255,255,0.2);
+            border-top: 5px solid #ff9800;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            color: #ff6b6b;
+        }
+        
+        .error i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        @media (max-width: 480px) {
+            .header h1 { font-size: 26px; }
+            .info-grid { grid-template-columns: 1fr; gap: 5px; }
+            .info-label, .info-value { text-align: left; border-bottom: none; }
+            .info-value { margin-bottom: 10px; }
+            .amount-box .value { font-size: 1.8rem; }
+        }
+    </style>
+    <!-- Font Awesome for icons (optional but nice) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>EASY PREMIUM</h1>
+            <p>অর্ডার বিবরণী</p>
+        </div>
+        
+        <div id="content" class="card">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>তথ্য লোড হচ্ছে...</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2026 Easy Premium - সর্বস্বত্ব সংরক্ষিত</p>
+            <p>ইমেইল: support@easy-premium.com | হেল্পলাইন: +8801770584994</p>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ফাংশন: URL থেকে data প্যারামিটার বের করা
+            function getQueryParam(param) {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(param);
+            }
+
+            // ফাংশন: Base64 ডিকোড (যেকোনো ইউনিকোড সাপোর্ট সহ)
+            function base64Decode(str) {
+                try {
+                    // প্রথমে ইউআরএল ডিকোড, তারপর বেস৬৪
+                    const urlDecoded = decodeURIComponent(str);
+                    // বেস৬৪ থেকে বাইনারি স্ট্রিং
+                    const binary = atob(urlDecoded);
+                    // ইউটিএফ-৮ ডিকোড
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) {
+                        bytes[i] = binary.charCodeAt(i);
+                    }
+                    return new TextDecoder('utf-8').decode(bytes);
+                } catch (e) {
+                    console.error('Decode error:', e);
+                    return null;
+                }
+            }
+
+            // ফাংশন: ডেটা পার্স করা
+            function parseOrderData(encoded) {
+                if (!encoded) return null;
+                const jsonStr = base64Decode(encoded);
+                if (!jsonStr) return null;
+                try {
+                    return JSON.parse(jsonStr);
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                    return null;
+                }
+            }
+
+            // ফাংশন: তারিখ ফরম্যাট করা
+            function formatDate(isoString) {
+                if (!isoString) return 'N/A';
+                try {
+                    const date = new Date(isoString);
+                    return date.toLocaleString('bn-BD', {
+                        timeZone: 'Asia/Dhaka',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: true
+                    });
+                } catch {
+                    return isoString;
+                }
+            }
+
+            // ফাংশন: মূল HTML রেন্ডার
+            function renderOrder(order) {
+                if (!order) return '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>অর্ডার তথ্য পাওয়া যায়নি</h3><p>ডেটা ফরম্যাট সঠিক নয়।</p></div>';
+
+                // বাংলা কী-ম্যাপ (যদি চান)
+                const labels = {
+                    OrderId: 'অর্ডার আইডি',
+                    PaymentMethods: 'পেমেন্ট পদ্ধতি',
+                    PaymentNumber: 'পেমেন্ট নম্বর',
+                    PaymentTrxID: 'ট্রানজেকশন আইডি',
+                    Time: 'অর্ডারের সময়',
+                    email: 'ইমেইল',
+                    platformId: 'প্ল্যাটফর্ম আইডি',
+                    uid: 'ইউজার আইডি',
+                    amount: 'মূল্য',
+                    currency: 'মুদ্রা',
+                    faceValue: 'ফেস ভ্যালু',
+                    status: 'স্ট্যাটাস'
+                };
+
+                // অ্যামাউন্ট ফরম্যাট
+                let amountDisplay = order.amount || '0';
+                if (order.currency) amountDisplay += ' ' + order.currency;
+                else amountDisplay += ' ৳'; // ডিফল্ট
+
+                let faceValueDisplay = order.faceValue ? '$' + order.faceValue : '—';
+
+                // স্ট্যাটাস ক্লাস
+                let statusClass = 'highlight';
+                let statusText = order.status || 'pending';
+                if (statusText === 'pending') statusText = 'অপেক্ষমান';
+                else if (statusText === 'completed') statusText = 'সম্পন্ন';
+                else if (statusText === 'cancelled') statusText = 'বাতিল';
+
+                // HTML বিল্ড
+                return `
+                    <div class="success-badge">
+                        <i class="fas fa-check-circle"></i>
+                        <h2>✅ অর্ডার গৃহীত হয়েছে</h2>
+                    </div>
+                    
+                    <div class="info-grid">
+                        <div class="info-label">${labels.OrderId}</div>
+                        <div class="info-value"><span class="highlight">${order.OrderId || 'N/A'}</span></div>
+                        
+                        <div class="info-label">${labels.PaymentMethods}</div>
+                        <div class="info-value">${order.PaymentMethods || 'N/A'}</div>
+                        
+                        <div class="info-label">${labels.PaymentNumber}</div>
+                        <div class="info-value">${order.PaymentNumber || 'N/A'}</div>
+                        
+                        <div class="info-label">${labels.PaymentTrxID}</div>
+                        <div class="info-value">${order.PaymentTrxID || 'N/A'}</div>
+                        
+                        <div class="info-label">${labels.Time}</div>
+                        <div class="info-value">${formatDate(order.Time)}</div>
+                        
+                        <div class="info-label">${labels.email}</div>
+                        <div class="info-value">${order.email || 'N/A'}</div>
+                        
+                        <div class="info-label">প্ল্যাটফর্ম</div>
+                        <div class="info-value">${order.platformName || order.platformId || 'N/A'}</div>
+                        
+                        <div class="info-label">${labels.uid}</div>
+                        <div class="info-value">${order.uid || 'N/A'}</div>
+                        
+                        <div class="info-label">${labels.amount}</div>
+                        <div class="info-value">${amountDisplay}</div>
+                        
+                        ${order.faceValue ? `
+                        <div class="info-label">${labels.faceValue}</div>
+                        <div class="info-value">${faceValueDisplay}</div>
+                        ` : ''}
+                        
+                        <div class="info-label">${labels.status}</div>
+                        <div class="info-value"><span class="status-badge" style="color: #ff9800;">${statusText}</span></div>
+                    </div>
+                    
+                    <div class="amount-box">
+                        <span class="label">সর্বমোট প্রদেয়:</span>
+                        <span class="value">${amountDisplay}</span>
+                    </div>
+                    
+                    <div class="note">
+                        <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
+                        <strong>নির্দেশনা:</strong> আপনার অর্ডারটি প্রক্রিয়াধীন রয়েছে। অনুগ্রহ করে পেমেন্ট কনফার্মেশনের জন্য অপেক্ষা করুন। কোনো সহায়তা প্রয়োজন হলে আমাদের সাপোর্ট টিমের সাথে যোগাযোগ করুন।
+                    </div>
+                    
+                    <button class="print-btn" onclick="window.print()">
+                        <i class="fas fa-print"></i> প্রিন্ট / ডাউনলোড
+                    </button>
+                `;
+            }
+
+            // মেইন এক্সিকিউশন
+            window.addEventListener('DOMContentLoaded', () => {
+                const contentDiv = document.getElementById('content');
+                const encoded = getQueryParam('data');
+                
+                if (!encoded) {
+                    contentDiv.innerHTML = '<div class="error"><i class="fas fa-times-circle"></i><h3>ডাটা পাওয়া যায়নি</h3><p>URL-এ কোনো তথ্য দেওয়া হয়নি।</p></div>';
+                    return;
+                }
+
+                const order = parseOrderData(encoded);
+                if (!order) {
+                    contentDiv.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>তথ্য ডিকোড করা যায়নি</h3><p>URL-এর ডেটা নষ্ট বা ভুল ফরম্যাটে আছে।</p></div>';
+                    return;
+                }
+
+                contentDiv.innerHTML = renderOrder(order);
+            });
+        })();
+    </script>
+</body>
+</html>
