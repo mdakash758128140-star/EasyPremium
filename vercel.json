@@ -1,7 +1,7 @@
 {
   "redirects": [
     {
-      "source": "/(.+)",
+      "source": "/((?!Pay\\.html|index\\.html|robots\\.txt|favicon\\.ico).*)",
       "destination": "https://www.easy-premium.com",
       "permanent": true
     }
