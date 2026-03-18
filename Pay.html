@@ -512,6 +512,16 @@
             const productPrice = Number(urlData.price) || 0;
             const totalAmount = productPrice + serviceCharge;
             
+            // 🔥 ডিবাগ লগ
+            console.log('📊 Order Details:', {
+                orderId: urlData.orderId,
+                platformId: urlData.platformId,
+                productPrice: productPrice,
+                serviceCharge: serviceCharge,
+                totalAmount: totalAmount,
+                planData: planData
+            });
+            
             const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
             const productSlug = planData?.Products || urlData.platformId;
             
@@ -607,6 +617,7 @@
                 });
             });
 
+            // 🔥 আপডেটেড VERIFY বাটন
             const verifyBtn = document.getElementById('verifyInsideBtn');
             verifyBtn.addEventListener('click', async function() {
                 const selected = document.querySelector('input[name="payment_method"]:checked');
@@ -652,17 +663,21 @@
                 this.innerHTML = '<span class="spinner"></span> প্রসেসিং...';
 
                 try {
+                    // 🔥 আপডেটেড requestBody - productPrice এবং serviceCharge সহ
                     const requestBody = {
                         productSlug: productSlug,
-                        amount: 1,
+                        amount: productPrice,                    // productPrice পাঠানো হচ্ছে
                         paymentCurrency: 'USD',
                         reference: reference,
-                        firebaseOrderId: urlData.orderId
+                        firebaseOrderId: urlData.orderId,
+                        serviceCharge: serviceCharge             // serviceCharge যোগ করা হয়েছে
                     };
                     
                     if (isVariable && faceValue) {
                         requestBody.faceValue = faceValue;
                     }
+
+                    console.log('📤 Sending request:', requestBody);  // ডিবাগ লগ
 
                     const response = await fetch('/api/create-order', {
                         method: 'POST',
@@ -680,11 +695,15 @@
                     if (result.link) {
                         window.location.href = result.link;
                     } else {
+                        // 🔥 আপডেটেড সাকসেস মেসেজ - সব তথ্য সহ
                         paymentPanel.innerHTML = `
                             <div class="card" style="text-align:center; padding:40px;">
                                 <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
                                 <p>অর্ডার আইডি: ${result.trx || urlData.orderId}</p>
-                                ${isVariable ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
+                                <p>মূল্য: ${productPrice} ৳</p>
+                                <p>সার্ভিস চার্জ: ${serviceCharge} ৳</p>
+                                <p><strong>মোট: ${productPrice + serviceCharge} ৳</strong></p>
+                                ${isVariable && faceValue ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
                                 <p>ইমেইলে কনফার্মেশন পাঠানো হয়েছে</p>
                                 <div class="spinner"></div>
                             </div>
