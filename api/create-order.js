@@ -71,10 +71,10 @@ export default async function handler(req, res) {
     // মোট মূল্য = পণ্যের মূল্য + সার্ভিস চার্জ
     const totalAmount = amountInt + serviceChargeValue;
     
-    // Format price with currency
-    const formattedPrice = `${amountInt} ${paymentCurrency}`;
-    const formattedServiceCharge = `${serviceChargeValue} ${paymentCurrency}`;
-    const formattedTotalPrice = `${totalAmount} ${paymentCurrency}`;
+    // বাংলাদেশি টাকায় মূল্য দেখান
+    const formattedPrice = `${amountInt} ৳`;
+    const formattedServiceCharge = `${serviceChargeValue} ৳`;
+    const formattedTotalPrice = `${totalAmount} ৳`;
 
     // প্ল্যাটফর্ম নাম ফরম্যাট করা
     let platformDisplayName = productSlug;
@@ -98,7 +98,7 @@ export default async function handler(req, res) {
       platformName: platformDisplayName,
       uid: userId || 'guest',
       amount: amountInt,
-      currency: paymentCurrency,
+      currency: 'BDT',
       serviceCharge: serviceChargeValue,
       totalAmount: totalAmount,
       faceValue: faceValue || null,
@@ -179,22 +179,22 @@ export default async function handler(req, res) {
         // EmailJS API endpoint
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
-        // টেমপ্লেট প্যারামিটার - সব তথ্য সহ
+        // টেমপ্লেট প্যারামিটার - সব তথ্য সহ (বাংলাদেশি ফরম্যাটে)
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
-          order_id: finalOrderId,
-          platform: platformDisplayName,
-          price: formattedPrice,
-          service_charge: formattedServiceCharge,
-          total_price: formattedTotalPrice,
-          order_date: formattedDate,
+          order_id: finalOrderId,                    // RELONSJUB8HFZ2FJS4F
+          platform: platformDisplayName,              // Rewarble Visa WW USD $5
+          price: formattedPrice,                      // 614 ৳
+          service_charge: formattedServiceCharge,     // 200 ৳
+          total_price: formattedTotalPrice,           // 814 ৳
+          order_date: formattedDate,                  // ১৮ মার্চ, ২০২৬
           payment_link: orderLink,
           from_name: 'Easy Premium',
           reply_to: 'support@easy-premium.com'
         };
 
-        console.log('📧 Sending email with all details...');
+        console.log('📧 Sending email with all details:', templateParams);
 
         // Private Key সহ API কল
         const emailResponse = await fetch(emailjsUrl, {
