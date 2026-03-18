@@ -16,10 +16,16 @@ export default async function handler(req, res) {
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
 
-  // EmailJS configuration
-  const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_uknjS0j';
-  const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || 'template_gdvntij';
-  const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || 'U1IOSVkl_OR1gRFVn';
+  // EmailJS configuration - শুধু process.env থেকে নিবে, কোন ডিফল্ট ভ্যালু নেই
+  const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
+  const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
+  const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
+
+  // Check if EmailJS credentials are configured
+  if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+    console.error('EmailJS credentials not configured');
+    // ইমেইল না পাঠালেও অর্ডার প্রসেস চলবে
+  }
 
   // Extract data from request body
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId } = req.body;
@@ -66,6 +72,9 @@ export default async function handler(req, res) {
 
     // Format price with currency
     const formattedPrice = `${amountInt} ${paymentCurrency}`;
+
+    // Get platform name
+    const platformName = productSlug.includes('variable') ? 'Rewarble Visa Variable USD' : productSlug;
 
     // Prepare data for Base64 encoding
     const orderData = {
@@ -136,11 +145,17 @@ export default async function handler(req, res) {
     const jsonString = JSON.stringify(orderData);
     const base64Data = Buffer.from(jsonString).toString('base64');
     
-    // ✅ ফিক্সড লিংক - শুধুমাত্র easy-premium.com ডোমেইন
+    // ✅ ফিক্সড লিংক
     const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
-    // ✅ ইমেইজ পাঠানোর ফাংশন - আপনার টেমপ্লেট অনুযায়ী
+    // ✅ ইমেইল পাঠানোর ফাংশন - শুধু process.env ব্যবহার করবে
     async function sendEmailWithLink() {
+      // ইমেইজ ক্রেডেনশিয়াল চেক করুন
+      if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+        console.log('EmailJS credentials missing, skipping email');
+        return false;
+      }
+
       if (!email) {
         console.log('No email provided, skipping email notification');
         return false;
@@ -150,19 +165,20 @@ export default async function handler(req, res) {
         // EmailJS API endpoint
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
-        // Prepare email template parameters - আপনার টেমপ্লেট অনুযায়ী
+        // আপনার টেমপ্লেট অনুযায়ী প্যারামিটার
         const templateParams = {
+          to_email: email,
           to_name: userId || 'Valued Customer',
           order_id: finalOrderId,
-          platform: productSlug,
+          platform: platformName,
           price: formattedPrice,
-          price2: '০ ৳', // Service charge (if needed)
           order_date: formattedDate,
           payment_link: orderLink,
-          to_email: email,
           from_name: 'Easy Premium',
           reply_to: 'support@easy-premium.com'
         };
+
+        console.log('📧 Sending email with params:', templateParams);
 
         // Send email via EmailJS
         const emailResponse = await fetch(emailjsUrl, {
@@ -179,28 +195,27 @@ export default async function handler(req, res) {
         });
 
         const responseText = await emailResponse.text();
+        console.log('📨 EmailJS raw response:', responseText);
         
         if (!emailResponse.ok) {
-          console.error('EmailJS error response:', responseText);
+          console.error('❌ EmailJS error response:', responseText);
           return false;
         }
 
-        console.log(`✅ Email sent successfully to ${email}`);
-        console.log('EmailJS response:', responseText);
         return true;
       } catch (emailError) {
-        console.error('Error sending email:', emailError);
+        console.error('❌ Error sending email:', emailError);
         return false;
       }
     }
 
-    // ইমেইল পাঠান (async - কিন্তু response এর জন্য অপেক্ষা না করে)
+    // ইমেইল পাঠান
     let emailSent = false;
-    if (email) {
-      sendEmailWithLink().then(sent => {
-        emailSent = sent;
-        console.log(`📧 Order confirmation email ${sent ? 'sent' : 'failed'} to ${email}`);
-      });
+    if (email && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY) {
+      emailSent = await sendEmailWithLink();
+      console.log(`📧 Order confirmation email ${emailSent ? 'sent' : 'failed'} to ${email}`);
+    } else {
+      console.log('📧 Email not sent - missing credentials or email address');
     }
 
     // Return success response
@@ -209,7 +224,7 @@ export default async function handler(req, res) {
       trx: finalOrderId,
       message: 'Order created successfully',
       link: orderLink,
-      emailSent: email ? true : false,
+      emailSent: emailSent,
       relogradeResponse: relogradeData,
       orderData: {
         orderId: finalOrderId,
@@ -224,7 +239,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error creating order:', error.message);
+    console.error('❌ Error creating order:', error.message);
     return res.status(500).json({ 
       error: 'Failed to create order',
       details: error.message 
