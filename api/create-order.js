@@ -16,16 +16,11 @@ export default async function handler(req, res) {
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
 
-  // EmailJS configuration - শুধু process.env থেকে নিবে, কোন ডিফল্ট ভ্যালু নেই
+  // EmailJS configuration
   const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
   const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
   const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
-
-  // Check if EmailJS credentials are configured
-  if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
-    console.error('EmailJS credentials not configured');
-    // ইমেইল না পাঠালেও অর্ডার প্রসেস চলবে
-  }
+  const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;  // 🔥 Private Key যোগ করুন
 
   // Extract data from request body
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId } = req.body;
@@ -148,24 +143,23 @@ export default async function handler(req, res) {
     // ✅ ফিক্সড লিংক
     const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
-    // ✅ ইমেইল পাঠানোর ফাংশন - শুধু process.env ব্যবহার করবে
+    // ✅ ইমেইল পাঠানোর ফাংশন - Private Key সহ
     async function sendEmailWithLink() {
-      // ইমেইজ ক্রেডেনশিয়াল চেক করুন
-      if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
-        console.log('EmailJS credentials missing, skipping email');
+      if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
+        console.log('EmailJS credentials missing');
         return false;
       }
 
       if (!email) {
-        console.log('No email provided, skipping email notification');
+        console.log('No email provided');
         return false;
       }
 
       try {
-        // EmailJS API endpoint
+        // EmailJS API endpoint (সঠিক endpoint)
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
-        // আপনার টেমপ্লেট অনুযায়ী প্যারামিটার
+        // টেমপ্লেট প্যারামিটার
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
@@ -178,47 +172,45 @@ export default async function handler(req, res) {
           reply_to: 'support@easy-premium.com'
         };
 
-        console.log('📧 Sending email with params:', templateParams);
+        console.log('📧 Sending email...');
 
-        // Send email via EmailJS
+        // 🔥 Private Key Headers-এ পাঠাতে হবে
         const emailResponse = await fetch(emailjsUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${EMAILJS_PRIVATE_KEY}`  // Private Key এখানে
           },
           body: JSON.stringify({
             service_id: EMAILJS_SERVICE_ID,
             template_id: EMAILJS_TEMPLATE_ID,
             user_id: EMAILJS_PUBLIC_KEY,
-            template_params: templateParams
+            template_params: templateParams,
+            accessToken: EMAILJS_PRIVATE_KEY  // অথবা এখানে
           })
         });
 
         const responseText = await emailResponse.text();
-        console.log('📨 EmailJS raw response:', responseText);
+        console.log('📨 EmailJS response:', responseText);
         
         if (!emailResponse.ok) {
-          console.error('❌ EmailJS error response:', responseText);
+          console.error('❌ EmailJS error:', responseText);
           return false;
         }
 
         return true;
       } catch (emailError) {
-        console.error('❌ Error sending email:', emailError);
+        console.error('❌ Email error:', emailError);
         return false;
       }
     }
 
     // ইমেইল পাঠান
     let emailSent = false;
-    if (email && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY) {
+    if (email && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY && EMAILJS_PRIVATE_KEY) {
       emailSent = await sendEmailWithLink();
-      console.log(`📧 Order confirmation email ${emailSent ? 'sent' : 'failed'} to ${email}`);
-    } else {
-      console.log('📧 Email not sent - missing credentials or email address');
     }
 
-    // Return success response
     return res.status(200).json({
       success: true,
       trx: finalOrderId,
@@ -239,7 +231,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('❌ Error creating order:', error.message);
+    console.error('❌ Error:', error.message);
     return res.status(500).json({ 
       error: 'Failed to create order',
       details: error.message 
