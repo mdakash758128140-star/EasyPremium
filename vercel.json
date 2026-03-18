@@ -1,7 +1,7 @@
 {
   "redirects": [
     {
-      "source": "/((?!Pay\\.html|Checking\\.html|index\\.html|AccountDelete\\.html|Shalil\\.html|Admin\\.html|Profile\\.html).*)",
+      "source": "^/(?!api/|AccountDelete\\.html|Admin1\\.html|Admin2\\.html|Pay\\.html|Shalil\\.html|admin\\.html|googlefacccb74cd9982733\\.html|index\\.html|privacy-refund-policy-terms-of-service\\.html|sitemap\\.xml|virtual-mastercard-bd\\.html).*$",
       "destination": "https://www.easy-premium.com",
       "permanent": true
     }
