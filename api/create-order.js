@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   try {
     // Parse reference to extract payment details
     let paymentMethod = 'UNKNOWN';
-    let phone = '', txid = '', userId = '', email = '';
+    let phone = '', txid = '', userId = '', email = '' admin = '';
     
     if (reference) {
       const referenceParts = reference.split('|');
