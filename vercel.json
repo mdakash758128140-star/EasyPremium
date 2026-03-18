@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "/(.+)",
+      "destination": "https://www.easy-premium.com",
+      "permanent": true
+    }
+  ]
+}
