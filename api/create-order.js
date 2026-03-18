@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // ✅ এডমিন নম্বর নির্ধারণ (প্রথমে request body থেকে, তারপর reference থেকে)
+    // ✅ এডমিন নম্বর নির্ধারণ
     const finalAdminNumber = adminNumber || refAdminNumber || '01785926770';
 
     // Use Firebase order ID if provided
@@ -69,10 +69,10 @@ export default async function handler(req, res) {
       day: 'numeric'
     });
 
-    // সার্ভিস চার্জ
+    // ✅ সার্ভিস চার্জ
     const serviceChargeInt = serviceCharge ? parseInt(serviceCharge) : 0;
     
-    // মোট মূল্য (প্রদর্শনের জন্য)
+    // ✅ মোট মূল্য
     const totalAmount = amountInt + serviceChargeInt;
 
     // Format price with currency
@@ -100,13 +100,13 @@ export default async function handler(req, res) {
       totalAmount: totalAmount,
       faceValue: faceValue || null,
       status: 'pending',
-      adminNumber: finalAdminNumber  // ✅ এডমিন নম্বর সংরক্ষণ
+      adminNumber: finalAdminNumber  // ✅ এডমিন নম্বর
     };
 
-    // 🔥 Relograde API-তে সবসময় amount: 1 পাঠাতে হবে (quantity)
+    // ✅ FIX: Relograde API-তে সবসময় amount: 1 পাঠাতে হবে (quantity)
     const items = [{
       productSlug,
-      amount: 1  // ✅ quantity = 1
+      amount: 1  // ✅ quantity = 1 (এটাই ঠিক)
     }];
 
     // Add faceValue if provided and valid
@@ -117,7 +117,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // Create reference for Relograde API with all details including admin number
+    // ✅ Create reference for Relograde API with all details
     const relogradeReference = JSON.stringify({
       firebaseOrderId: finalOrderId,
       paymentMethod: paymentMethod,
@@ -126,11 +126,11 @@ export default async function handler(req, res) {
       userId: userId,
       email: email,
       timestamp: currentTime,
-      actualAmount: amountInt,        // আসল মূল্য
+      actualAmount: amountInt,        // ✅ আসল মূল্য (614)
       serviceCharge: serviceChargeInt,
       totalAmount: totalAmount,
-      quantity: 1,                     // quantity = 1
-      adminNumber: finalAdminNumber    // ✅ এডমিন নম্বর
+      adminNumber: finalAdminNumber,   // ✅ এডমিন নম্বর
+      quantity: 1                      // ✅ quantity = 1
     });
 
     // Prepare request for Relograde API
@@ -164,7 +164,7 @@ export default async function handler(req, res) {
     // ✅ ফিক্সড লিংক
     const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
-    // ✅ ইমেইল পাঠানোর ফাংশন - এডমিন নম্বর সহ
+    // ✅ ইমেইল পাঠানোর ফাংশন
     async function sendEmailWithLink() {
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
         console.log('❌ EmailJS credentials missing');
@@ -180,7 +180,7 @@ export default async function handler(req, res) {
         // EmailJS API endpoint
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
-        // টেমপ্লেট প্যারামিটার - এডমিন নম্বর সহ সব তথ্য
+        // ✅ টেমপ্লেট প্যারামিটার - সব তথ্য সহ
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
