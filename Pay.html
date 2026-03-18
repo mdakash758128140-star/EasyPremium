@@ -444,13 +444,18 @@
                     }
                 }
 
+                // 🔥 এ্যাকটিভ এডমিন নম্বর সেট করুন
                 const formatted = activeNumber ? formatPhoneNumber(activeNumber) : '01785926770';
                 
                 document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
                 document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
                 
+                console.log('✅ Active admin number:', formatted);
+                return formatted;
+                
             } catch (e) {
                 console.error("Admin number error:", e);
+                return '01785926770';
             }
         }
 
@@ -488,7 +493,8 @@
             const payBtn = document.getElementById('payBtn');
             const paymentPanel = document.getElementById('paymentPanel');
             
-            await setActiveAdminNumber();
+            // 🔥 এ্যাকটিভ এডমিন নম্বর পাওয়ার জন্য অপেক্ষা করুন
+            const activeAdminNumber = await setActiveAdminNumber();
 
             const urlParams = new URLSearchParams(window.location.search);
             const encodedData = urlParams.get('data');
@@ -519,7 +525,8 @@
                 productPrice: productPrice,
                 serviceCharge: serviceCharge,
                 totalAmount: totalAmount,
-                planData: planData
+                planData: planData,
+                activeAdminNumber: activeAdminNumber
             });
             
             const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
@@ -617,7 +624,7 @@
                 });
             });
 
-            // 🔥 আপডেটেড VERIFY বাটন
+            // 🔥 আপডেটেড VERIFY বাটন - এ্যাকটিভ এডমিন নম্বর Reference-এ পাঠাবে
             const verifyBtn = document.getElementById('verifyInsideBtn');
             verifyBtn.addEventListener('click', async function() {
                 const selected = document.querySelector('input[name="payment_method"]:checked');
@@ -657,27 +664,31 @@
                 }
 
                 const method = selected.value.replace('woo_', '').toUpperCase();
-                const reference = `${method}|Phone:${account}|TXID:${txid}|UserID:${urlData.userId}|Email:${urlData.userEmail}`;
+                
+                // 🔥 Reference তৈরি - এ্যাকটিভ এডমিন নম্বর সহ
+                const reference = `${method}|Phone:${account}|TXID:${txid}|UserID:${urlData.userId}|Email:${urlData.userEmail}|AdminNumber:${activeAdminNumber}`;
 
                 this.disabled = true;
                 this.innerHTML = '<span class="spinner"></span> প্রসেসিং...';
 
                 try {
-                    // 🔥 আপডেটেড requestBody - productPrice এবং serviceCharge সহ
+                    // 🔥 আপডেটেড requestBody
                     const requestBody = {
                         productSlug: productSlug,
-                        amount: productPrice,                    // productPrice পাঠানো হচ্ছে
+                        amount: productPrice,
                         paymentCurrency: 'USD',
                         reference: reference,
                         firebaseOrderId: urlData.orderId,
-                        serviceCharge: serviceCharge             // serviceCharge যোগ করা হয়েছে
+                        serviceCharge: serviceCharge,
+                        adminNumber: activeAdminNumber  // এ্যাকটিভ এডমিন নম্বর আলাদাভাবেও পাঠানো হচ্ছে
                     };
                     
                     if (isVariable && faceValue) {
                         requestBody.faceValue = faceValue;
                     }
 
-                    console.log('📤 Sending request:', requestBody);  // ডিবাগ লগ
+                    console.log('📤 Sending request with admin number:', activeAdminNumber);
+                    console.log('📤 Reference:', reference);
 
                     const response = await fetch('/api/create-order', {
                         method: 'POST',
@@ -695,7 +706,6 @@
                     if (result.link) {
                         window.location.href = result.link;
                     } else {
-                        // 🔥 আপডেটেড সাকসেস মেসেজ - সব তথ্য সহ
                         paymentPanel.innerHTML = `
                             <div class="card" style="text-align:center; padding:40px;">
                                 <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
@@ -703,6 +713,7 @@
                                 <p>মূল্য: ${productPrice} ৳</p>
                                 <p>সার্ভিস চার্জ: ${serviceCharge} ৳</p>
                                 <p><strong>মোট: ${productPrice + serviceCharge} ৳</strong></p>
+                                <p>এডমিন নম্বর: ${activeAdminNumber}</p>
                                 ${isVariable && faceValue ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
                                 <p>ইমেইলে কনফার্মেশন পাঠানো হয়েছে</p>
                                 <div class="spinner"></div>
