@@ -148,7 +148,7 @@ export default async function handler(req, res) {
       amount: amountInt,
       currency: 'BDT',
       faceValue: faceValue || null,
-      status: 'pending',
+      status: 'waiting',                // changed from 'pending' to 'waiting'
       serviceCharge: serviceChargeInt,
       totalAmount: totalAmount
     };
@@ -183,7 +183,7 @@ export default async function handler(req, res) {
           payment_number: phone || 'N/A',
           transaction_id: txid || 'N/A',
           user_id: userId || 'guest',
-          status: 'pending',
+          status: 'waiting',              // changed from 'pending' to 'waiting'
           amount: formattedPrice,
           total_amount: formattedTotalPrice,
           face_value: faceValue ? `$${faceValue}` : 'N/A',
