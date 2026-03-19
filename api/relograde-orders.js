@@ -1,3 +1,4 @@
+// api/relograde-orders.js
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,8 +14,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ✅ সঠিক endpoint: প্যারামিটার সহ
-    const response = await fetch('https://connect.relograde.com/api/1.02/order?limit=100', {
+    const { trx } = req.query; // URL থেকে trx প্যারামিটার নেওয়া
+
+    let url = 'https://connect.relograde.com/api/1.02/order';
+    if (trx) {
+      // নির্দিষ্ট অর্ডার খুঁজতে trx ফিল্টার ব্যবহার
+      url += `?trx=${encodeURIComponent(trx)}`;
+    } else {
+      // কোনো trx না দিলে সর্বশেষ ৫০টি অর্ডার দেখানো (প্রশাসনিক কাজে)
+      url += '?limit=50';
+    }
+
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -33,8 +44,8 @@ export default async function handler(req, res) {
 
     const result = await response.json();
     console.log('Relograde API response structure:', Object.keys(result));
-    
-    // ✅ রেসপন্স ফরম্যাট চেক
+
+    // রেসপন্স ফরম্যাট চেক
     let orders = [];
     if (Array.isArray(result)) {
       orders = result;
@@ -43,16 +54,20 @@ export default async function handler(req, res) {
     } else if (result.orders && Array.isArray(result.orders)) {
       orders = result.orders;
     } else {
-      // যদি কিছু না মিলে, পুরো অবজেক্টকে অ্যারে হিসেবে পাঠাই
       orders = [result];
     }
-    
-    res.status(200).json({ 
-      success: true,
-      count: orders.length,
-      data: orders 
-    });
-    
+
+    // যদি trx দেওয়া থাকে, তবে একটি অর্ডার আশা করছি, তাই প্রথম আইটেম পাঠানো যেতে পারে
+    if (trx) {
+      if (orders.length === 0) {
+        return res.status(404).json({ success: false, error: 'Order not found' });
+      }
+      return res.status(200).json({ success: true, data: orders[0] });
+    }
+
+    // trx না থাকলে পুরো তালিকা
+    res.status(200).json({ success: true, count: orders.length, data: orders });
+
   } catch (error) {
     console.error('Error fetching orders:', error.message);
     res.status(500).json({ 
