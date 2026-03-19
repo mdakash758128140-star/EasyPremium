@@ -82,45 +82,100 @@
             }
             function renderOrder(data) {
                 if(!data) return '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>ডেটা পাওয়া যায়নি</h3></div>';
+                
+                // লেবেল ম্যাপিং
                 const labels = {
-                    OrderId:'অর্ডার আইডি', PaymentMethods:'পেমেন্ট পদ্ধতি', PaymentNumber:'পেমেন্ট নম্বর',
-                    PaymentTrxID:'ট্রানজেকশন আইডি', Time:'সময়', email:'ইমেইল', platformId:'প্ল্যাটফর্ম',
-                    uid:'ইউজার আইডি', amount:'মূল্য', currency:'মুদ্রা', faceValue:'ফেস ভ্যালু', status:'স্ট্যাটাস'
+                    OrderId:'অর্ডার আইডি', 
+                    PaymentMethods:'পেমেন্ট পদ্ধতি', 
+                    PaymentNumber:'পেমেন্ট নম্বর',
+                    PaymentTrxID:'ট্রানজেকশন আইডி', 
+                    Time:'সময়', 
+                    email:'ইমেইল', 
+                    platformId:'প্ল্যাটফর্ম',
+                    uid:'ইউজার আইডি', 
+                    amount:'মূল্য', 
+                    currency:'মুদ্রা', 
+                    faceValue:'ফেস ভ্যালু', 
+                    status:'স্ট্যাটাস',
+                    serviceCharge:'সার্ভিস চার্জ',
+                    totalAmount:'মোট মূল্য'
                 };
-                let amountDisplay = data.amount || '0';
-                if(data.currency) amountDisplay += ' ' + data.currency;
-                else amountDisplay += ' ৳';
+                
+                // ফেস ভ্যালু ডিসপ্লে
                 let faceDisplay = data.faceValue ? '$' + data.faceValue : '—';
+                
+                // স্ট্যাটাস টেক্সট বাংলায়
                 let statusText = data.status || 'pending';
                 if(statusText === 'pending') statusText = 'অপেক্ষমান';
                 else if(statusText === 'completed') statusText = 'সম্পন্ন';
                 else if(statusText === 'cancelled') statusText = 'বাতিল';
-                let html = '<div class="success-badge"><i class="fas fa-check-circle"></i><h2>অর্ডার গৃহীত হয়েছে</h2></div>';
+                
+                // মূল্য ও মোট মূল্য ডিসপ্লে
+                let amountDisplay = data.amount || '0';
+                let totalDisplay = data.totalAmount || data.amount || '0';
+                let serviceDisplay = data.serviceCharge || '0';
+                let currencySymbol = data.currency || '৳';
+                
+                if(data.currency) {
+                    amountDisplay = data.amount + ' ' + data.currency;
+                    totalDisplay = totalDisplay + ' ' + data.currency;
+                    serviceDisplay = serviceDisplay + ' ' + data.currency;
+                } else {
+                    amountDisplay = data.amount + ' ৳';
+                    totalDisplay = totalDisplay + ' ৳';
+                    serviceDisplay = serviceDisplay + ' ৳';
+                }
+                
+                let html = '<div class="success-badge"><i class="fas fa-check-circle"></i><h2>✅ অর্ডার গৃহীত হয়েছে</h2></div>';
                 html += '<div class="info-grid">';
-                const fields = ['OrderId','PaymentMethods','PaymentNumber','PaymentTrxID','Time','email','platformId','uid','amount','faceValue','status'];
+                
+                // সব ফিল্ড দেখানোর জন্য অ্যারেতে রাখা
+                const fields = ['OrderId','PaymentMethods','PaymentNumber','PaymentTrxID','Time','email','platformId','uid'];
+                
                 fields.forEach(f => {
                     let val = data[f] || 'N/A';
                     if(f === 'Time') val = formatDate(val);
-                    if(f === 'amount') val = amountDisplay;
-                    if(f === 'faceValue' && data.faceValue) val = faceDisplay;
-                    if(f === 'status') val = statusText;
                     html += `<div class="info-label">${labels[f]||f}</div><div class="info-value">${val}</div>`;
                 });
+                
+                // মূল্য
+                html += `<div class="info-label">${labels.amount}</div><div class="info-value">${amountDisplay}</div>`;
+                
+                // সার্ভিস চার্জ (যদি থাকে)
+                if(data.serviceCharge) {
+                    html += `<div class="info-label">${labels.serviceCharge}</div><div class="info-value">${serviceDisplay}</div>`;
+                }
+                
+                // ফেস ভ্যালু (যদি থাকে)
+                if(data.faceValue) {
+                    html += `<div class="info-label">${labels.faceValue}</div><div class="info-value">${faceDisplay}</div>`;
+                }
+                
+                // স্ট্যাটাস
+                html += `<div class="info-label">${labels.status}</div><div class="info-value">${statusText}</div>`;
+                
                 html += '</div>';
-                html += `<div class="price-highlight"><span class="label">সর্বমোট:</span><span class="value">${amountDisplay}</span></div>`;
+                
+                // মোট মূল্য হাইলাইট (সার্ভিস চার্জ সহ)
+                html += `<div class="price-highlight"><span class="label">সর্বমোট:</span><span class="value">${totalDisplay}</span></div>`;
+                
                 html += `<button class="print-btn" onclick="window.print()"><i class="fas fa-print"></i> প্রিন্ট / ডাউনলোড</button>`;
+                
                 return html;
             }
+            
             const encoded = getParam('data');
             if(!encoded) {
                 content.innerHTML = '<div class="error"><i class="fas fa-times-circle"></i><h3>ডাটা পাওয়া যায়নি</h3><p>URL-এ কোনো তথ্য দেওয়া হয়নি।</p></div>';
                 return;
             }
+            
             const jsonStr = decodeBase64(encoded);
             if(!jsonStr) {
                 content.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>তথ্য ডিকোড করা যায়নি</h3><p>URL-এর ডেটা নষ্ট বা ভুল ফরম্যাটে আছে।</p></div>';
                 return;
             }
+            
             let orderData;
             try {
                 orderData = JSON.parse(jsonStr);
@@ -128,6 +183,7 @@
                 content.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>তথ্য পার্স করা যায়নি</h3><p>JSON ফরম্যাট সঠিক নয়।</p></div>';
                 return;
             }
+            
             content.innerHTML = renderOrder(orderData);
         })();
     </script>
