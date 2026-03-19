@@ -105,9 +105,8 @@ export default async function handler(req, res) {
 
     const relogradeData = await response.json();
 
-    // 🔥 পরিবর্তিত অংশ: OrderId-এ Relograde থেকে প্রাপ্ত trx বসানো হচ্ছে
     const orderData = {
-      OrderId: relogradeData.trx || finalOrderId,   // Relograde অর্ডার আইডি
+      OrderId: relogradeData.trx || finalOrderId,
       PaymentMethods: paymentMethod,
       PaymentNumber: phone || 'N/A',
       PaymentTrxID: txid || 'N/A',
@@ -126,6 +125,7 @@ export default async function handler(req, res) {
     
     const orderLink = `https://www.easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
+    // ✅ ইমেইল পাঠানোর ফাংশন – এখানে সামান্য পরিবর্তন করা হয়েছে (অতিরিক্ত তথ্য যোগ)
     async function sendEmailWithLink() {
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
         console.log('❌ EmailJS credentials missing');
@@ -140,18 +140,26 @@ export default async function handler(req, res) {
       try {
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
+        // ⭐ নিচে টেমপ্লেট প্যারামিটারগুলো আপডেট করা হয়েছে (সঠিক তথ্য সহ)
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
-          order_id: finalOrderId,
+          order_id: relogradeData.trx || finalOrderId,       // Relograde অর্ডার আইডি (সঠিক)
           platform: platformName,
           order_date: formattedDate,
           payment_link: orderLink,
+          payment_method: paymentMethod,                     // পেমেন্ট পদ্ধতি
+          payment_number: phone || 'N/A',                    // পেমেন্ট নম্বর
+          transaction_id: txid || 'N/A',                     // ট্রানজেকশন আইডি
+          user_id: userId || 'guest',                         // ইউজার আইডি
+          status: 'pending',                                  // স্ট্যাটাস
+          amount: formattedPrice,                             // মূল্য (যেমন: "983 USD")
+          face_value: faceValue ? `$${faceValue}` : 'N/A',    // ফেস ভ্যালু (যদি থাকে)
           from_name: 'Easy Premium',
           reply_to: 'support@easy-premium.com'
         };
 
-        console.log('📧 Sending email with Private Key...');
+        console.log('📧 Sending email with params:', templateParams);
 
         const emailResponse = await fetch(emailjsUrl, {
           method: 'POST',
