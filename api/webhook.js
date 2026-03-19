@@ -33,7 +33,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ received: true, warning: 'No firebaseOrderId' });
       }
 
-      // Firebase কনফিগারেশন (লিগ্যাসি সিক্রেট বা টোকেন)
+      // Firebase কনফিগারেশন
       const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL;
       const FIREBASE_SECRET = process.env.FIREBASE_SECRET;
 
@@ -75,14 +75,12 @@ export default async function handler(req, res) {
       }
 
       // ========== 1. transactions আপডেট ==========
-      // নতুন কাঠামো: transactions/${firebaseOrderId} সরাসরি আপডেট করুন
       const transactionDirectUrl = `${FIREBASE_DATABASE_URL}/transactions/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
       const directCheck = await fetch(transactionDirectUrl, { method: 'GET' });
 
       if (directCheck.ok) {
         const transactionData = await directCheck.json();
         if (transactionData && transactionData.orderId === firebaseOrderId) {
-          // সরাসরি কী হিসেবে আছে, তাই আপডেট করুন
           await fetch(transactionDirectUrl, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -90,40 +88,38 @@ export default async function handler(req, res) {
           });
           console.log(`✅ Transaction ${firebaseOrderId} updated directly`);
         } else {
-          // সরাসরি কী না থাকলে পুরনো পদ্ধতিতে চেষ্টা করুন (fallback)
           await updateTransactionViaSearch(firebaseOrderId, updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
         }
       } else {
-        // URL ব্যর্থ হলে সার্চ করুন
         await updateTransactionViaSearch(firebaseOrderId, updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
       }
 
       // ========== 2. userOrders আপডেট ==========
       if (userId) {
-        // নতুন কাঠামো: userOrders/${userId}/${firebaseOrderId}
         const userOrderDirectUrl = `${FIREBASE_DATABASE_URL}/userOrders/${userId}/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
         const userCheck = await fetch(userOrderDirectUrl, { method: 'GET' });
+
+        const userUpdates = { status: 'completed' };
+        if (voucherData) {
+          userUpdates.voucherData = voucherData; // ভাউচার ডেটা যোগ
+        }
 
         if (userCheck.ok) {
           const userData = await userCheck.json();
           if (userData) {
-            const userUpdates = { status: 'completed' };
-            if (voucherData) {
-              userUpdates.voucherData = voucherData; // ঐচ্ছিক
-            }
             await fetch(userOrderDirectUrl, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(userUpdates),
             });
-            console.log(`✅ User order updated for user ${userId}`);
+            console.log(`✅ User order updated for user ${userId} with voucher data`);
           } else {
             console.warn(`⚠️ User order not found at direct path, trying fallback...`);
             await updateUserOrderViaSearch(userId, firebaseOrderId, userUpdates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
           }
         } else {
           console.warn(`⚠️ Failed to access user order direct path, trying fallback...`);
-          await updateUserOrderViaSearch(userId, firebaseOrderId, { status: 'completed' }, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
+          await updateUserOrderViaSearch(userId, firebaseOrderId, userUpdates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
         }
       }
     }
@@ -167,7 +163,6 @@ async function updateUserOrderViaSearch(userId, orderId, updates, dbUrl, secret)
   const userOrders = await userOrdersRes.json();
 
   if (userOrders && typeof userOrders === 'object') {
-    // যে কোনো চাইল্ড খুঁজুন যার orderId মেলে
     for (const key in userOrders) {
       if (userOrders[key].orderId === orderId) {
         const updateUrl = `${dbUrl}/userOrders/${userId}/${key}.json?auth=${secret}`;
@@ -176,7 +171,7 @@ async function updateUserOrderViaSearch(userId, orderId, updates, dbUrl, secret)
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updates),
         });
-        console.log(`✅ User order updated for user ${userId} via search (key: ${key})`);
+        console.log(`✅ User order updated for user ${userId} via search (key: ${key}) with voucher:`, updates.voucherData);
         return;
       }
     }
