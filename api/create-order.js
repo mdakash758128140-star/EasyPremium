@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
   // Firebase database secret for REST API
-  const FIREBASE_SECRET = process.env.FIREBASE_DATABASE_SECRET; // you will provide this
+  const FIREBASE_SECRET = process.env.FIREBASE_DATABASE_SECRET; // you must set this
   const FIREBASE_URL = process.env.FIREBASE_DATABASE_URL; // already set
 
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId, serviceCharge } = req.body;
@@ -217,20 +217,32 @@ export default async function handler(req, res) {
       try {
         // Update the transaction node
         const transactionUrl = `${FIREBASE_URL}/transactions/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
-        await fetch(transactionUrl, {
+        console.log(`Updating transaction at: ${transactionUrl}`);
+        const transactionRes = await fetch(transactionUrl, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ relogradeorderID: relogradeData.trx || '' })
         });
+        if (!transactionRes.ok) {
+          console.error('Transaction update failed:', await transactionRes.text());
+        } else {
+          console.log('✅ Transaction updated');
+        }
 
         // Update the userOrders node if userId exists
         if (userId) {
           const userOrderUrl = `${FIREBASE_URL}/userOrders/${userId}/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
-          await fetch(userOrderUrl, {
+          console.log(`Updating userOrder at: ${userOrderUrl}`);
+          const userRes = await fetch(userOrderUrl, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ relogradeorderID: relogradeData.trx || '' })
           });
+          if (!userRes.ok) {
+            console.error('UserOrder update failed:', await userRes.text());
+          } else {
+            console.log('✅ UserOrder updated');
+          }
         }
 
         console.log(`✅ Firebase updated with relograde order ID for ${firebaseOrderId}`);
@@ -240,6 +252,9 @@ export default async function handler(req, res) {
       }
     } else {
       console.log('⚠️ No firebaseOrderId provided or Firebase secret missing, skipping DB update');
+      if (!firebaseOrderId) console.log('firebaseOrderId missing');
+      if (!FIREBASE_SECRET) console.log('FIREBASE_SECRET missing');
+      if (!FIREBASE_URL) console.log('FIREBASE_URL missing');
     }
     // -----------------------------------------------------------------
 
