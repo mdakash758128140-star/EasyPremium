@@ -1,6 +1,5 @@
 // api/webhook.js
 export default async function handler(req, res) {
-  // CORS headers (optional)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -10,127 +9,179 @@ export default async function handler(req, res) {
 
   try {
     const payload = req.body;
-    console.log('📩 Webhook received. Payload:', JSON.stringify(payload, null, 2));
+    console.log('📩 Webhook received:', payload.event);
 
-    // শুধু ORDER_FINISHED ইভেন্ট হ্যান্ডেল করুন
-    if (payload.event !== 'ORDER_FINISHED') {
-      return res.status(200).json({ received: true, message: 'Event ignored' });
-    }
+    if (payload.event === 'ORDER_FINISHED') {
+      const { trx, reference } = payload.data || {};
+      console.log(`🔔 Order finished: trx=${trx}, reference=${reference}`);
 
-    const { trx, reference } = payload.data || {};
-    if (!trx || !reference) {
-      console.error('❌ Missing trx or reference');
-      return res.status(200).json({ received: true, warning: 'Missing data' });
-    }
+      // রেফারেন্স পার্স করুন (JSON ফরম্যাট)
+      let firebaseOrderId = null;
+      let userId = null;
+      try {
+        const refData = JSON.parse(reference);
+        firebaseOrderId = refData.firebaseOrderId;
+        userId = refData.userId;
+        console.log(`✅ Parsed: firebaseOrderId=${firebaseOrderId}, userId=${userId}`);
+      } catch (e) {
+        console.error('❌ Failed to parse reference JSON:', e.message);
+        return res.status(200).json({ received: true, warning: 'Invalid reference' });
+      }
 
-    console.log(`🔔 Order finished: trx=${trx}, reference=${reference}`);
+      if (!firebaseOrderId) {
+        console.warn('⚠️ firebaseOrderId missing');
+        return res.status(200).json({ received: true, warning: 'No firebaseOrderId' });
+      }
 
-    // 🔹 Reference পার্স করুন (Firebase order ID ও user ID)
-    let firebaseOrderId, userId;
-    try {
-      const refData = JSON.parse(reference);
-      firebaseOrderId = refData.firebaseOrderId;
-      userId = refData.userId;
-      console.log(`✅ Parsed: firebaseOrderId=${firebaseOrderId}, userId=${userId}`);
-    } catch (e) {
-      console.error('❌ Failed to parse reference JSON:', e.message);
-      return res.status(200).json({ received: true, warning: 'Invalid reference' });
-    }
+      // Firebase কনফিগারেশন (লিগ্যাসি সিক্রেট বা টোকেন)
+      const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL;
+      const FIREBASE_SECRET = process.env.FIREBASE_SECRET;
 
-    if (!firebaseOrderId) {
-      console.warn('⚠️ firebaseOrderId missing');
-      return res.status(200).json({ received: true, warning: 'No firebaseOrderId' });
-    }
+      if (!FIREBASE_DATABASE_URL || !FIREBASE_SECRET) {
+        console.error('❌ Missing Firebase config');
+        return res.status(500).json({ error: 'Firebase not configured' });
+      }
 
-    // Firebase ও Relograde কনফিগ (Environment variables)
-    const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL;
-    const FIREBASE_SECRET = process.env.FIREBASE_SECRET; // Firebase Database Secret
-    const RELOGRADE_API_KEY = process.env.RELOGRADE_API_KEY;
-
-    if (!FIREBASE_DATABASE_URL || !FIREBASE_SECRET || !RELOGRADE_API_KEY) {
-      console.error('❌ Missing environment variables');
-      return res.status(500).json({ error: 'Server config error' });
-    }
-
-    // 🔹 Relograde থেকে অর্ডার ডিটেলস ফেচ করুন
-    let voucherCodes = [];
-    try {
-      const orderRes = await fetch(`https://connect.relograde.com/api/1.02/order/${trx}`, {
-        headers: { Authorization: `Bearer ${RELOGRADE_API_KEY}` }
-      });
-
-      if (!orderRes.ok) {
-        console.error(`❌ Relograde API error: ${orderRes.status} ${orderRes.statusText}`);
-        const errorText = await orderRes.text();
-        console.error('Response:', errorText);
-      } else {
-        const orderDetails = await orderRes.json();
-        console.log('📦 Order details from Relograde (full):', JSON.stringify(orderDetails, null, 2));
-
-        // ✅ সঠিক পদ্ধতি: items[].orderLines[].voucherCode
-        if (orderDetails.items && Array.isArray(orderDetails.items)) {
-          orderDetails.items.forEach(item => {
-            if (item.orderLines && Array.isArray(item.orderLines)) {
-              item.orderLines.forEach(line => {
-                if (line.voucherCode) {
-                  voucherCodes.push(line.voucherCode);
-                }
-              });
-            }
+      // Relograde থেকে ভাউচার ডাটা সংগ্রহ
+      const apiKey = process.env.RELOGRADE_API_KEY;
+      let voucherData = null;
+      if (apiKey && trx) {
+        try {
+          const orderRes = await fetch(`https://connect.relograde.com/api/1.02/order/${trx}`, {
+            headers: { Authorization: `Bearer ${apiKey}` }
           });
+          if (orderRes.ok) {
+            const orderDetails = await orderRes.json();
+            console.log('📦 Order details from Relograde:', orderDetails);
+            voucherData = {
+              voucherLink: orderDetails.voucherLink || orderDetails.voucherUrl || null,
+              voucherCode: orderDetails.voucherCode || null,
+            };
+          } else {
+            console.error('❌ Failed to fetch order details from Relograde');
+          }
+        } catch (err) {
+          console.error('❌ Error fetching order details:', err.message);
         }
-
-        console.log(`✅ Extracted ${voucherCodes.length} voucher codes:`, voucherCodes);
       }
-    } catch (err) {
-      console.error('❌ Error fetching order details:', err.message);
-    }
 
-    // 🔹 Firebase-এ আপডেট করার ডাটা তৈরি করুন
-    const updates = {
-      status: 'completed',
-      completedAt: new Date().toISOString(),
-      voucherCodes: voucherCodes,  // খালি অ্যারে হলেও সেট হবে
-    };
+      // আপডেট ডাটা প্রস্তুত
+      const updates = {
+        status: 'completed',
+        completedAt: new Date().toISOString(),
+      };
+      if (voucherData) {
+        updates.voucherData = voucherData;
+      }
 
-    console.log('📤 Updates to Firebase:', JSON.stringify(updates, null, 2));
+      // ========== 1. transactions আপডেট ==========
+      // নতুন কাঠামো: transactions/${firebaseOrderId} সরাসরি আপডেট করুন
+      const transactionDirectUrl = `${FIREBASE_DATABASE_URL}/transactions/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
+      const directCheck = await fetch(transactionDirectUrl, { method: 'GET' });
 
-    // ========== userOrders আপডেট ==========
-    if (userId && firebaseOrderId) {
-      const userOrderUrl = `${FIREBASE_DATABASE_URL}/userOrders/${userId}/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
-      const userRes = await fetch(userOrderUrl, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-
-      if (userRes.ok) {
-        console.log(`✅ userOrders updated for ${userId}/${firebaseOrderId}`);
+      if (directCheck.ok) {
+        const transactionData = await directCheck.json();
+        if (transactionData && transactionData.orderId === firebaseOrderId) {
+          // সরাসরি কী হিসেবে আছে, তাই আপডেট করুন
+          await fetch(transactionDirectUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates),
+          });
+          console.log(`✅ Transaction ${firebaseOrderId} updated directly`);
+        } else {
+          // সরাসরি কী না থাকলে পুরনো পদ্ধতিতে চেষ্টা করুন (fallback)
+          await updateTransactionViaSearch(firebaseOrderId, updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
+        }
       } else {
-        console.error(`❌ userOrders update failed: ${userRes.status}`);
-        const errText = await userRes.text();
-        console.error(errText);
+        // URL ব্যর্থ হলে সার্চ করুন
+        await updateTransactionViaSearch(firebaseOrderId, updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
       }
-    } else {
-      console.warn('⚠️ userId or firebaseOrderId missing, skipping userOrders update');
-    }
 
-    // ========== transactions আপডেট (ঐচ্ছিক) ==========
-    if (firebaseOrderId) {
-      const transactionUrl = `${FIREBASE_DATABASE_URL}/transactions/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
-      await fetch(transactionUrl, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      }).then(res => {
-        if (res.ok) console.log(`✅ transactions updated for ${firebaseOrderId}`);
-        else console.error(`❌ transactions update failed: ${res.status}`);
-      }).catch(err => console.error('Transaction update error:', err.message));
+      // ========== 2. userOrders আপডেট ==========
+      if (userId) {
+        // নতুন কাঠামো: userOrders/${userId}/${firebaseOrderId}
+        const userOrderDirectUrl = `${FIREBASE_DATABASE_URL}/userOrders/${userId}/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
+        const userCheck = await fetch(userOrderDirectUrl, { method: 'GET' });
+
+        if (userCheck.ok) {
+          const userData = await userCheck.json();
+          if (userData) {
+            const userUpdates = { status: 'completed' };
+            if (voucherData) {
+              userUpdates.voucherData = voucherData; // ঐচ্ছিক
+            }
+            await fetch(userOrderDirectUrl, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(userUpdates),
+            });
+            console.log(`✅ User order updated for user ${userId}`);
+          } else {
+            console.warn(`⚠️ User order not found at direct path, trying fallback...`);
+            await updateUserOrderViaSearch(userId, firebaseOrderId, userUpdates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
+          }
+        } else {
+          console.warn(`⚠️ Failed to access user order direct path, trying fallback...`);
+          await updateUserOrderViaSearch(userId, firebaseOrderId, { status: 'completed' }, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
+        }
+      }
     }
 
     res.status(200).json({ received: true });
   } catch (error) {
     console.error('❌ Webhook error:', error.message);
     res.status(500).json({ error: error.message });
+  }
+}
+
+// সার্চ করে ট্রানজেকশন আপডেট করার ফাংশন (পুরনো পদ্ধতি)
+async function updateTransactionViaSearch(orderId, updates, dbUrl, secret) {
+  const findUrl = `${dbUrl}/transactions.json?orderBy="orderId"&equalTo="${orderId}"&auth=${secret}`;
+  const findRes = await fetch(findUrl);
+  const findData = await findRes.json();
+
+  if (findData && typeof findData === 'object') {
+    const keys = Object.keys(findData);
+    if (keys.length > 0) {
+      const transactionKey = keys[0];
+      const updateUrl = `${dbUrl}/transactions/${transactionKey}.json?auth=${secret}`;
+      await fetch(updateUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      console.log(`✅ Transaction ${orderId} updated via search (key: ${transactionKey})`);
+    } else {
+      console.warn(`⚠️ No transaction found with orderId ${orderId}`);
+    }
+  } else {
+    console.warn(`⚠️ Transaction search failed for orderId ${orderId}`);
+  }
+}
+
+// সার্চ করে ইউজার অর্ডার আপডেট করার ফাংশন (পুরনো পদ্ধতি)
+async function updateUserOrderViaSearch(userId, orderId, updates, dbUrl, secret) {
+  const userOrdersUrl = `${dbUrl}/userOrders/${userId}.json?auth=${secret}`;
+  const userOrdersRes = await fetch(userOrdersUrl);
+  const userOrders = await userOrdersRes.json();
+
+  if (userOrders && typeof userOrders === 'object') {
+    // যে কোনো চাইল্ড খুঁজুন যার orderId মেলে
+    for (const key in userOrders) {
+      if (userOrders[key].orderId === orderId) {
+        const updateUrl = `${dbUrl}/userOrders/${userId}/${key}.json?auth=${secret}`;
+        await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        });
+        console.log(`✅ User order updated for user ${userId} via search (key: ${key})`);
+        return;
+      }
+    }
+    console.warn(`⚠️ No matching user order found for userId ${userId} with orderId ${orderId}`);
+  } else {
+    console.warn(`⚠️ No userOrders found for userId ${userId}`);
   }
 }
