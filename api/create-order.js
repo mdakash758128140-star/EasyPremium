@@ -1,5 +1,4 @@
 // api/create-order.js
-
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,20 +11,16 @@ export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Get API key from environment variables
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
 
-  // EmailJS configuration
   const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
   const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
   const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
-  const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;  // Private Key
+  const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
-  // Extract data from request body
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId } = req.body;
 
-  // Validate required fields
   if (!productSlug || !amount || !paymentCurrency) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -36,7 +31,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Parse reference to extract payment details
     let paymentMethod = 'UNKNOWN';
     let phone = '', txid = '', userId = '', email = '', admin = '' ;
     
@@ -53,12 +47,9 @@ export default async function handler(req, res) {
       });
     }
 
-    // Use Firebase order ID if provided
     const finalOrderId = firebaseOrderId || 'REL' + Math.random().toString(36).substring(2, 15).toUpperCase();
-
     const currentTime = new Date().toISOString();
     
-    // Format date for Bangladesh
     const formattedDate = new Date(currentTime).toLocaleDateString('bn-BD', {
       timeZone: 'Asia/Dhaka',
       year: 'numeric',
@@ -66,35 +57,14 @@ export default async function handler(req, res) {
       day: 'numeric'
     });
 
-    // Format price with currency
     const formattedPrice = `${amountInt} ${paymentCurrency}`;
-
-    // Get platform name
     const platformName = productSlug.includes('variable') ? 'Rewarble Visa Variable USD' : productSlug;
 
-    // Prepare data for Base64 encoding
-    const orderData = {
-      OrderId: finalOrderId,
-      PaymentMethods: paymentMethod,
-      PaymentNumber: phone || 'N/A',
-      PaymentTrxID: txid || 'N/A',
-      Time: currentTime,
-      email: email,
-      platformId: productSlug,
-      uid: userId || 'guest',
-      amount: amountInt,
-      currency: paymentCurrency,
-      faceValue: faceValue || null,
-      status: 'pending'
-    };
-
-    // Create items array for Relograde API
     const items = [{
       productSlug,
       amount: 1
     }];
 
-    // Add faceValue if provided and valid
     if (faceValue !== undefined && faceValue !== null) {
       const faceValueNum = parseFloat(faceValue);
       if (!isNaN(faceValueNum) && faceValueNum > 0) {
@@ -102,26 +72,23 @@ export default async function handler(req, res) {
       }
     }
 
-    // Create reference for Relograde API with Firebase order ID
     const relogradeReference = JSON.stringify({
       firebaseOrderId: finalOrderId,
-      paymentMethod: paymentMethod,
-      phone: phone,
-      txid: txid,
-      userId: userId,
-      email: email,
-      admin: admin,
+      paymentMethod,
+      phone,
+      txid,
+      userId,
+      email,
+      admin,
       timestamp: currentTime
     });
 
-    // Prepare request for Relograde API
     const requestBody = {
       items,
       paymentCurrency: paymentCurrency.toLowerCase(),
       reference: relogradeReference
     };
 
-    // Call Relograde API
     const response = await fetch('https://connect.relograde.com/api/1.02/order', {
       method: 'POST',
       headers: {
@@ -138,14 +105,27 @@ export default async function handler(req, res) {
 
     const relogradeData = await response.json();
 
-    // Convert order data to JSON and then to Base64
+    // 🔥 পরিবর্তিত অংশ: OrderId-এ Relograde থেকে প্রাপ্ত trx বসানো হচ্ছে
+    const orderData = {
+      OrderId: relogradeData.trx || finalOrderId,   // Relograde অর্ডার আইডি
+      PaymentMethods: paymentMethod,
+      PaymentNumber: phone || 'N/A',
+      PaymentTrxID: txid || 'N/A',
+      Time: currentTime,
+      email,
+      platformId: productSlug,
+      uid: userId || 'guest',
+      amount: amountInt,
+      currency: paymentCurrency,
+      faceValue: faceValue || null,
+      status: 'pending'
+    };
+
     const jsonString = JSON.stringify(orderData);
     const base64Data = Buffer.from(jsonString).toString('base64');
     
-    // ✅ ফিক্সড লিংক
     const orderLink = `https://www.easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
-    // ✅ ইমেইল পাঠানোর ফাংশন - Private Key সহ
     async function sendEmailWithLink() {
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
         console.log('❌ EmailJS credentials missing');
@@ -158,10 +138,8 @@ export default async function handler(req, res) {
       }
 
       try {
-        // EmailJS API endpoint
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
-        // টেমপ্লেট প্যারামিটার
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
@@ -175,18 +153,15 @@ export default async function handler(req, res) {
 
         console.log('📧 Sending email with Private Key...');
 
-        // 🔥 Private Key সহ API কল
         const emailResponse = await fetch(emailjsUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             service_id: EMAILJS_SERVICE_ID,
             template_id: EMAILJS_TEMPLATE_ID,
             user_id: EMAILJS_PUBLIC_KEY,
             template_params: templateParams,
-            accessToken: EMAILJS_PRIVATE_KEY  // Private Key এখানে
+            accessToken: EMAILJS_PRIVATE_KEY
           })
         });
 
@@ -205,7 +180,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // ইমেইল পাঠান
     let emailSent = false;
     if (email) {
       emailSent = await sendEmailWithLink();
@@ -214,17 +188,16 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       trx: finalOrderId,
-      message: 'Order created successfully',
       link: orderLink,
-      emailSent: emailSent,
+      emailSent,
       relogradeResponse: relogradeData,
       orderData: {
         orderId: finalOrderId,
-        paymentMethod: paymentMethod,
+        paymentMethod,
         paymentNumber: phone,
         transactionId: txid,
         time: currentTime,
-        email: email,
+        email,
         platformId: productSlug,
         faceValue: faceValue || null
       }
