@@ -1,19 +1,4 @@
 // api/create-order.js
-const admin = require('firebase-admin');
-
-// Initialize Firebase Admin only once
-if (!admin.apps.length) {
-  try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SECRET);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      databaseURL: process.env.FIREBASE_DATABASE_URL,
-    });
-  } catch (error) {
-    console.error('Firebase initialization error:', error);
-  }
-}
-
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,7 +7,7 @@ export default async function handler(req, res) {
 
   // Handle OPTIONS request for CORS
   if (req.method === 'OPTIONS') return res.status(200).end();
-  
+
   // Only allow POST requests
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -33,6 +18,10 @@ export default async function handler(req, res) {
   const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
   const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
   const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
+
+  // Firebase database secret for REST API
+  const FIREBASE_SECRET = process.env.FIREBASE_DATABASE_SECRET; // you will provide this
+  const FIREBASE_URL = process.env.FIREBASE_DATABASE_URL; // already set
 
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId, serviceCharge } = req.body;
 
@@ -48,8 +37,7 @@ export default async function handler(req, res) {
   try {
     let paymentMethod = 'UNKNOWN';
     let phone = '', txid = '', userId = '', email = '', admin = '';
-    
-    // reference এখন JSON স্ট্রিং হবে
+
     if (reference) {
       try {
         const parsedRef = JSON.parse(reference);
@@ -61,7 +49,6 @@ export default async function handler(req, res) {
         admin = parsedRef.admin || '';
       } catch (e) {
         console.error('Failed to parse reference JSON, falling back to pipe parsing:', e);
-        // fallback: পুরনো পদ্ধতি
         const referenceParts = reference.split('|');
         paymentMethod = referenceParts[0] || 'UNKNOWN';
         referenceParts.forEach(part => {
@@ -76,7 +63,7 @@ export default async function handler(req, res) {
 
     const finalOrderId = firebaseOrderId || 'REL' + Math.random().toString(36).substring(2, 15).toUpperCase();
     const currentTime = new Date().toISOString();
-    
+
     const formattedDate = new Date(currentTime).toLocaleDateString('bn-BD', {
       timeZone: 'Asia/Dhaka',
       year: 'numeric',
@@ -155,7 +142,7 @@ export default async function handler(req, res) {
 
     const jsonString = JSON.stringify(orderData);
     const base64Data = Buffer.from(jsonString).toString('base64');
-    
+
     const orderLink = `https://www.easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
     async function sendEmailWithLink() {
@@ -171,7 +158,7 @@ export default async function handler(req, res) {
 
       try {
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
-        
+
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
@@ -207,7 +194,7 @@ export default async function handler(req, res) {
 
         const responseText = await emailResponse.text();
         console.log('📨 EmailJS response:', responseText);
-        
+
         if (!emailResponse.ok) {
           console.error('❌ EmailJS error:', responseText);
           return false;
@@ -225,27 +212,36 @@ export default async function handler(req, res) {
       emailSent = await sendEmailWithLink();
     }
 
-    // ---------- Firebase update: save Relograde order ID to existing pending record ----------
-    if (firebaseOrderId && admin.apps.length) {
+    // ---------- Firebase update using REST API with secret ----------
+    if (firebaseOrderId && FIREBASE_SECRET && FIREBASE_URL) {
       try {
-        const db = admin.database();
-        const updates = {};
         // Update the transaction node
-        updates[`transactions/${firebaseOrderId}/relogradeorderID`] = relogradeData.trx || '';
+        const transactionUrl = `${FIREBASE_URL}/transactions/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
+        await fetch(transactionUrl, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ relogradeorderID: relogradeData.trx || '' })
+        });
+
         // Update the userOrders node if userId exists
         if (userId) {
-          updates[`userOrders/${userId}/${firebaseOrderId}/relogradeorderID`] = relogradeData.trx || '';
+          const userOrderUrl = `${FIREBASE_URL}/userOrders/${userId}/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
+          await fetch(userOrderUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ relogradeorderID: relogradeData.trx || '' })
+          });
         }
-        await db.ref().update(updates);
+
         console.log(`✅ Firebase updated with relograde order ID for ${firebaseOrderId}`);
       } catch (fbError) {
         console.error('❌ Firebase update error:', fbError);
         // Non-critical – we still return success to the client
       }
     } else {
-      console.log('⚠️ No firebaseOrderId provided or Firebase not initialized, skipping DB update');
+      console.log('⚠️ No firebaseOrderId provided or Firebase secret missing, skipping DB update');
     }
-    // ---------------------------------------------------------------------------------------
+    // -----------------------------------------------------------------
 
     return res.status(200).json({
       success: true,
@@ -269,9 +265,9 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('❌ Error:', error.message);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to create order',
-      details: error.message 
+      details: error.message
     });
   }
 }
