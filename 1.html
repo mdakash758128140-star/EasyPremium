@@ -3,81 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relograde অর্ডার অনুসন্ধান</title>
+    <title>Relograde অর্ডার বিস্তারিত</title>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 0 20px; background: #f5f5f5; }
+        body { font-family: sans-serif; max-width: 1000px; margin: 20px auto; padding: 0 20px; background: #f5f5f5; }
         .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1 { font-size: 1.5em; margin-top: 0; color: #333; }
+        h1 { font-size: 1.8em; margin-top: 0; }
         label { display: block; margin: 15px 0 5px; font-weight: bold; }
-        input[type=text], input[type=password] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        button { background: #0070f3; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 15px; }
+        input[type=text] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #0070f3; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; }
         button:hover { background: #0051b3; }
-        pre { background: #f0f0f0; padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; border: 1px solid #ddd; margin-top: 20px; }
-        .error { color: red; margin-top: 10px; }
-        .info { color: #555; font-size: 0.9em; margin: 10px 0; }
-        hr { margin: 20px 0; }
+        pre { background: #f0f0f0; padding: 15px; border-radius: 4px; overflow-x: auto; border: 1px solid #ddd; margin-top: 20px; }
+        .error { color: red; }
+        .info { margin: 10px 0; color: #555; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔍 Relograde অর্ডার অনুসন্ধান</h1>
-        <p>নিচের ফর্ম পূরণ করুন এবং আপনার অর্ডারের বিস্তারিত তথ্য দেখুন।</p>
+        <h1>🔍 Relograde অর্ডার বিস্তারিত</h1>
+        <p>আপনার অর্ডার আইডি (trx) দিন এবং সম্পূর্ণ অর্ডারের তথ্য দেখুন।</p>
 
         <form id="orderForm">
-            <label for="apiKey">API কী (Bearer Token):</label>
-            <input type="password" id="apiKey" placeholder="RELOGRAde_API_KEY" required>
-
             <label for="orderId">অর্ডার আইডি (trx):</label>
             <input type="text" id="orderId" placeholder="যেমন: RELO0TFQK8FXQXSPURM" required>
-
             <button type="submit">অর্ডার দেখুন</button>
         </form>
 
         <div id="result"></div>
-        <div class="info">
-            <hr>
-            <p><strong>দ্রষ্টব্য:</strong> API এন্ডপয়েন্ট: <code>GET https://connect.relograde.com/api/1.02/order/{trx}</code></p>
-            <p>ডকুমেন্টেশন: <a href="https://docs.relograde.com/order-resource/find-order" target="_blank">Find Order | Relograde Docs</a></p>
-        </div>
     </div>
 
     <script>
         document.getElementById('orderForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const apiKey = document.getElementById('apiKey').value.trim();
             const orderId = document.getElementById('orderId').value.trim();
             const resultDiv = document.getElementById('result');
-
             resultDiv.innerHTML = '<p>⏳ লোড হচ্ছে...</p>';
 
-            if (!apiKey || !orderId) {
-                resultDiv.innerHTML = '<p class="error">⚠️ API কী এবং অর্ডার আইডি উভয়ই আবশ্যক।</p>';
+            if (!orderId) {
+                resultDiv.innerHTML = '<p class="error">⚠️ অর্ডার আইডি দিন</p>';
                 return;
             }
 
-            const url = `https://connect.relograde.com/api/1.02/order/${orderId}`;
+            // আপনার Vercel API এন্ডপয়েন্ট (যেটি আমরা আগে তৈরি করেছিলাম)
+            const url = `/api/relograde-orders?trx=${encodeURIComponent(orderId)}`;
 
             try {
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                const response = await fetch(url);
+                const json = await response.json();
 
                 if (!response.ok) {
-                    let errorText = `HTTP ${response.status}: ${response.statusText}`;
-                    try {
-                        const errorData = await response.json();
-                        errorText = JSON.stringify(errorData, null, 2);
-                    } catch {}
-                    throw new Error(errorText);
+                    throw new Error(json.error || `HTTP ${response.status}`);
                 }
 
-                const data = await response.json();
-                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                if (json.success === false) {
+                    throw new Error(json.error || 'অর্ডার পাওয়া যায়নি');
+                }
+
+                // JSON-কে সুন্দরভাবে দেখানো
+                resultDiv.innerHTML = `<pre>${JSON.stringify(json.data, null, 2)}</pre>`;
             } catch (error) {
                 resultDiv.innerHTML = `<p class="error">❌ ত্রুটি: ${error.message}</p>`;
             }
