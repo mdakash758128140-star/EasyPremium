@@ -1499,7 +1499,7 @@
     <!-- Hero Section -->
     <section class="hero">
         <h1>ভার্চুয়াল ক্রেডিট কার্ড কিনুন</h1>
-        <p>আমরা দিচ্ছি ইউটিউব, ফেসবুক এবং সকল জনপ্রিয় প্ল্যাটফর্মের প্রিমিয়াম সাবস্ক্রিপশন কেনাকাটা করার জন্য ভার্চুয়াল ক্রেডিট কার্ড 🔹 আমাদের প্রতিনিধির সাথে ভিডিও অথবা অডিও কলে কথা বলতে পারেন 🔹 ফুল মেয়াদী ওয়ারেন্টি 🔹 ২৪/৭ কাস্টমার সাপোর্ট</p>
+        <p>ইউটিউব, ফেসবুক এবং সকল প্ল্যাটফর্মের জন্য ভার্চুয়াল ক্রেডিট কার্ড | ২৪/৭ সাপোর্ট</p>
     </section>
 
     <!-- Platforms Section -->
@@ -1705,7 +1705,7 @@
                 
                 const paymentLink = `https://www.easy-premium.com/Pay.html?data=${encodedData}&v=2`;
                 
-                // ট্রানজেকশন সংরক্ষণ
+                // ট্রানজেকশন সংরক্ষণ - orderId কে কী হিসেবে ব্যবহার করা হচ্ছে
                 const orderData = {
                     orderId: orderId,
                     userId: user.uid,
@@ -1717,15 +1717,15 @@
                     status: 'pending',
                     paymentLink: paymentLink,
                     timestamp: firebase.database.ServerValue.TIMESTAMP,
-                    adminGeneratedAt: adminGeneratedAt // ফায়ারবেসেও সংরক্ষণ করা যায় (ঐচ্ছিক)
+                    adminGeneratedAt: adminGeneratedAt
                 };
                 
-                const transRef = database.ref('transactions').push();
-                await transRef.set(orderData);
+                // transactions নোডে orderId কী হিসেবে ডাটা সেট করুন
+                await database.ref(`transactions/${orderId}`).set(orderData);
                 
-                // 🔥 এখানে orderId সঠিকভাবে সংরক্ষণ করুন (push key না)
-                await database.ref(`userOrders/${user.uid}/${transRef.key}`).set({
-                    orderId: orderId,  // ← পরিবর্তন: push key এর পরিবর্তে সঠিক orderId
+                // userOrders নোডেও orderId কী হিসেবে সংক্ষিপ্ত তথ্য রাখুন
+                await database.ref(`userOrders/${user.uid}/${orderId}`).set({
+                    orderId: orderId, // ঐচ্ছিক, কিন্তু consistency রক্ষা
                     platform: purchaseData.platformName,
                     price: purchaseData.price,
                     status: 'pending',
