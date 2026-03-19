@@ -6,126 +6,32 @@
     <title>অর্ডার তথ্য · Easy Premium</title>
     <meta name="theme-color" content="#0a0a1a">
     <style>
-        /* পুরনো স্টাইল, কিছু বাড়তি */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: #0a0a1a;
-            color: #fff;
-            font-family: 'Segoe UI', 'Noto Sans Bengali', sans-serif;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
-        .container {
-            width: 100%;
-            max-width: 700px;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        .header h1 { color: #ff9800; font-size: 32px; }
-        .header p { color: #00bcd4; font-size: 16px; }
-        .card {
-            background: rgba(20,20,40,0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,152,0,0.3);
-            border-radius: 20px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-        }
-        .spinner {
-            border: 5px solid rgba(255,255,255,0.2);
-            border-top: 5px solid #ff9800;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .error {
-            color: #ff6666;
-            text-align: center;
-            padding: 40px;
-            border: 1px solid #ff6666;
-            border-radius: 16px;
-            background: rgba(255,102,102,0.1);
-        }
-        .order-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px dashed rgba(255,152,0,0.3);
-        }
-        .order-id {
-            background: rgba(255,152,0,0.2);
-            padding: 8px 16px;
-            border-radius: 40px;
-            font-family: monospace;
-            border: 1px solid #ff9800;
-        }
-        .status-badge {
-            padding: 6px 16px;
-            border-radius: 40px;
-            font-weight: 600;
-        }
-        .status-created { background: rgba(255,152,0,0.2); color: #ff9800; border: 1px solid #ff9800; }
-        .status-finished { background: rgba(76,175,80,0.2); color: #4caf50; border: 1px solid #4caf50; }
-        .status-cancelled { background: rgba(220,53,69,0.2); color: #dc3545; border: 1px solid #dc3545; }
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 12px 10px;
-            margin: 20px 0;
-        }
-        .label { color: #b0bec5; }
-        .value { color: #ffb74d; text-align: right; word-break: break-word; }
-        .price-highlight {
-            background: rgba(255,152,0,0.15);
-            border-radius: 20px;
-            padding: 15px;
-            text-align: center;
-            margin: 20px 0;
-            border: 1px solid #ff9800;
-        }
-        .price-highlight .amount {
-            color: #ff0000;
-            font-size: 2rem;
-            font-weight: 800;
-            margin-left: 10px;
-        }
-        .items-list {
-            background: rgba(0,0,0,0.2);
-            border-radius: 12px;
-            padding: 15px;
-            margin: 15px 0;
-        }
-        .item-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px dashed rgba(255,152,0,0.2);
-        }
-        .footer {
-            text-align: center;
-            color: #888;
-            font-size: 0.8rem;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255,152,0,0.2);
-        }
-        @media (max-width:480px){
-            .info-grid { grid-template-columns:1fr; }
-            .value { text-align: left; }
-        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html,body { background:#0a0a1a; width:100%; min-height:100vh; color:#fff; font-family:'Segoe UI','Noto Sans Bengali',sans-serif; }
+        body { padding:20px; display:flex; justify-content:center; background:linear-gradient(135deg,#0a0a1a 0%,#121230 50%,#1a1a3a 100%); background-attachment:fixed; }
+        .container { width:100%; max-width:600px; margin:0 auto; }
+        .header { text-align:center; margin-bottom:25px; }
+        .header h1 { color:#ff9800; font-size:32px; text-shadow:0 2px 10px rgba(255,152,0,0.3); }
+        .header p { color:#00bcd4; font-size:16px; margin-top:5px; }
+        .card { background:rgba(20,20,40,0.9); backdrop-filter:blur(10px); border:1px solid rgba(255,152,0,0.3); border-radius:20px; padding:25px; margin-bottom:20px; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
+        .loading { text-align:center; padding:30px; }
+        .spinner { border:4px solid rgba(255,255,255,0.2); border-top:4px solid #ff9800; border-radius:50%; width:50px; height:50px; animation:spin 1s linear infinite; margin:0 auto 20px; }
+        @keyframes spin { 0%{transform:rotate(0deg);}100%{transform:rotate(360deg);} }
+        .error { text-align:center; padding:30px; color:#ff6b6b; background:rgba(255,107,107,0.1); border-radius:16px; border:1px solid #ff6b6b; }
+        .success-badge { text-align:center; margin-bottom:25px; }
+        .success-badge i { font-size:4rem; color:#4caf50; background:rgba(76,175,80,0.2); padding:15px; border-radius:50%; }
+        .success-badge h2 { color:#4caf50; margin-top:10px; font-size:1.8rem; }
+        .info-grid { display:grid; grid-template-columns:1fr 2fr; gap:12px 10px; margin:20px 0; }
+        .info-label { color:#b0bec5; font-weight:600; font-size:0.95rem; }
+        .info-value { color:#ffb74d; font-weight:600; font-size:0.95rem; word-break:break-word; text-align:right; }
+        .price-highlight { background:rgba(255,152,0,0.15); border-radius:50px; padding:18px; text-align:center; margin:20px 0; border:1px solid #ff9800; }
+        .price-highlight .label { color:#b0bec5; font-size:1.1rem; }
+        .price-highlight .value { color:#ff0000; font-size:2rem; font-weight:800; margin-left:10px; }
+        .print-btn { background:linear-gradient(45deg,#ff9800,#ff2222); color:white; border:none; padding:16px 30px; border-radius:60px; font-size:1.2rem; font-weight:600; cursor:pointer; width:100%; max-width:300px; margin:20px auto 0; display:block; transition:0.3s; border:1px solid #ff9800; }
+        .print-btn:hover { background:linear-gradient(45deg,#ff2222,#0008ff); transform:translateY(-3px); box-shadow:0 10px 20px rgba(255,152,0,0.4); }
+        .footer { text-align:center; color:#888; font-size:0.8rem; margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,152,0,0.2); }
+        .support-note { background:rgba(0,188,212,0.1); border-left:4px solid #00bcd4; padding:12px 15px; border-radius:8px; margin:20px 0; color:#b0bec5; font-size:0.9rem; }
+        @media (max-width:500px){ .info-grid{grid-template-columns:1fr;gap:5px;} .info-value{text-align:left;} }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -133,156 +39,96 @@
     <div class="container">
         <div class="header">
             <h1>EASY PREMIUM</h1>
-            <p>অর্ডার ট্র্যাকিং</p>
+            <p>অর্ডার ট্র্যাকার</p>
         </div>
-        <div id="mainCard" class="card">
+        <div id="content" class="card">
             <div class="loading">
                 <div class="spinner"></div>
-                <p>অর্ডার তথ্য লোড হচ্ছে...</p>
+                <p>তথ্য লোড হচ্ছে...</p>
             </div>
         </div>
+        <div class="support-note">
+            <i class="fas fa-info-circle"></i> কোনো সহায়তা প্রয়োজনে আমাদের সাপোর্ট টিমের সাথে যোগাযোগ করুন।
+        </div>
         <div class="footer">
-            <p>© 2026 Easy Premium</p>
-            <p>সাপোর্ট: +8801770584994</p>
+            <p>© 2026 Easy Premium · সর্বস্বত্ব সংরক্ষিত</p>
         </div>
     </div>
-
     <script>
-        (function() {
-            // ১. ইউআরএল থেকে data প্যারামিটার বের করা
-            const urlParams = new URLSearchParams(window.location.search);
-            const encodedData = urlParams.get('data');
-            const mainCard = document.getElementById('mainCard');
-
-            if (!encodedData) {
-                mainCard.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>ডাটা পাওয়া যায়নি</h3><p>URL-এ কোনো তথ্য দেওয়া হয়নি।</p></div>';
-                return;
+        (function(){
+            const content = document.getElementById('content');
+            function getParam(name) {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(name);
             }
-
-            // ২. বেস৬৪ ডিকোড (ইউনিকোড সহ)
-            function base64Decode(str) {
+            function decodeBase64(str) {
                 try {
                     const urlDecoded = decodeURIComponent(str);
                     const binary = atob(urlDecoded);
                     const bytes = new Uint8Array(binary.length);
                     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
                     return new TextDecoder('utf-8').decode(bytes);
-                } catch (e) {
-                    console.error('Decode error:', e);
+                } catch(e) {
+                    console.error('Decode error', e);
                     return null;
                 }
             }
-
-            const jsonStr = base64Decode(encodedData);
-            if (!jsonStr) {
-                mainCard.innerHTML = '<div class="error"><i class="fas fa-times-circle"></i><h3>ডাটা ডিকোড করা যায়নি</h3><p>Base64 ডাটা নষ্ট।</p></div>';
-                return;
-            }
-
-            let orderFromData;
-            try {
-                orderFromData = JSON.parse(jsonStr);
-            } catch (e) {
-                mainCard.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>ডাটা ফরম্যাট সঠিক নয়</h3><p>JSON পার্স করতে ব্যর্থ।</p></div>';
-                return;
-            }
-
-            // অর্ডার আইডি বের করা (বিভিন্ন নামে থাকতে পারে)
-            const orderId = orderFromData.OrderId || orderFromData.orderId || orderFromData.trx;
-            if (!orderId) {
-                mainCard.innerHTML = '<div class="error"><i class="fas fa-question-circle"></i><h3>অর্ডার আইডি পাওয়া যায়নি</h3><p>ডাটাতে অর্ডার আইডি নেই।</p></div>';
-                return;
-            }
-
-            // ৩. API কল করার ফাংশন
-            async function fetchOrderFromRelograde(trx) {
+            function formatDate(iso) {
+                if(!iso) return 'N/A';
                 try {
-                    const response = await fetch(`/api/relograde-orders?trx=${encodeURIComponent(trx)}`);
-                    const result = await response.json();
-                    if (!response.ok || !result.success) {
-                        throw new Error(result.error || `HTTP ${response.status}`);
-                    }
-                    return result.data;
-                } catch (error) {
-                    console.error('API fetch error:', error);
-                    throw error;
-                }
+                    const d = new Date(iso);
+                    return d.toLocaleString('bn-BD', { timeZone:'Asia/Dhaka', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true });
+                } catch { return iso; }
             }
-
-            // ৪. API কল শুরু করা
-            mainCard.innerHTML = '<div class="loading"><div class="spinner"></div><p>অর্ডার তথ্য সংগ্রহ করা হচ্ছে...</p></div>';
-
-            fetchOrderFromRelograde(orderId)
-                .then(orderData => {
-                    // তথ্য দেখানোর ফাংশন
-                    renderOrder(orderData, orderFromData);
-                })
-                .catch(error => {
-                    mainCard.innerHTML = `
-                        <div class="error">
-                            <i class="fas fa-exclamation-circle"></i>
-                            <h3>অর্ডার পাওয়া যায়নি</h3>
-                            <p>${error.message}</p>
-                            <p style="margin-top:15px;">আপনার অর্ডার আইডি: <strong>${orderId}</strong></p>
-                            <button onclick="location.reload()" style="margin-top:20px; padding:12px 30px; background:#ff9800; border:none; border-radius:40px; color:#fff; font-weight:600;">পুনরায় চেষ্টা</button>
-                        </div>
-                    `;
+            function renderOrder(data) {
+                if(!data) return '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>ডেটা পাওয়া যায়নি</h3></div>';
+                const labels = {
+                    OrderId:'অর্ডার আইডি', PaymentMethods:'পেমেন্ট পদ্ধতি', PaymentNumber:'পেমেন্ট নম্বর',
+                    PaymentTrxID:'ট্রানজেকশন আইডি', Time:'সময়', email:'ইমেইল', platformId:'প্ল্যাটফর্ম',
+                    uid:'ইউজার আইডি', amount:'মূল্য', currency:'মুদ্রা', faceValue:'ফেস ভ্যালু', status:'স্ট্যাটাস'
+                };
+                let amountDisplay = data.amount || '0';
+                if(data.currency) amountDisplay += ' ' + data.currency;
+                else amountDisplay += ' ৳';
+                let faceDisplay = data.faceValue ? '$' + data.faceValue : '—';
+                let statusText = data.status || 'pending';
+                if(statusText === 'pending') statusText = 'অপেক্ষমান';
+                else if(statusText === 'completed') statusText = 'সম্পন্ন';
+                else if(statusText === 'cancelled') statusText = 'বাতিল';
+                let html = '<div class="success-badge"><i class="fas fa-check-circle"></i><h2>অর্ডার গৃহীত হয়েছে</h2></div>';
+                html += '<div class="info-grid">';
+                const fields = ['OrderId','PaymentMethods','PaymentNumber','PaymentTrxID','Time','email','platformId','uid','amount','faceValue','status'];
+                fields.forEach(f => {
+                    let val = data[f] || 'N/A';
+                    if(f === 'Time') val = formatDate(val);
+                    if(f === 'amount') val = amountDisplay;
+                    if(f === 'faceValue' && data.faceValue) val = faceDisplay;
+                    if(f === 'status') val = statusText;
+                    html += `<div class="info-label">${labels[f]||f}</div><div class="info-value">${val}</div>`;
                 });
-
-            function renderOrder(apiOrder, baseOrder) {
-                // স্ট্যাটাস ক্লাস
-                const status = apiOrder.orderStatus || 'created';
-                let statusClass = 'status-created';
-                let statusText = 'পেন্ডিং';
-                if (status.toLowerCase().includes('finish')) {
-                    statusClass = 'status-finished';
-                    statusText = 'সম্পন্ন';
-                } else if (status.toLowerCase().includes('cancel')) {
-                    statusClass = 'status-cancelled';
-                    statusText = 'বাতিল';
-                } else if (status.toLowerCase().includes('created')) {
-                    statusClass = 'status-created';
-                    statusText = 'পেন্ডিং';
-                }
-
-                const total = apiOrder.priceInclVat || apiOrder.priceAmount || 0;
-                const currency = apiOrder.priceCurrency || 'USD';
-
-                // আইটেম HTML
-                let itemsHtml = '';
-                if (apiOrder.items && apiOrder.items.length > 0) {
-                    itemsHtml = '<div class="items-list"><h4 style="color:#ff9800; margin-bottom:10px;">পণ্যের বিবরণ</h4>';
-                    apiOrder.items.forEach(item => {
-                        itemsHtml += `
-                            <div class="item-row">
-                                <span>${item.product?.name || item.productSlug} × ${item.amount}</span>
-                                <span>${item.priceAmount ? item.priceAmount+' '+currency : ''}</span>
-                            </div>
-                        `;
-                    });
-                    itemsHtml += '</div>';
-                }
-
-                // টেমপ্লেট
-                const html = `
-                    <div class="order-header">
-                        <span class="order-id"><i class="fas fa-hashtag"></i> ${apiOrder.trx || orderId}</span>
-                        <span class="status-badge ${statusClass}"><i class="fas fa-circle" style="font-size:0.6rem; margin-right:5px;"></i>${statusText}</span>
-                    </div>
-                    <div class="info-grid">
-                        <div class="label">তারিখ</div><div class="value">${new Date(apiOrder.dateCreated).toLocaleString('bn-BD',{timeZone:'Asia/Dhaka'})}</div>
-                        <div class="label">মোট দাম</div><div class="value">${total} ${currency}</div>
-                        <div class="label">পেমেন্ট মুদ্রা</div><div class="value">${apiOrder.paymentCurrency || currency}</div>
-                        <div class="label">রেফারেন্স</div><div class="value" style="font-size:0.8rem;">${apiOrder.reference || '—'}</div>
-                    </div>
-                    ${itemsHtml}
-                    <div class="price-highlight">
-                        <span>সর্বমোট:</span>
-                        <span class="amount">${total} ${currency}</span>
-                    </div>
-                `;
-                mainCard.innerHTML = html;
+                html += '</div>';
+                html += `<div class="price-highlight"><span class="label">সর্বমোট:</span><span class="value">${amountDisplay}</span></div>`;
+                html += `<button class="print-btn" onclick="window.print()"><i class="fas fa-print"></i> প্রিন্ট / ডাউনলোড</button>`;
+                return html;
             }
+            const encoded = getParam('data');
+            if(!encoded) {
+                content.innerHTML = '<div class="error"><i class="fas fa-times-circle"></i><h3>ডাটা পাওয়া যায়নি</h3><p>URL-এ কোনো তথ্য দেওয়া হয়নি।</p></div>';
+                return;
+            }
+            const jsonStr = decodeBase64(encoded);
+            if(!jsonStr) {
+                content.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>তথ্য ডিকোড করা যায়নি</h3><p>URL-এর ডেটা নষ্ট বা ভুল ফরম্যাটে আছে।</p></div>';
+                return;
+            }
+            let orderData;
+            try {
+                orderData = JSON.parse(jsonStr);
+            } catch(e) {
+                content.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>তথ্য পার্স করা যায়নি</h3><p>JSON ফরম্যাট সঠিক নয়।</p></div>';
+                return;
+            }
+            content.innerHTML = renderOrder(orderData);
         })();
     </script>
 </body>
