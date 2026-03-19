@@ -19,7 +19,8 @@ export default async function handler(req, res) {
   const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
   const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
-  const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId } = req.body;
+  // 🔥 serviceCharge যোগ করা হলো
+  const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId, serviceCharge } = req.body;
 
   if (!productSlug || !amount || !paymentCurrency) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -57,7 +58,11 @@ export default async function handler(req, res) {
       day: 'numeric'
     });
 
+    const serviceChargeInt = serviceCharge ? parseInt(serviceCharge) : 0; // 🔥 সার্ভিস চার্জ
+    const totalAmount = amountInt + serviceChargeInt; // 🔥 মোট মূল্য
+
     const formattedPrice = `${amountInt} ${paymentCurrency}`;
+    const formattedTotalPrice = `${totalAmount} ${paymentCurrency}`; // 🔥 মোট মূল্য ফরম্যাটেড
     const platformName = productSlug.includes('variable') ? 'Rewarble Visa Variable USD' : productSlug;
 
     const items = [{
@@ -117,7 +122,9 @@ export default async function handler(req, res) {
       amount: amountInt,
       currency: paymentCurrency,
       faceValue: faceValue || null,
-      status: 'pending'
+      status: 'pending',
+      serviceCharge: serviceChargeInt, // 🔥 সার্ভিস চার্জ
+      totalAmount: totalAmount // 🔥 মোট মূল্য
     };
 
     const jsonString = JSON.stringify(orderData);
@@ -125,7 +132,6 @@ export default async function handler(req, res) {
     
     const orderLink = `https://www.easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
-    // ✅ ইমেইল পাঠানোর ফাংশন – এখানে সামান্য পরিবর্তন করা হয়েছে (অতিরিক্ত তথ্য যোগ)
     async function sendEmailWithLink() {
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
         console.log('❌ EmailJS credentials missing');
@@ -140,21 +146,21 @@ export default async function handler(req, res) {
       try {
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
-        // ⭐ নিচে টেমপ্লেট প্যারামিটারগুলো আপডেট করা হয়েছে (সঠিক তথ্য সহ)
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
-          order_id: relogradeData.trx || finalOrderId,       // Relograde অর্ডার আইডি (সঠিক)
+          order_id: relogradeData.trx || finalOrderId,
           platform: platformName,
           order_date: formattedDate,
           payment_link: orderLink,
-          payment_method: paymentMethod,                     // পেমেন্ট পদ্ধতি
-          payment_number: phone || 'N/A',                    // পেমেন্ট নম্বর
-          transaction_id: txid || 'N/A',                     // ট্রানজেকশন আইডি
-          user_id: userId || 'guest',                         // ইউজার আইডি
-          status: 'pending',                                  // স্ট্যাটাস
-          amount: formattedPrice,                             // মূল্য (যেমন: "983 USD")
-          face_value: faceValue ? `$${faceValue}` : 'N/A',    // ফেস ভ্যালু (যদি থাকে)
+          payment_method: paymentMethod,
+          payment_number: phone || 'N/A',
+          transaction_id: txid || 'N/A',
+          user_id: userId || 'guest',
+          status: 'pending',
+          amount: formattedPrice,
+          total_amount: formattedTotalPrice, // 🔥 মোট মূল্য (সার্ভিস চার্জ সহ)
+          face_value: faceValue ? `$${faceValue}` : 'N/A',
           from_name: 'Easy Premium',
           reply_to: 'support@easy-premium.com'
         };
@@ -207,7 +213,9 @@ export default async function handler(req, res) {
         time: currentTime,
         email,
         platformId: productSlug,
-        faceValue: faceValue || null
+        faceValue: faceValue || null,
+        serviceCharge: serviceChargeInt, // 🔥 সার্ভিস চার্জ
+        totalAmount: totalAmount // 🔥 মোট মূল্য
       }
     });
 
