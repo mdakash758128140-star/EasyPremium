@@ -75,6 +75,7 @@ export default async function handler(req, res) {
       }
 
       // ========== 1. transactions আপডেট ==========
+      // নতুন কাঠামো: transactions/${firebaseOrderId} সরাসরি আপডেট
       const transactionDirectUrl = `${FIREBASE_DATABASE_URL}/transactions/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
       const directCheck = await fetch(transactionDirectUrl, { method: 'GET' });
 
@@ -86,7 +87,7 @@ export default async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updates),
           });
-          console.log(`✅ Transaction ${firebaseOrderId} updated directly`);
+          console.log(`✅ Transaction ${firebaseOrderId} updated directly with voucher`);
         } else {
           await updateTransactionViaSearch(firebaseOrderId, updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
         }
@@ -94,15 +95,22 @@ export default async function handler(req, res) {
         await updateTransactionViaSearch(firebaseOrderId, updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
       }
 
-      // ========== 2. userOrders আপডেট ==========
+      // ========== 2. userOrders আপডেট (Reward Link সহ) ==========
       if (userId) {
+        // ইউজারের অর্ডার আপডেটের জন্য আলাদা ডাটা তৈরি
+        const userUpdates = {
+          status: 'completed'
+        };
+        
+        // ভাউচার ডাটা থাকলে ইউজারের অর্ডারেও যোগ করুন
+        if (voucherData) {
+          userUpdates.voucherData = voucherData;
+          userUpdates.voucherLink = voucherData.voucherLink; // অতিরিক্ত সুবিধার জন্য আলাদা ফিল্ড
+        }
+
+        // নতুন কাঠামো: userOrders/${userId}/${firebaseOrderId}
         const userOrderDirectUrl = `${FIREBASE_DATABASE_URL}/userOrders/${userId}/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
         const userCheck = await fetch(userOrderDirectUrl, { method: 'GET' });
-
-        const userUpdates = { status: 'completed' };
-        if (voucherData) {
-          userUpdates.voucherData = voucherData; // ভাউচার ডেটা যোগ
-        }
 
         if (userCheck.ok) {
           const userData = await userCheck.json();
@@ -147,7 +155,7 @@ async function updateTransactionViaSearch(orderId, updates, dbUrl, secret) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
-      console.log(`✅ Transaction ${orderId} updated via search (key: ${transactionKey})`);
+      console.log(`✅ Transaction ${orderId} updated via search (key: ${transactionKey}) with voucher`);
     } else {
       console.warn(`⚠️ No transaction found with orderId ${orderId}`);
     }
