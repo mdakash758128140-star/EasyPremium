@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   // Handle OPTIONS request for CORS
   if (req.method === 'OPTIONS') return res.status(200).end();
-
+  
   // Only allow POST requests
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -19,15 +19,7 @@ export default async function handler(req, res) {
   const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
   const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
-  // Firebase database secret for REST API
-  const FIREBASE_SECRET = process.env.FIREBASE_DATABASE_SECRET; // you MUST set this in Vercel
-  const FIREBASE_URL = process.env.FIREBASE_DATABASE_URL; // already set, e.g. https://easy-premium-default-rtdb.asia-southeast1.firebasedatabase.app/
-
-  console.log('🔍 FIREBASE_SECRET exists:', !!FIREBASE_SECRET);
-  console.log('🔍 FIREBASE_URL:', FIREBASE_URL);
-
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId, serviceCharge } = req.body;
-  console.log('📦 Request body:', { productSlug, amount, paymentCurrency, firebaseOrderId, serviceCharge, faceValue });
 
   if (!productSlug || !amount || !paymentCurrency) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -41,7 +33,8 @@ export default async function handler(req, res) {
   try {
     let paymentMethod = 'UNKNOWN';
     let phone = '', txid = '', userId = '', email = '', admin = '';
-
+    
+    // reference এখন JSON স্ট্রিং হবে
     if (reference) {
       try {
         const parsedRef = JSON.parse(reference);
@@ -53,6 +46,7 @@ export default async function handler(req, res) {
         admin = parsedRef.admin || '';
       } catch (e) {
         console.error('Failed to parse reference JSON, falling back to pipe parsing:', e);
+        // fallback: পুরনো পদ্ধতি
         const referenceParts = reference.split('|');
         paymentMethod = referenceParts[0] || 'UNKNOWN';
         referenceParts.forEach(part => {
@@ -67,7 +61,7 @@ export default async function handler(req, res) {
 
     const finalOrderId = firebaseOrderId || 'REL' + Math.random().toString(36).substring(2, 15).toUpperCase();
     const currentTime = new Date().toISOString();
-
+    
     const formattedDate = new Date(currentTime).toLocaleDateString('bn-BD', {
       timeZone: 'Asia/Dhaka',
       year: 'numeric',
@@ -126,7 +120,6 @@ export default async function handler(req, res) {
     }
 
     const relogradeData = await response.json();
-    console.log('✅ Relograde response:', relogradeData);
 
     const orderData = {
       OrderId: relogradeData.trx || finalOrderId,
@@ -140,14 +133,14 @@ export default async function handler(req, res) {
       amount: amountInt,
       currency: 'BDT',
       faceValue: faceValue || null,
-      status: 'waiting',                // changed from 'pending' to 'waiting'
+      status: 'pending',
       serviceCharge: serviceChargeInt,
       totalAmount: totalAmount
     };
 
     const jsonString = JSON.stringify(orderData);
     const base64Data = Buffer.from(jsonString).toString('base64');
-
+    
     const orderLink = `https://www.easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
     async function sendEmailWithLink() {
@@ -163,7 +156,7 @@ export default async function handler(req, res) {
 
       try {
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
-
+        
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
@@ -175,7 +168,7 @@ export default async function handler(req, res) {
           payment_number: phone || 'N/A',
           transaction_id: txid || 'N/A',
           user_id: userId || 'guest',
-          status: 'waiting',              // changed from 'pending' to 'waiting'
+          status: 'pending',
           amount: formattedPrice,
           total_amount: formattedTotalPrice,
           face_value: faceValue ? `$${faceValue}` : 'N/A',
@@ -199,7 +192,7 @@ export default async function handler(req, res) {
 
         const responseText = await emailResponse.text();
         console.log('📨 EmailJS response:', responseText);
-
+        
         if (!emailResponse.ok) {
           console.error('❌ EmailJS error:', responseText);
           return false;
@@ -216,54 +209,6 @@ export default async function handler(req, res) {
     if (email) {
       emailSent = await sendEmailWithLink();
     }
-
-    // ---------- Firebase update using REST API with secret ----------
-    if (firebaseOrderId && FIREBASE_SECRET && FIREBASE_URL) {
-      try {
-        // Update the transaction node
-        const transactionUrl = `${FIREBASE_URL}/transactions/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
-        console.log('📤 Updating transaction at:', transactionUrl);
-        const transactionRes = await fetch(transactionUrl, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ relogradeorderID: relogradeData.trx || '' })
-        });
-        const transactionText = await transactionRes.text();
-        if (!transactionRes.ok) {
-          console.error('❌ Transaction update failed:', transactionText);
-        } else {
-          console.log('✅ Transaction updated:', transactionText);
-        }
-
-        // Update the userOrders node if userId exists
-        if (userId) {
-          const userOrderUrl = `${FIREBASE_URL}/userOrders/${userId}/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
-          console.log('📤 Updating userOrder at:', userOrderUrl);
-          const userRes = await fetch(userOrderUrl, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ relogradeorderID: relogradeData.trx || '' })
-          });
-          const userText = await userRes.text();
-          if (!userRes.ok) {
-            console.error('❌ UserOrder update failed:', userText);
-          } else {
-            console.log('✅ UserOrder updated:', userText);
-          }
-        }
-
-        console.log(`✅ Firebase updated with relograde order ID for ${firebaseOrderId}`);
-      } catch (fbError) {
-        console.error('❌ Firebase update error:', fbError);
-        // Non-critical – we still return success to the client
-      }
-    } else {
-      console.log('⚠️ Skipping Firebase update:');
-      if (!firebaseOrderId) console.log('   - firebaseOrderId missing');
-      if (!FIREBASE_SECRET) console.log('   - FIREBASE_SECRET missing');
-      if (!FIREBASE_URL) console.log('   - FIREBASE_URL missing');
-    }
-    // -----------------------------------------------------------------
 
     return res.status(200).json({
       success: true,
@@ -287,9 +232,9 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('❌ Error:', error.message);
-    return res.status(500).json({
+    return res.status(500).json({ 
       error: 'Failed to create order',
-      details: error.message
+      details: error.message 
     });
   }
 }
