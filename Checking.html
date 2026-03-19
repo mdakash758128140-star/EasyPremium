@@ -80,6 +80,43 @@
                     return d.toLocaleString('bn-BD', { timeZone:'Asia/Dhaka', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true });
                 } catch { return iso; }
             }
+
+            // 🔥 স্ট্যাটাস আপডেট করার ফাংশন
+            async function updateOrderStatus(orderId) {
+                if (!orderId) return;
+                try {
+                    const response = await fetch(`/api/relograde-orders?trx=${encodeURIComponent(orderId)}`);
+                    const result = await response.json();
+                    if (!response.ok || !result.success) {
+                        console.warn('স্ট্যাটাস পাওয়া যায়নি', result.error);
+                        return;
+                    }
+                    const order = result.data;
+                    if (!order) return;
+
+                    // স্ট্যাটাস বাংলায় রূপান্তর
+                    let statusBangla = order.orderStatus || 'অজানা';
+                    if (statusBangla === 'created') statusBangla = 'অপেক্ষমান';
+                    else if (statusBangla === 'finished') statusBangla = 'সম্পন্ন';
+                    else if (statusBangla === 'cancelled') statusBangla = 'বাতিল';
+                    else statusBangla = statusBangla;
+
+                    // ডমে স্ট্যাটাস ফিল্ড খুঁজে আপডেট
+                    const labels = document.querySelectorAll('.info-label');
+                    for (let label of labels) {
+                        if (label.textContent.trim() === 'স্ট্যাটাস') {
+                            const valueDiv = label.nextElementSibling;
+                            if (valueDiv && valueDiv.classList.contains('info-value')) {
+                                valueDiv.textContent = statusBangla;
+                            }
+                            break;
+                        }
+                    }
+                } catch (err) {
+                    console.error('স্ট্যাটাস আপডেট ব্যর্থ', err);
+                }
+            }
+
             function renderOrder(data) {
                 if(!data) return '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>ডেটা পাওয়া যায়নি</h3></div>';
                 
@@ -88,7 +125,7 @@
                     OrderId:'অর্ডার আইডি', 
                     PaymentMethods:'পেমেন্ট পদ্ধতি', 
                     PaymentNumber:'পেমেন্ট নম্বর',
-                    PaymentTrxID:'ট্রানজেকশন আইডி', 
+                    PaymentTrxID:'ট্রানজেকশন আইডি', 
                     Time:'সময়', 
                     email:'ইমেইল', 
                     platformId:'প্ল্যাটফর্ম',
@@ -104,7 +141,7 @@
                 // ফেস ভ্যালু ডিসপ্লে
                 let faceDisplay = data.faceValue ? '$' + data.faceValue : '—';
                 
-                // স্ট্যাটাস টেক্সট বাংলায়
+                // স্ট্যাটাস টেক্সট বাংলায় (প্রাথমিক)
                 let statusText = data.status || 'pending';
                 if(statusText === 'pending') statusText = 'অপেক্ষমান';
                 else if(statusText === 'completed') statusText = 'সম্পন্ন';
@@ -129,7 +166,6 @@
                 let html = '<div class="success-badge"><i class="fas fa-check-circle"></i><h2>✅ অর্ডার গৃহীত হয়েছে</h2></div>';
                 html += '<div class="info-grid">';
                 
-                // সব ফিল্ড দেখানোর জন্য অ্যারেতে রাখা
                 const fields = ['OrderId','PaymentMethods','PaymentNumber','PaymentTrxID','Time','email','platformId','uid'];
                 
                 fields.forEach(f => {
@@ -138,25 +174,20 @@
                     html += `<div class="info-label">${labels[f]||f}</div><div class="info-value">${val}</div>`;
                 });
                 
-                // মূল্য
                 html += `<div class="info-label">${labels.amount}</div><div class="info-value">${amountDisplay}</div>`;
                 
-                // সার্ভিস চার্জ (যদি থাকে)
                 if(data.serviceCharge) {
                     html += `<div class="info-label">${labels.serviceCharge}</div><div class="info-value">${serviceDisplay}</div>`;
                 }
                 
-                // ফেস ভ্যালু (যদি থাকে)
                 if(data.faceValue) {
                     html += `<div class="info-label">${labels.faceValue}</div><div class="info-value">${faceDisplay}</div>`;
                 }
                 
-                // স্ট্যাটাস
                 html += `<div class="info-label">${labels.status}</div><div class="info-value">${statusText}</div>`;
                 
                 html += '</div>';
                 
-                // মোট মূল্য হাইলাইট (সার্ভিস চার্জ সহ)
                 html += `<div class="price-highlight"><span class="label">সর্বমোট:</span><span class="value">${totalDisplay}</span></div>`;
                 
                 html += `<button class="print-btn" onclick="window.print()"><i class="fas fa-print"></i> প্রিন্ট / ডাউনলোড</button>`;
@@ -185,6 +216,11 @@
             }
             
             content.innerHTML = renderOrder(orderData);
+            
+            // 🔥 পেজ লোড হওয়ার পর ব্যাকগ্রাউন্ডে স্ট্যাটাস চেক করা
+            if (orderData && orderData.OrderId) {
+                updateOrderStatus(orderData.OrderId);
+            }
         })();
     </script>
 </body>
