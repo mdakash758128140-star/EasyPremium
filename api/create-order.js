@@ -19,7 +19,6 @@ export default async function handler(req, res) {
   const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
   const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
-  // 🔥 serviceCharge যোগ করা হলো
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId, serviceCharge } = req.body;
 
   if (!productSlug || !amount || !paymentCurrency) {
@@ -33,19 +32,31 @@ export default async function handler(req, res) {
 
   try {
     let paymentMethod = 'UNKNOWN';
-    let phone = '', txid = '', userId = '', email = '', admin = '' ;
+    let phone = '', txid = '', userId = '', email = '', admin = '';
     
+    // reference এখন JSON স্ট্রিং হবে
     if (reference) {
-      const referenceParts = reference.split('|');
-      paymentMethod = referenceParts[0] || 'UNKNOWN';
-      
-      referenceParts.forEach(part => {
-        if (part.startsWith('Phone:')) phone = part.replace('Phone:', '');
-        if (part.startsWith('TXID:')) txid = part.replace('TXID:', '');
-        if (part.startsWith('UserID:')) userId = part.replace('UserID:', '');
-        if (part.startsWith('Email:')) email = part.replace('Email:', '');
-        if (part.startsWith('Admin:')) admin = part.replace('Admin:', '');
-      });
+      try {
+        const parsedRef = JSON.parse(reference);
+        paymentMethod = parsedRef.method || 'UNKNOWN';
+        phone = parsedRef.phone || '';
+        txid = parsedRef.txid || '';
+        userId = parsedRef.userId || '';
+        email = parsedRef.email || '';
+        admin = parsedRef.admin || '';
+      } catch (e) {
+        console.error('Failed to parse reference JSON, falling back to pipe parsing:', e);
+        // fallback: পুরনো পদ্ধতি
+        const referenceParts = reference.split('|');
+        paymentMethod = referenceParts[0] || 'UNKNOWN';
+        referenceParts.forEach(part => {
+          if (part.startsWith('Phone:')) phone = part.replace('Phone:', '');
+          if (part.startsWith('TXID:')) txid = part.replace('TXID:', '');
+          if (part.startsWith('UserID:')) userId = part.replace('UserID:', '');
+          if (part.startsWith('Email:')) email = part.replace('Email:', '');
+          if (part.startsWith('Admin:')) admin = part.replace('Admin:', '');
+        });
+      }
     }
 
     const finalOrderId = firebaseOrderId || 'REL' + Math.random().toString(36).substring(2, 15).toUpperCase();
@@ -58,11 +69,11 @@ export default async function handler(req, res) {
       day: 'numeric'
     });
 
-    const serviceChargeInt = serviceCharge ? parseInt(serviceCharge) : 0; // 🔥 সার্ভিস চার্জ
-    const totalAmount = amountInt + serviceChargeInt; // 🔥 মোট মূল্য
+    const serviceChargeInt = serviceCharge ? parseInt(serviceCharge) : 0;
+    const totalAmount = amountInt + serviceChargeInt;
 
     const formattedPrice = `${amountInt} ${paymentCurrency}`;
-    const formattedTotalPrice = `${totalAmount} ${paymentCurrency}`; // 🔥 মোট মূল্য ফরম্যাটেড
+    const formattedTotalPrice = `${totalAmount} ${paymentCurrency}`;
     const platformName = productSlug.includes('variable') ? 'Rewarble Visa Variable USD' : productSlug;
 
     const items = [{
@@ -123,8 +134,8 @@ export default async function handler(req, res) {
       currency: 'BDT',
       faceValue: faceValue || null,
       status: 'pending',
-      serviceCharge: serviceChargeInt, // 🔥 সার্ভিস চার্জ
-      totalAmount: totalAmount // 🔥 মোট মূল্য
+      serviceCharge: serviceChargeInt,
+      totalAmount: totalAmount
     };
 
     const jsonString = JSON.stringify(orderData);
@@ -159,7 +170,7 @@ export default async function handler(req, res) {
           user_id: userId || 'guest',
           status: 'pending',
           amount: formattedPrice,
-          total_amount: formattedTotalPrice, // 🔥 মোট মূল্য (সার্ভিস চার্জ সহ)
+          total_amount: formattedTotalPrice,
           face_value: faceValue ? `$${faceValue}` : 'N/A',
           from_name: 'Easy Premium',
           reply_to: 'support@easy-premium.com'
@@ -214,8 +225,8 @@ export default async function handler(req, res) {
         email,
         platformId: productSlug,
         faceValue: faceValue || null,
-        serviceCharge: serviceChargeInt, // 🔥 সার্ভিস চার্জ
-        totalAmount: totalAmount // 🔥 মোট মূল্য
+        serviceCharge: serviceChargeInt,
+        totalAmount: totalAmount
       }
     });
 
