@@ -1723,8 +1723,9 @@
                 const transRef = database.ref('transactions').push();
                 await transRef.set(orderData);
                 
+                // 🔥 এখানে orderId সঠিকভাবে সংরক্ষণ করুন (push key না)
                 await database.ref(`userOrders/${user.uid}/${transRef.key}`).set({
-                    orderId: transRef.key,
+                    orderId: orderId,  // ← পরিবর্তন: push key এর পরিবর্তে সঠিক orderId
                     platform: purchaseData.platformName,
                     price: purchaseData.price,
                     status: 'pending',
