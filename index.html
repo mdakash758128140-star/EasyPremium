@@ -1419,33 +1419,9 @@
         </div>
     </div>
 
-    <!-- Profile Modal -->
-    <div id="profileModal" class="profile-modal">
-        <div class="profile-content">
-            <div class="profile-header">
-                <div class="user-info-container">
-                    <div class="profile-avatar" id="profileAvatar"></div>
-                    <div class="user-details">
-                        <div class="profile-name" id="profileName">Loading...</div>
-                        <div class="profile-email" id="profileEmail">Loading...</div>
-                    </div>
-                </div>
-                <div class="profile-actions">
-                    <button id="logoutBtnProfile" class="logout-btn-profile">লগ আউট</button>
-                    <button id="deleteAccountBtn" class="delete-account-btn">অ্যাকাউন্ট ডিলিট</button>
-                </div>
-            </div>
-            
-            <div class="orders-section">
-                <div class="section-title">আপনার অর্ডার সমূহ</div>
-                <div id="ordersList">
-                    <div class="loading-spinner">
-                        <div class="spinner"></div>
-                        <p>অর্ডার লোড হচ্ছে...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Profile Modal (এই মোডালটি এখন আর ব্যবহার করা হবে না, কিন্তু কোড থেকে সরানো হচ্ছে না কারণ লজিক পরিবর্তন হয়নি) -->
+    <div id="profileModal" class="profile-modal" style="display: none;">
+        <!-- এই মোডালটি আর খুলবে না, তবে সম্পূর্ণ সরানো নিরাপদ নয়, তাই রেখে দিলাম -->
     </div>
 
     <!-- লোডিং ওভারলে (নতুন) -->
@@ -1575,7 +1551,7 @@
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
         const searchResults = document.getElementById('searchResults');
-        const loadingOverlay = document.getElementById('loadingOverlay'); // নতুন লোডিং ওভারলে
+        const loadingOverlay = document.getElementById('loadingOverlay');
         
         // ================== ভেরিয়েবল ==================
         let allPlatforms = [];
@@ -1613,15 +1589,11 @@
         drawerClose.addEventListener('click', closeDrawer);
         drawer.addEventListener('click', e => e.stopPropagation());
         
-        // ================== কার্ট ক্লিক ==================
+        // ================== কার্ট/প্রোফাইল আইকন ক্লিক ==================
+        // 🔥 পরিবর্তিত অংশ: এখন সরাসরি Profile.html-এ নিয়ে যাবে
         cartIcon.addEventListener('click', function() {
             if (!checkCookieConsent()) return;
-            if (auth.currentUser) {
-                loadUserProfile();
-                profileModal.style.display = 'flex';
-            } else {
-                loginModal.style.display = 'flex';
-            }
+            window.location.href = 'https://www.easy-premium.com/Profile.html';
         });
         
         closeLoginBtn.addEventListener('click', () => loginModal.style.display = 'none');
@@ -1666,7 +1638,8 @@
             }
         });
         
-        // ================== লগআউট ও ডিলিট ==================
+        // ================== লগআউট ও ডিলিট (এই ফাংশনগুলো Profile.html-এ স্থানান্তরিত হবে) ==================
+        // এখন এগুলো আর ব্যবহার করা হবে না, কিন্তু অন্যান্য ফাংশনের সাথে সম্পর্ক থাকতে পারে তাই সরানো হলো না।
         logoutBtnProfile.addEventListener('click', async function() {
             await auth.signOut();
             profileModal.style.display = 'none';
@@ -1684,15 +1657,11 @@
             if (!user) return;
             
             try {
-                // লোডিং ওভারলে দেখান
                 loadingOverlay.style.display = 'flex';
                 
                 const orderId = `EP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                const adminGeneratedAt = new Date().toISOString();
                 
-                // বর্তমান টাইমস্ট্যাম্প (এডমিনের সময়) – ক্লায়েন্টের লোকাল টাইম সংরক্ষণ করা হচ্ছে
-                const adminGeneratedAt = new Date().toISOString(); // ISO format, পরে সহজেই ডিকোড করা যায়
-                
-                // পেমেন্ট লিংক জেনারেট (ইউজার আইডি ও ইমেইল সহ base64)
                 const dataObj = {
                     orderId: orderId,
                     platformId: purchaseData.platformId || 'visa_premium',
@@ -1700,7 +1669,7 @@
                     timestamp: Date.now(),
                     userId: user.uid,
                     email: user.email || '',
-                    adminGeneratedAt: adminGeneratedAt // নতুন: এডমিন যখন লিংক জেনারেট করল
+                    adminGeneratedAt: adminGeneratedAt
                 };
                 
                 const dataString = `${dataObj.orderId}|${dataObj.platformId}|${dataObj.price}|${dataObj.timestamp}|${dataObj.userId}|${dataObj.email}|${dataObj.adminGeneratedAt}`;
@@ -1709,7 +1678,6 @@
                 
                 const paymentLink = `https://www.easy-premium.com/Pay.html?data=${encodedData}&v=2`;
                 
-                // ট্রানজেকশন সংরক্ষণ
                 const orderData = {
                     orderId: orderId,
                     userId: user.uid,
@@ -1721,7 +1689,7 @@
                     status: 'pending',
                     paymentLink: paymentLink,
                     timestamp: firebase.database.ServerValue.TIMESTAMP,
-                    adminGeneratedAt: adminGeneratedAt // ফায়ারবেসেও সংরক্ষণ করা যায় (ঐচ্ছিক)
+                    adminGeneratedAt: adminGeneratedAt
                 };
                 
                 const transRef = database.ref('transactions').push();
@@ -1736,13 +1704,12 @@
                     platformId: purchaseData.platformId
                 });
                 
-                // রিডাইরেক্ট করার আগে একটু দেরি (ঐচ্ছিক)
                 setTimeout(() => {
                     window.location.href = paymentLink;
                 }, 300);
                 
             } catch (error) {
-                loadingOverlay.style.display = 'none'; // এরর হলে লোডিং বন্ধ
+                loadingOverlay.style.display = 'none';
                 alert('অর্ডার ব্যর্থ: ' + error.message);
             }
         }
@@ -1899,53 +1866,14 @@
             }
         });
         
-        // ================== ইউজার প্রোফাইল লোড ==================
+        // ================== ইউজার প্রোফাইল লোড (এখন আর প্রয়োজন নেই, কিন্তু অন্যান্য ফাংশনে কল আছে তাই সরানো হলো না) ==================
         async function loadUserProfile() {
-            const user = auth.currentUser;
-            if (!user) return;
-            
-            profileName.textContent = user.displayName || user.email;
-            profileEmail.textContent = user.email;
-            
-            if (user.photoURL) {
-                const img = document.createElement('img');
-                img.src = user.photoURL;
-                img.className = 'profile-avatar-img';
-                profileAvatar.innerHTML = '';
-                profileAvatar.appendChild(img);
-            } else {
-                profileAvatar.style.background = '#ff9800';
-                profileAvatar.innerHTML = `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
-            }
-            
-            const snap = await database.ref(`userOrders/${user.uid}`).once('value');
-            const orders = [];
-            snap.forEach(child => orders.push({ id: child.key, ...child.val() }));
-            
-            if (orders.length === 0) {
-                ordersList.innerHTML = '<div class="no-orders">কোন অর্ডার নেই</div>';
-                cartBadge.style.display = 'none';
-            } else {
-                displayOrders(orders);
-                cartBadge.textContent = orders.length;
-                cartBadge.style.display = 'flex';
-            }
+            // এই ফাংশনটি আর প্রোফাইল মোডালের জন্য ব্যবহার হবে না, কিন্তু অন্যান্য জায়গায় কল থাকতে পারে
+            // তাই খালি রাখা হলো।
         }
         
         function displayOrders(orders) {
-            let html = '<div class="orders-cards">';
-            orders.forEach(o => {
-                html += `
-                    <div class="order-card">
-                        <div class="order-card-row"><span class="order-card-label">প্ল্যাটফর্ম</span><span class="order-card-value">${o.platform}</span></div>
-                        <div class="order-card-row"><span class="order-card-label">দাম</span><span class="order-card-value">${o.price}</span></div>
-                        <div class="order-card-row"><span class="order-card-label">তারিখ</span><span class="order-card-value">${new Date(o.orderDate).toLocaleDateString('bn-BD')}</span></div>
-                        <div class="order-card-row"><span class="order-card-label">স্ট্যাটাস</span><span class="order-card-value">${o.status}</span></div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            ordersList.innerHTML = html;
+            // এই ফাংশনটি Profile.html-এ স্থানান্তরিত হবে।
         }
         
         async function updateCartBadge(uid) {
