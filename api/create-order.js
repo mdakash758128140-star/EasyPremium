@@ -1,4 +1,19 @@
 // api/create-order.js
+const admin = require('firebase-admin');
+
+// Initialize Firebase Admin only once
+if (!admin.apps.length) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SECRET);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: process.env.FIREBASE_DATABASE_URL,
+    });
+  } catch (error) {
+    console.error('Firebase initialization error:', error);
+  }
+}
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -209,6 +224,28 @@ export default async function handler(req, res) {
     if (email) {
       emailSent = await sendEmailWithLink();
     }
+
+    // ---------- Firebase update: save Relograde order ID to existing pending record ----------
+    if (firebaseOrderId && admin.apps.length) {
+      try {
+        const db = admin.database();
+        const updates = {};
+        // Update the transaction node
+        updates[`transactions/${firebaseOrderId}/relogradeorderID`] = relogradeData.trx || '';
+        // Update the userOrders node if userId exists
+        if (userId) {
+          updates[`userOrders/${userId}/${firebaseOrderId}/relogradeorderID`] = relogradeData.trx || '';
+        }
+        await db.ref().update(updates);
+        console.log(`✅ Firebase updated with relograde order ID for ${firebaseOrderId}`);
+      } catch (fbError) {
+        console.error('❌ Firebase update error:', fbError);
+        // Non-critical – we still return success to the client
+      }
+    } else {
+      console.log('⚠️ No firebaseOrderId provided or Firebase not initialized, skipping DB update');
+    }
+    // ---------------------------------------------------------------------------------------
 
     return res.status(200).json({
       success: true,
