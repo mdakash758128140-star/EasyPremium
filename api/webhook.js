@@ -1,6 +1,12 @@
 // api/webhook.js
 export default async function handler(req, res) {
-  // ... (CORS এবং মেথড চেক আগের মতোই থাকবে) ...
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ message: 'Method not allowed' });
 
   try {
     const payload = req.body;
@@ -10,7 +16,7 @@ export default async function handler(req, res) {
       const { trx, reference } = payload.data || {};
       console.log(`🔔 Order finished: trx=${trx}, reference=${reference}`);
 
-      // 1. Reference থেকে firebaseOrderId এবং userId বের করুন (JSON ফরম্যাট)
+      // রেফারেন্স পার্স করুন (JSON ফরম্যাট)
       let firebaseOrderId = null;
       let userId = null;
       try {
@@ -31,125 +37,138 @@ export default async function handler(req, res) {
       // Firebase কনফিগারেশন
       const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL;
       const FIREBASE_SECRET = process.env.FIREBASE_SECRET;
+
       if (!FIREBASE_DATABASE_URL || !FIREBASE_SECRET) {
         console.error('❌ Missing Firebase config');
         return res.status(500).json({ error: 'Firebase not configured' });
       }
 
-      // 2. Relograde থেকে অর্ডার ডিটেইলস fetch করুন (GET)
+      // Relograde থেকে অর্ডার ডিটেইলস fetch করুন
       const apiKey = process.env.RELOGRADE_API_KEY;
-      if (!apiKey) {
-        console.error('❌ Missing Relograde API key');
-        return res.status(500).json({ error: 'Relograde API key not configured' });
-      }
-
       let voucherData = null;
-      try {
-        // অর্ডার ডিটেইলস GET করুন
-        const orderRes = await fetch(`https://connect.relograde.com/api/1.02/order/${trx}`, {
-          headers: { Authorization: `Bearer ${apiKey}` }
-        });
+      
+      if (apiKey && trx) {
+        try {
+          console.log(`🔍 Fetching order details for trx: ${trx}`);
+          const orderRes = await fetch(`https://connect.relograde.com/api/1.02/order/${trx}`, {
+            headers: { Authorization: `Bearer ${apiKey}` }
+          });
+          
+          if (orderRes.ok) {
+            const orderDetails = await orderRes.json();
+            console.log('📦 Order details from Relograde:', JSON.stringify(orderDetails, null, 2));
 
-        if (orderRes.ok) {
-          const orderDetails = await orderRes.json();
-          console.log('📦 Full order details from Relograde:', JSON.stringify(orderDetails, null, 2));
+            // items অ্যারে থেকে orderLines বের করে voucherCode সংগ্রহ
+            if (orderDetails.items && Array.isArray(orderDetails.items)) {
+              const allVouchers = [];
+              
+              orderDetails.items.forEach(item => {
+                if (item.orderLines && Array.isArray(item.orderLines)) {
+                  item.orderLines.forEach(line => {
+                    if (line.status === 'finished' && line.voucherCode) {
+                      allVouchers.push({
+                        tag: line.tag,
+                        voucherCode: line.voucherCode,
+                        voucherSerial: line.voucherSerial || null,
+                        voucherDateExpired: line.voucherDateExpired || null
+                      });
+                    }
+                  });
+                }
+              });
 
-          // 3. items অ্যারে থেকে orderLines খুঁজে voucherCode সংগ্রহ করুন
-          if (orderDetails.items && Array.isArray(orderDetails.items)) {
-            const allVouchers = [];
-            
-            orderDetails.items.forEach(item => {
-              if (item.orderLines && Array.isArray(item.orderLines)) {
-                item.orderLines.forEach(line => {
-                  // শুধু মাত্র finished স্ট্যাটাসের লাইনগুলো নিন
-                  if (line.status === 'finished' && line.voucherCode) {
-                    allVouchers.push({
-                      tag: line.tag,
-                      voucherCode: line.voucherCode,
-                      voucherSerial: line.voucherSerial || null,
-                      voucherDateExpired: line.voucherDateExpired || null
-                    });
-                  }
-                });
+              if (allVouchers.length > 0) {
+                voucherData = {
+                  vouchers: allVouchers,
+                  firstVoucherCode: allVouchers[0]?.voucherCode || null,
+                  count: allVouchers.length
+                };
+                console.log(`✅ Extracted ${allVouchers.length} voucher(s):`, voucherData);
+              } else {
+                console.warn('⚠️ No finished voucher lines found in order details');
               }
-            });
-
-            if (allVouchers.length > 0) {
-              voucherData = {
-                vouchers: allVouchers, // সব ভাউচারের অ্যারে
-                firstVoucherCode: allVouchers[0]?.voucherCode || null, // সুবিধার জন্য প্রথমটি আলাদা
-                count: allVouchers.length
-              };
-              console.log(`✅ Extracted ${allVouchers.length} voucher(s):`, voucherData);
-            } else {
-              console.warn('⚠️ No finished voucher lines found in order details');
             }
+          } else {
+            console.error(`❌ Failed to fetch order details. Status: ${orderRes.status}`);
+            const errorText = await orderRes.text();
+            console.error('Error response:', errorText);
           }
-        } else {
-          console.error(`❌ Failed to fetch order details. Status: ${orderRes.status}`);
-          const errorText = await orderRes.text();
-          console.error('Error response:', errorText);
+        } catch (err) {
+          console.error('❌ Error fetching order details:', err.message);
         }
-      } catch (err) {
-        console.error('❌ Error fetching order details:', err.message);
       }
 
-      // 4. আপডেট ডাটা প্রস্তুত
+      // আপডেট ডাটা প্রস্তুত
       const updates = {
         status: 'completed',
         completedAt: new Date().toISOString(),
       };
       
       if (voucherData) {
-        updates.voucherData = voucherData; // সম্পূর্ণ ভাউচার ডেটা সংরক্ষণ
-        updates.voucherCode = voucherData.firstVoucherCode; // অতিরিক্ত সুবিধার জন্য
-        console.log('✅ Voucher data prepared for Firebase:', updates.voucherData);
+        updates.voucherData = voucherData;
+        updates.voucherCode = voucherData.firstVoucherCode; // সুবিধার জন্য আলাদা ফিল্ড
+        console.log('✅ Final updates object with voucher:', updates);
       } else {
-        console.warn('⚠️ No voucher data to save');
+        console.warn('⚠️ No voucher data to save, updating only status');
       }
 
-      // 5. Firebase আপডেট করুন (একই পদ্ধতি, শুধু updates-এ voucherData থাকবে)
-      // ========== transactions আপডেট ==========
+      // ========== 1. transactions আপডেট ==========
       const transactionDirectUrl = `${FIREBASE_DATABASE_URL}/transactions/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
+      console.log(`📤 Updating transaction at: ${transactionDirectUrl}`);
+      
       const directCheck = await fetch(transactionDirectUrl, { method: 'GET' });
+      let transactionUpdateSuccess = false;
 
       if (directCheck.ok) {
         const transactionData = await directCheck.json();
         if (transactionData && transactionData.orderId === firebaseOrderId) {
-          await fetch(transactionDirectUrl, {
+          const patchRes = await fetch(transactionDirectUrl, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updates),
           });
-          console.log(`✅ Transaction ${firebaseOrderId} updated with voucher data`);
+          if (patchRes.ok) {
+            console.log(`✅ Transaction ${firebaseOrderId} updated directly with voucher`);
+            transactionUpdateSuccess = true;
+          } else {
+            console.error(`❌ Failed to PATCH transaction: ${patchRes.status}`);
+          }
         } else {
-          await updateTransactionViaSearch(firebaseOrderId, updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
+          console.warn(`⚠️ Transaction data mismatch, trying fallback...`);
+          transactionUpdateSuccess = await updateTransactionViaSearch(firebaseOrderId, updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
         }
       } else {
-        await updateTransactionViaSearch(firebaseOrderId, updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
+        console.warn(`⚠️ Direct path failed, trying fallback...`);
+        transactionUpdateSuccess = await updateTransactionViaSearch(firebaseOrderId, updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
       }
 
-      // ========== userOrders আপডেট ==========
+      // ========== 2. userOrders আপডেট ==========
       if (userId) {
         const userUpdates = { 
           status: 'completed'
         };
         if (voucherData) {
-          userUpdates.voucherData = voucherData; // ইউজারের অর্ডারেও সম্পূর্ণ ভাউচার ডেটা
+          userUpdates.voucherData = voucherData;
         }
 
         const userOrderDirectUrl = `${FIREBASE_DATABASE_URL}/userOrders/${userId}/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
+        console.log(`📤 Updating user order at: ${userOrderDirectUrl}`);
+        
         const userCheck = await fetch(userOrderDirectUrl, { method: 'GET' });
 
         if (userCheck.ok) {
           const userData = await userCheck.json();
           if (userData) {
-            await fetch(userOrderDirectUrl, {
+            const patchRes = await fetch(userOrderDirectUrl, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(userUpdates),
             });
-            console.log(`✅ User order updated for user ${userId} with voucher data`);
+            if (patchRes.ok) {
+              console.log(`✅ User order updated for user ${userId} with voucher data`);
+            } else {
+              console.error(`❌ Failed to PATCH user order: ${patchRes.status}`);
+            }
           } else {
             console.warn(`⚠️ User order not found at direct path, trying fallback...`);
             await updateUserOrderViaSearch(userId, firebaseOrderId, userUpdates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
@@ -168,4 +187,71 @@ export default async function handler(req, res) {
   }
 }
 
-// নিচের হেল্পার ফাংশনগুলো (updateTransactionViaSearch, updateUserOrderViaSearch) আগের মতোই থাকবে
+// সার্চ করে ট্রানজেকশন আপডেট করার ফাংশন (পুরনো পদ্ধতি)
+async function updateTransactionViaSearch(orderId, updates, dbUrl, secret) {
+  const findUrl = `${dbUrl}/transactions.json?orderBy="orderId"&equalTo="${orderId}"&auth=${secret}`;
+  console.log(`🔍 Searching transaction via: ${findUrl}`);
+  
+  const findRes = await fetch(findUrl);
+  const findData = await findRes.json();
+
+  if (findData && typeof findData === 'object') {
+    const keys = Object.keys(findData);
+    if (keys.length > 0) {
+      const transactionKey = keys[0];
+      const updateUrl = `${dbUrl}/transactions/${transactionKey}.json?auth=${secret}`;
+      const patchRes = await fetch(updateUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (patchRes.ok) {
+        console.log(`✅ Transaction ${orderId} updated via search (key: ${transactionKey}) with voucher`);
+        return true;
+      } else {
+        console.error(`❌ Failed to PATCH via search: ${patchRes.status}`);
+        return false;
+      }
+    } else {
+      console.warn(`⚠️ No transaction found with orderId ${orderId}`);
+      return false;
+    }
+  } else {
+    console.warn(`⚠️ Transaction search failed for orderId ${orderId}`);
+    return false;
+  }
+}
+
+// সার্চ করে ইউজার অর্ডার আপডেট করার ফাংশন (পুরনো পদ্ধতি)
+async function updateUserOrderViaSearch(userId, orderId, updates, dbUrl, secret) {
+  const userOrdersUrl = `${dbUrl}/userOrders/${userId}.json?auth=${secret}`;
+  console.log(`🔍 Searching user orders at: ${userOrdersUrl}`);
+  
+  const userOrdersRes = await fetch(userOrdersUrl);
+  const userOrders = await userOrdersRes.json();
+
+  if (userOrders && typeof userOrders === 'object') {
+    for (const key in userOrders) {
+      if (userOrders[key].orderId === orderId) {
+        const updateUrl = `${dbUrl}/userOrders/${userId}/${key}.json?auth=${secret}`;
+        const patchRes = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        });
+        if (patchRes.ok) {
+          console.log(`✅ User order updated for user ${userId} via search (key: ${key}) with voucher:`, updates.voucherData);
+          return true;
+        } else {
+          console.error(`❌ Failed to PATCH user order via search: ${patchRes.status}`);
+          return false;
+        }
+      }
+    }
+    console.warn(`⚠️ No matching user order found for userId ${userId} with orderId ${orderId}`);
+    return false;
+  } else {
+    console.warn(`⚠️ No userOrders found for userId ${userId}`);
+    return false;
+  }
+}
