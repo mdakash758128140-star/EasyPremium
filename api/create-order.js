@@ -120,7 +120,7 @@ export default async function handler(req, res) {
       platformId: productSlug,
       uid: userId || 'guest',
       amount: amountInt,
-      currency: paymentCurrency,
+      currency: 'BDT',
       faceValue: faceValue || null,
       status: 'pending',
       serviceCharge: serviceChargeInt, // 🔥 সার্ভিস চার্জ
