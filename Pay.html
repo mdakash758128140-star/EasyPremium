@@ -683,7 +683,7 @@
                 });
             });
 
-            // VERIFY বাটন – অ্যাডমিন নম্বর সহ
+            // VERIFY বাটন – অ্যাডমিন নম্বর সহ (এখন JSON reference)
             const verifyBtn = document.getElementById('verifyInsideBtn');
             verifyBtn.addEventListener('click', async function() {
                 const selected = document.querySelector('input[name="payment_method"]:checked');
@@ -727,7 +727,18 @@
                 }
 
                 const method = selected.value.replace('woo_', '').toUpperCase();
-                const reference = `${method}|Phone:${account}|TXID:${txid}|UserID:${urlData.userId}|Email:${urlData.userEmail}|Admin:${adminNumber}`;
+
+                // ✅ এখন reference একটি সুন্দর JSON স্ট্রিং
+                const reference = JSON.stringify({
+                    method: method,
+                    phone: account,
+                    txid: txid,
+                    userId: urlData.userId,
+                    email: urlData.userEmail,
+                    admin: adminNumber,
+                    firebaseOrderId: urlData.orderId,
+                    timestamp: new Date().toISOString()
+                });
 
                 this.disabled = true;
                 this.innerHTML = '<span class="spinner"></span> প্রসেসিং...';
@@ -737,7 +748,7 @@
                         productSlug: productSlug,
                         amount: productPrice,
                         paymentCurrency: 'USD',
-                        reference: reference,
+                        reference: reference,   // JSON স্ট্রিং
                         firebaseOrderId: urlData.orderId,
                         serviceCharge: serviceCharge
                     };
