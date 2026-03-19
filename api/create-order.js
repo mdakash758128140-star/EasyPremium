@@ -125,7 +125,7 @@ export default async function handler(req, res) {
     
     const orderLink = `https://www.easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
-    // ✅ ইমেইল পাঠানোর ফাংশন – সমস্ত তথ্য সঠিকভাবে পাঠানো হচ্ছে
+    // ✅ ইমেইল পাঠানোর ফাংশন – এখানে সামান্য পরিবর্তন করা হয়েছে (অতিরিক্ত তথ্য যোগ)
     async function sendEmailWithLink() {
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
         console.log('❌ EmailJS credentials missing');
@@ -140,13 +140,11 @@ export default async function handler(req, res) {
       try {
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
         
-        // ফেস ভ্যালু ফরম্যাট করা (ডলার চিহ্ন সহ বা ছাড়া, আপনার টেমপ্লেট অনুযায়ী)
-        const faceValueDisplay = faceValue ? `$${faceValue}` : 'N/A';
-
+        // ⭐ নিচে টেমপ্লেট প্যারামিটারগুলো আপডেট করা হয়েছে (সঠিক তথ্য সহ)
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
-          order_id: relogradeData.trx || finalOrderId,       // ✅ সঠিক অর্ডার আইডি
+          order_id: relogradeData.trx || finalOrderId,       // Relograde অর্ডার আইডি (সঠিক)
           platform: platformName,
           order_date: formattedDate,
           payment_link: orderLink,
@@ -156,7 +154,9 @@ export default async function handler(req, res) {
           user_id: userId || 'guest',                         // ইউজার আইডি
           status: 'pending',                                  // স্ট্যাটাস
           amount: formattedPrice,                             // মূল্য (যেমন: "983 USD")
-          face_value: faceValueDisplay                         // ✅ ফেস ভ্যালু (যেমন: "$8" বা "N/A")
+          face_value: faceValue ? `$${faceValue}` : 'N/A',    // ফেস ভ্যালু (যদি থাকে)
+          from_name: 'Easy Premium',
+          reply_to: 'support@easy-premium.com'
         };
 
         console.log('📧 Sending email with params:', templateParams);
