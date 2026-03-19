@@ -20,10 +20,14 @@ export default async function handler(req, res) {
   const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
   // Firebase database secret for REST API
-  const FIREBASE_SECRET = process.env.FIREBASE_DATABASE_SECRET; // you must set this
-  const FIREBASE_URL = process.env.FIREBASE_DATABASE_URL; // already set
+  const FIREBASE_SECRET = process.env.FIREBASE_DATABASE_SECRET; // you MUST set this in Vercel
+  const FIREBASE_URL = process.env.FIREBASE_DATABASE_URL; // already set, e.g. https://easy-premium-default-rtdb.asia-southeast1.firebasedatabase.app/
+
+  console.log('🔍 FIREBASE_SECRET exists:', !!FIREBASE_SECRET);
+  console.log('🔍 FIREBASE_URL:', FIREBASE_URL);
 
   const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId, serviceCharge } = req.body;
+  console.log('📦 Request body:', { productSlug, amount, paymentCurrency, firebaseOrderId, serviceCharge, faceValue });
 
   if (!productSlug || !amount || !paymentCurrency) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -122,6 +126,7 @@ export default async function handler(req, res) {
     }
 
     const relogradeData = await response.json();
+    console.log('✅ Relograde response:', relogradeData);
 
     const orderData = {
       OrderId: relogradeData.trx || finalOrderId,
@@ -217,31 +222,33 @@ export default async function handler(req, res) {
       try {
         // Update the transaction node
         const transactionUrl = `${FIREBASE_URL}/transactions/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
-        console.log(`Updating transaction at: ${transactionUrl}`);
+        console.log('📤 Updating transaction at:', transactionUrl);
         const transactionRes = await fetch(transactionUrl, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ relogradeorderID: relogradeData.trx || '' })
         });
+        const transactionText = await transactionRes.text();
         if (!transactionRes.ok) {
-          console.error('Transaction update failed:', await transactionRes.text());
+          console.error('❌ Transaction update failed:', transactionText);
         } else {
-          console.log('✅ Transaction updated');
+          console.log('✅ Transaction updated:', transactionText);
         }
 
         // Update the userOrders node if userId exists
         if (userId) {
           const userOrderUrl = `${FIREBASE_URL}/userOrders/${userId}/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
-          console.log(`Updating userOrder at: ${userOrderUrl}`);
+          console.log('📤 Updating userOrder at:', userOrderUrl);
           const userRes = await fetch(userOrderUrl, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ relogradeorderID: relogradeData.trx || '' })
           });
+          const userText = await userRes.text();
           if (!userRes.ok) {
-            console.error('UserOrder update failed:', await userRes.text());
+            console.error('❌ UserOrder update failed:', userText);
           } else {
-            console.log('✅ UserOrder updated');
+            console.log('✅ UserOrder updated:', userText);
           }
         }
 
@@ -251,10 +258,10 @@ export default async function handler(req, res) {
         // Non-critical – we still return success to the client
       }
     } else {
-      console.log('⚠️ No firebaseOrderId provided or Firebase secret missing, skipping DB update');
-      if (!firebaseOrderId) console.log('firebaseOrderId missing');
-      if (!FIREBASE_SECRET) console.log('FIREBASE_SECRET missing');
-      if (!FIREBASE_URL) console.log('FIREBASE_URL missing');
+      console.log('⚠️ Skipping Firebase update:');
+      if (!firebaseOrderId) console.log('   - firebaseOrderId missing');
+      if (!FIREBASE_SECRET) console.log('   - FIREBASE_SECRET missing');
+      if (!FIREBASE_URL) console.log('   - FIREBASE_URL missing');
     }
     // -----------------------------------------------------------------
 
