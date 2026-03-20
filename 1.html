@@ -12,7 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        /* ========== মূল ওয়েবসাইটের সম্পূর্ণ CSS (অপরিবর্তিত) ========== */
+        /* ========== সম্পূর্ণ মূল ওয়েবসাইটের CSS (অপরিবর্তিত) ========== */
         * {
             margin: 0;
             padding: 0;
@@ -46,7 +46,6 @@
             z-index: -1;
             pointer-events: none;
         }
-        /* Header */
         .header {
             background: rgba(10, 10, 26, 0.95);
             padding: 12px 16px;
@@ -134,7 +133,6 @@
         }
         @keyframes badgePulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
         
-        /* হিরো */
         .hero {
             text-align: center;
             padding: 40px 20px;
@@ -163,14 +161,12 @@
             line-height: 1.6;
         }
         
-        /* কন্টেইনার */
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
         
-        /* রেকর্ড কার্ড */
         .record-card {
             background: rgba(20,20,40,0.9);
             border-radius: 12px;
@@ -235,7 +231,6 @@
             box-shadow: 0 5px 15px rgba(255,152,0,0.4);
         }
         
-        /* রিভিউ গ্রিড */
         .reviews-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -305,7 +300,6 @@
             grid-column: 1 / -1;
         }
         
-        /* ফুটার (মূল সাইটের মতো) */
         .footer {
             background: rgba(10,10,26,0.95);
             padding: 40px 20px 30px;
@@ -353,16 +347,15 @@
             text-decoration: none;
             transition: 0.3s;
         }
-        /* মূল সাইটের মতো সোশ্যাল আইকনের ডিফল্ট রং ও হোভার ইফেক্ট */
         .social-link i {
             transition: color 0.3s;
         }
-        .social-link:nth-child(1) i { color: #1877F2; }      /* Facebook */
-        .social-link:nth-child(2) i { color: #E4405F; }      /* Instagram */
-        .social-link:nth-child(3) i { color: #FF0000; }      /* YouTube */
-        .social-link:nth-child(4) i { color: #000000; }      /* Twitter (X) */
-        .social-link:nth-child(5) i { color: #25D366; }      /* WhatsApp */
-        .social-link:nth-child(6) i { color: #0088cc; }      /* Telegram */
+        .social-link:nth-child(1) i { color: #1877F2; }
+        .social-link:nth-child(2) i { color: #E4405F; }
+        .social-link:nth-child(3) i { color: #FF0000; }
+        .social-link:nth-child(4) i { color: #000000; }
+        .social-link:nth-child(5) i { color: #25D366; }
+        .social-link:nth-child(6) i { color: #0088cc; }
         .social-link:hover {
             background: rgba(255,152,0,0.2);
             transform: translateY(-5px) scale(1.1);
@@ -378,7 +371,6 @@
             margin: 0 auto;
         }
         
-        /* ড্রয়ার */
         .drawer-overlay {
             position: fixed;
             top: 0;
@@ -441,7 +433,6 @@
             color: #000;
         }
         
-        /* লগইন মোডাল */
         .login-modal {
             display: none;
             position: fixed;
@@ -484,7 +475,6 @@
             cursor: pointer;
         }
         
-        /* ফ্লোটিং মেসেঞ্জার (মূল সাইটের মতো) */
         .messenger-float {
             position: fixed;
             bottom: 30px;
@@ -533,7 +523,6 @@
     </style>
 </head>
 <body>
-    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <a href="https://www.easy-premium.com" class="logo">
@@ -555,7 +544,6 @@
         </div>
     </header>
 
-    <!-- Drawer -->
     <div id="drawerOverlay" class="drawer-overlay"></div>
     <div id="drawer" class="drawer">
         <button class="drawer-close" id="drawerClose"><i class="fas fa-times"></i></button>
@@ -565,14 +553,12 @@
         </div>
     </div>
 
-    <!-- Hero -->
     <section class="hero">
         <h1>ভয়েস রিভিউ</h1>
         <p>আমাদের প্রোডাক্ট নিয়ে আপনার মতামত দিন ভয়েস রেকর্ডের মাধ্যমে। সকল রিভিউ পাবলিক, শুনতে কোনো লগইন লাগে না।</p>
     </section>
 
     <div class="container">
-        <!-- Upload Card (only visible when logged in) -->
         <div id="uploadSection" class="record-card" style="display: none;">
             <h3><i class="fas fa-microphone-alt"></i> আপনার ভয়েস রিভিউ দিন</h3>
             <div class="record-area">
@@ -588,14 +574,12 @@
             </div>
         </div>
 
-        <!-- Public Reviews -->
         <h2><i class="fas fa-star-of-life"></i> সকল ভয়েস রিভিউ</h2>
         <div id="reviewsContainer" class="reviews-grid">
             <div class="loading-spinner"><div class="spinner"></div><p>রিভিউ লোড হচ্ছে...</p></div>
         </div>
     </div>
 
-    <!-- Footer (মূল সাইটের মতো) -->
     <footer class="footer">
         <div class="footer-policy-links">
             <a href="https://www.easy-premium.com/privacy-refund-policy-terms-of-service.html?data=PrivacyPolicy">Privacy Policy</a>
@@ -617,12 +601,10 @@
         </div>
     </footer>
 
-    <!-- Floating Messenger -->
     <a href="https://m.me/906635592542978" target="_blank" class="messenger-float" title="মেসেঞ্জারে কথা বলুন">
         <i class="fab fa-facebook-messenger"></i>
     </a>
 
-    <!-- Login Modal -->
     <div id="loginModal" class="login-modal">
         <div class="login-content">
             <img src="https://cdn-icons-png.flaticon.com/512/8701/8701941.png" style="width:70px;">
@@ -673,10 +655,40 @@
         let recordedBlob = null;
         let isRecording = false;
 
-        // Auth state
-        auth.onAuthStateChanged(user => {
+        // 24 hours in milliseconds
+        const COOLDOWN_HOURS = 24;
+        const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
+
+        // Check if user can post (last review > 24h ago)
+        async function canUserPost(userId) {
+            const snapshot = await database.ref(`userLastReview/${userId}/lastReviewTime`).once('value');
+            const lastTime = snapshot.val();
+            if (!lastTime) return true;
+            const now = Date.now();
+            return (now - lastTime) >= COOLDOWN_MS;
+        }
+
+        // Update last review time
+        async function updateLastReviewTime(userId) {
+            await database.ref(`userLastReview/${userId}`).set({
+                lastReviewTime: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
+
+        // Show/hide upload section based on cooldown
+        async function handleUploadVisibility(user) {
+            if (!user) {
+                uploadSection.style.display = 'none';
+                return;
+            }
+            const canPost = await canUserPost(user.uid);
+            uploadSection.style.display = canPost ? 'block' : 'none';
+        }
+
+        // Auth state change
+        auth.onAuthStateChanged(async user => {
             if (user) {
-                uploadSection.style.display = 'block';
+                await handleUploadVisibility(user);
                 updateCartBadge(user.uid);
             } else {
                 uploadSection.style.display = 'none';
@@ -751,6 +763,13 @@
             if (!user) { alert('লগইন করুন'); return; }
             if (!recordedBlob) { alert('কোনো রেকর্ডিং নেই'); return; }
 
+            // Double-check cooldown before upload
+            const canPost = await canUserPost(user.uid);
+            if (!canPost) {
+                uploadSection.style.display = 'none';
+                return;
+            }
+
             const MAX_SIZE = 1 * 1024 * 1024; // 1 MB
             if (recordedBlob.size > MAX_SIZE) {
                 alert(`রেকর্ডিং খুব বড় (${(recordedBlob.size/1024/1024).toFixed(2)} MB)। ১ MB এর মধ্যে রাখুন।`);
@@ -779,9 +798,14 @@
                     createdAt: new Date().toISOString()
                 });
 
+                // Update last review time
+                await updateLastReviewTime(user.uid);
+
                 uploadStatus.innerHTML = '<i class="fas fa-check-circle"></i> রিভিউ সফল!';
                 resetRecordingUI();
                 loadReviews();
+                // Hide upload section immediately after upload
+                uploadSection.style.display = 'none';
             } catch(err) {
                 uploadStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> আপলোড ব্যর্থ: ' + err.message;
             } finally {
@@ -789,15 +813,31 @@
             }
         });
 
-        // Load reviews (public)
+        // ========== IMPROVED REVIEW LOADING WITH ERROR HANDLING ==========
         function loadReviews() {
             reviewsContainer.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>রিভিউ লোড হচ্ছে...</p></div>';
+            
             database.ref('reviews').orderByChild('timestamp').once('value', snapshot => {
+                console.log("📦 Total reviews fetched:", snapshot.numChildren());
+                
                 const reviews = [];
-                snapshot.forEach(child => reviews.push({ id: child.key, ...child.val() }));
-                reviews.reverse();
+                snapshot.forEach(child => {
+                    const review = child.val();
+                    // Ensure the review has an audioBase64
+                    if (!review.audioBase64 || typeof review.audioBase64 !== 'string') {
+                        console.warn("⚠️ Skipping review (no valid audioBase64):", child.key);
+                        return;
+                    }
+                    reviews.push({ id: child.key, ...review });
+                });
+                
+                console.log("✅ Valid reviews after filtering:", reviews.length);
+                
+                // Sort newest first (timestamp may be server timestamp or client)
+                reviews.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
                 displayReviews(reviews);
             }).catch(err => {
+                console.error("❌ Error loading reviews:", err);
                 reviewsContainer.innerHTML = `<div class="no-reviews">লোড করতে সমস্যা: ${err.message}</div>`;
             });
         }
@@ -807,21 +847,26 @@
                 reviewsContainer.innerHTML = '<div class="no-reviews"><i class="fas fa-comment-slash"></i> এখনো কোনো ভয়েস রিভিউ নেই। প্রথম রিভিউ দিন!</div>';
                 return;
             }
+            
             let html = '';
             reviews.forEach(r => {
-                const date = r.createdAt ? new Date(r.createdAt).toLocaleString('bn-BD') : 'সদ্য';
+                // Fallback for missing fields
+                const email = r.email || 'অজানা';
+                const date = r.createdAt ? new Date(r.createdAt).toLocaleString('bn-BD') : (r.timestamp ? new Date(r.timestamp).toLocaleString('bn-BD') : 'সদ্য');
                 const avatar = r.photoURL || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                const audioSrc = r.audioBase64 || '';
+                
                 html += `
                     <div class="review-card">
                         <div class="review-header">
                             <img class="review-avatar" src="${escapeHtml(avatar)}" alt="avatar">
                             <div class="review-info">
-                                <div class="review-email">${escapeHtml(r.email)}</div>
+                                <div class="review-email">${escapeHtml(email)}</div>
                                 <div class="review-date">${escapeHtml(date)}</div>
                             </div>
                         </div>
                         <div class="audio-player">
-                            <audio controls src="${escapeHtml(r.audioBase64)}"></audio>
+                            <audio controls src="${escapeHtml(audioSrc)}"></audio>
                         </div>
                     </div>
                 `;
@@ -851,6 +896,7 @@
             try {
                 await auth.signInWithPopup(provider);
                 loginModal.style.display = 'none';
+                if (auth.currentUser) await handleUploadVisibility(auth.currentUser);
                 loadReviews();
             } catch(err) { alert('লগইন ব্যর্থ: ' + err.message); }
         });
