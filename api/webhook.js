@@ -42,7 +42,7 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Firebase not configured' });
       }
 
-      // Relograde থেকে ভাউচার ডাটা সংগ্রহ
+      // Relograde থেকে অর্ডার ডিটেইলস এনে টোকেন/ভাউচার তথ্য সংগ্রহ
       const apiKey = process.env.RELOGRADE_API_KEY;
       let voucherData = null;
       if (apiKey && trx) {
@@ -53,10 +53,33 @@ export default async function handler(req, res) {
           if (orderRes.ok) {
             const orderDetails = await orderRes.json();
             console.log('📦 Order details from Relograde:', orderDetails);
+
+            // 🔥 এখান থেকে token বের করে voucherData-তে যোগ করা হচ্ছে (আগের কোডে শুধু voucherLink/voucherCode ছিল)
+            let token = null;
+            let voucherLink = null;
+            let voucherCode = null;
+
+            // orderLines থেকে token সংগ্রহ
+            if (orderDetails.items && orderDetails.items.length > 0) {
+              const firstItem = orderDetails.items[0];
+              if (firstItem.orderLines && firstItem.orderLines.length > 0) {
+                const firstLine = firstItem.orderLines[0];
+                token = firstLine.token || null;
+                voucherCode = firstLine.voucherCode || null;
+              }
+            }
+
+            // voucherLink তৈরি (token থাকলে)
+            if (token) {
+              voucherLink = `https://reward.relograde.com/${token}`;
+            }
+
             voucherData = {
-              voucherLink: orderDetails.voucherLink || orderDetails.voucherUrl || null,
-              voucherCode: orderDetails.voucherCode || null,
+              token: token,                     // 🔥 টোকেন আলাদাভাবে সংরক্ষিত
+              voucherLink: voucherLink,
+              voucherCode: voucherCode,
             };
+            console.log('✅ Extracted voucher data:', voucherData);
           } else {
             console.error('❌ Failed to fetch order details from Relograde');
           }
@@ -65,13 +88,13 @@ export default async function handler(req, res) {
         }
       }
 
-      // আপডেট ডাটা প্রস্তুত
+      // আপডেট ডাটা প্রস্তুত (completed স্ট্যাটাস ও ভাউচার তথ্য একসাথে)
       const updates = {
         status: 'completed',
         completedAt: new Date().toISOString(),
       };
       if (voucherData) {
-        updates.voucherData = voucherData;
+        updates.voucherData = voucherData;   // 🔥 voucherData সম্পূর্ণ অবজেক্ট হিসেবে সংরক্ষিত
       }
 
       // ========== 1. transactions আপডেট ==========
@@ -95,17 +118,15 @@ export default async function handler(req, res) {
         await updateTransactionViaSearch(firebaseOrderId, updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
       }
 
-      // ========== 2. userOrders আপডেট (Reward Link সহ) ==========
+      // ========== 2. userOrders আপডেট ==========
       if (userId) {
-        // ইউজারের অর্ডার আপডেটের জন্য আলাদা ডাটা তৈরি
+        // ইউজারের অর্ডারের জন্য আলাদা ডাটা (status + voucherData)
         const userUpdates = {
           status: 'completed'
         };
-        
-        // ভাউচার ডাটা থাকলে ইউজারের অর্ডারেও যোগ করুন
         if (voucherData) {
-          userUpdates.voucherData = voucherData;
-          userUpdates.voucherLink = voucherData.voucherLink; // অতিরিক্ত সুবিধার জন্য আলাদা ফিল্ড
+          userUpdates.voucherData = voucherData;          // 🔥 ইউজারের অর্ডারেও একই তথ্য
+          userUpdates.voucherLink = voucherData.voucherLink; // অতিরিক্ত সুবিধা
         }
 
         // নতুন কাঠামো: userOrders/${userId}/${firebaseOrderId}
