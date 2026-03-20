@@ -101,6 +101,20 @@
         .logo-main { font-size: 1.3rem; font-weight: 800; color: #ff9800; text-transform: uppercase; white-space: nowrap; }
         .logo-sub { font-size: 0.75rem; font-weight: 600; color: #00bcd4; margin-top: 2px; white-space: nowrap; }
         .header-right { display: flex; align-items: center; gap: 10px; }
+        .cart-icon-container, .menu-icon-container {
+            cursor: pointer;
+            position: relative;
+        }
+        .cart-modern-icon, .menu-modern-icon {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            background: linear-gradient(145deg, rgba(255,152,0,0.15), rgba(255,87,34,0.1));
+            border: 2px solid rgba(255,152,0,0.3);
+            transition: all 0.4s;
         }
         .cart-modern-icon i, .menu-modern-icon i { font-size: 1.4rem; color: #ff9800; }
         .cart-icon-container:hover .cart-modern-icon,
