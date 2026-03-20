@@ -52,20 +52,53 @@ export default async function handler(req, res) {
           });
           if (orderRes.ok) {
             const orderDetails = await orderRes.json();
-            console.log('📦 Order details from Relograde:', orderDetails);
+            console.log('📦 Order details from Relograde received');
 
-            // 🔥 এখান থেকে token বের করে voucherData-তে যোগ করা হচ্ছে (আগের কোডে শুধু voucherLink/voucherCode ছিল)
+            // 🔥 ইম্প্রুভড টোকেন এক্সট্রাকশন লজিক
             let token = null;
             let voucherLink = null;
             let voucherCode = null;
 
-            // orderLines থেকে token সংগ্রহ
             if (orderDetails.items && orderDetails.items.length > 0) {
               const firstItem = orderDetails.items[0];
               if (firstItem.orderLines && firstItem.orderLines.length > 0) {
                 const firstLine = firstItem.orderLines[0];
+
+                // 1. সরাসরি token ফিল্ড (আগের কাঠামো)
                 token = firstLine.token || null;
+
+                // 2. যদি token না পাওয়া যায়, তবে product স্ট্রিং-এর ভিতরে খুঁজুন (নতুন কাঠামো)
+                if (!token && firstLine.product && typeof firstLine.product === 'string') {
+                  try {
+                    const productObj = JSON.parse(firstLine.product);
+                    token = productObj.token || null;
+                    console.log('✅ Token extracted from product string:', token);
+                  } catch (parseError) {
+                    console.log('⚠️ Could not parse product string');
+                  }
+                }
+
+                // 3. voucherCode খোঁজা
                 voucherCode = firstLine.voucherCode || null;
+
+                // 4. যদি কিছু না পাওয়া যায়, তবে পুরো orderLines লুপ করে দেখি (ভবিষ্যতের জন্য)
+                if (!token) {
+                  for (const line of firstItem.orderLines) {
+                    if (line.token) {
+                      token = line.token;
+                      break;
+                    }
+                    if (line.product && typeof line.product === 'string') {
+                      try {
+                        const productObj = JSON.parse(line.product);
+                        if (productObj.token) {
+                          token = productObj.token;
+                          break;
+                        }
+                      } catch (e) {}
+                    }
+                  }
+                }
               }
             }
 
@@ -75,7 +108,7 @@ export default async function handler(req, res) {
             }
 
             voucherData = {
-              token: token,                     // 🔥 টোকেন আলাদাভাবে সংরক্ষিত
+              token: token,
               voucherLink: voucherLink,
               voucherCode: voucherCode,
             };
@@ -94,11 +127,10 @@ export default async function handler(req, res) {
         completedAt: new Date().toISOString(),
       };
       if (voucherData) {
-        updates.voucherData = voucherData;   // 🔥 voucherData সম্পূর্ণ অবজেক্ট হিসেবে সংরক্ষিত
+        updates.voucherData = voucherData;
       }
 
       // ========== 1. transactions আপডেট ==========
-      // নতুন কাঠামো: transactions/${firebaseOrderId} সরাসরি আপডেট
       const transactionDirectUrl = `${FIREBASE_DATABASE_URL}/transactions/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
       const directCheck = await fetch(transactionDirectUrl, { method: 'GET' });
 
@@ -120,16 +152,14 @@ export default async function handler(req, res) {
 
       // ========== 2. userOrders আপডেট ==========
       if (userId) {
-        // ইউজারের অর্ডারের জন্য আলাদা ডাটা (status + voucherData)
         const userUpdates = {
           status: 'completed'
         };
         if (voucherData) {
-          userUpdates.voucherData = voucherData;          // 🔥 ইউজারের অর্ডারেও একই তথ্য
-          userUpdates.voucherLink = voucherData.voucherLink; // অতিরিক্ত সুবিধা
+          userUpdates.voucherData = voucherData;
+          userUpdates.voucherLink = voucherData.voucherLink;
         }
 
-        // নতুন কাঠামো: userOrders/${userId}/${firebaseOrderId}
         const userOrderDirectUrl = `${FIREBASE_DATABASE_URL}/userOrders/${userId}/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
         const userCheck = await fetch(userOrderDirectUrl, { method: 'GET' });
 
