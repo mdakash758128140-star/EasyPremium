@@ -3,14 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Voice Reviews – Easy Premium</title>
-    <!-- Font Awesome -->
+    <title>Voice Reviews – Easy Premium (Base64)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Firebase SDK (Compat version – works with your config) -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
     <style>
         * {
             margin: 0;
@@ -28,7 +25,6 @@
             max-width: 1200px;
             margin: 0 auto;
         }
-        /* Header */
         .header {
             display: flex;
             justify-content: space-between;
@@ -94,7 +90,6 @@
             transform: scale(1.02);
             box-shadow: 0 5px 15px rgba(255,152,0,0.4);
         }
-        /* Upload Card */
         .upload-card {
             background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
@@ -139,7 +134,6 @@
             margin-top: 15px;
             font-size: 0.9rem;
         }
-        /* Reviews Grid */
         .reviews-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -251,7 +245,7 @@
 </div>
 
 <script>
-    // ================== YOUR FIREBASE CONFIGURATION ==================
+    // ================== FIREBASE CONFIG (your project) ==================
     const firebaseConfig = {
         apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
         authDomain: "easy-premium.firebaseapp.com",
@@ -263,11 +257,10 @@
         measurementId: "G-CHL8K8HRPX"
     };
 
-    // Initialize Firebase (compat version)
+    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const database = firebase.database();
-    const storage = firebase.storage();
 
     // DOM elements
     const loginBtn = document.getElementById('loginBtn');
@@ -379,7 +372,7 @@
 
     cancelBtn.addEventListener('click', resetRecordingUI);
 
-    // ========== UPLOAD TO FIREBASE ==========
+    // ========== CONVERT BLOB TO BASE64 AND SAVE IN DATABASE ==========
     uploadBtn.addEventListener('click', async () => {
         const user = auth.currentUser;
         if (!user) {
@@ -391,26 +384,29 @@
             return;
         }
 
-        uploadStatus.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> আপলোড হচ্ছে...';
+        // Optional size limit: 1 MB
+        const MAX_SIZE = 1 * 1024 * 1024; // 1 MB
+        if (recordedBlob.size > MAX_SIZE) {
+            alert(`রেকর্ডিং খুব বড় (${(recordedBlob.size / 1024 / 1024).toFixed(2)} MB)। দয়া করে ১ MB এর মধ্যে রেকর্ড করুন।`);
+            return;
+        }
+
+        uploadStatus.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> রূপান্তর ও আপলোড হচ্ছে...';
         uploadBtn.disabled = true;
 
-        const fileName = `voice_${Date.now()}.webm`;
-        const storagePath = `voice_reviews/${user.uid}/${fileName}`;
-        const storageRef = storage.ref(storagePath);
-
         try {
-            // Upload file
-            const snapshot = await storageRef.put(recordedBlob);
-            const downloadURL = await snapshot.ref.getDownloadURL();
-
-            // Save metadata to Realtime Database
+            // Convert blob to Base64 data URL
+            const base64 = await blobToBase64(recordedBlob);
+            // base64 looks like "data:audio/webm;base64,...."
+            // We can store the whole string, or just the base64 part. Let's store full data URL for easy playback.
+            
             const reviewId = database.ref('reviews').push().key;
             const reviewData = {
                 userId: user.uid,
                 email: user.email,
                 displayName: user.displayName || user.email,
                 photoURL: user.photoURL || '',
-                audioUrl: downloadURL,
+                audioBase64: base64,          // full data URL
                 timestamp: firebase.database.ServerValue.TIMESTAMP,
                 createdAt: new Date().toISOString()
             };
@@ -427,7 +423,17 @@
         }
     });
 
-    // ========== LOAD PUBLIC REVIEWS ==========
+    // Helper: Blob to Base64 (Promise)
+    function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    // ========== LOAD PUBLIC REVIEWS (Base64 audio) ==========
     function loadReviews() {
         reviewsContainer.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-pulse"></i> রিভিউ লোড হচ্ছে...</div>';
         const reviewsRef = database.ref('reviews');
@@ -453,6 +459,8 @@
         reviews.forEach(review => {
             const date = review.createdAt ? new Date(review.createdAt).toLocaleString('bn-BD') : 'সদ্য';
             const avatar = review.photoURL || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+            // audio source is the Base64 data URL
+            const audioSrc = review.audioBase64 || '';
             html += `
                 <div class="review-card">
                     <div class="review-header">
@@ -463,7 +471,7 @@
                         </div>
                     </div>
                     <div class="audio-player">
-                        <audio controls src="${escapeHtml(review.audioUrl)}"></audio>
+                        ${audioSrc ? `<audio controls src="${escapeHtml(audioSrc)}"></audio>` : '<i>অডিও পাওয়া যায়নি</i>'}
                     </div>
                 </div>
             `;
@@ -483,8 +491,7 @@
 
     // Initial load
     loadReviews();
-    // Auto-refresh every 10 seconds
-    setInterval(loadReviews, 10000);
+    setInterval(loadReviews, 10000); // auto refresh
 </script>
 </body>
 </html>
