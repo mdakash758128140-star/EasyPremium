@@ -12,7 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        /* ========== সম্পূর্ণ স্টাইল মূল ওয়েবসাইটের মতো ========== */
+        /* ========== মূল ওয়েবসাইটের সম্পূর্ণ CSS (অপরিবর্তিত) ========== */
         * {
             margin: 0;
             padding: 0;
@@ -170,7 +170,7 @@
             padding: 20px;
         }
         
-        /* রেকর্ড কার্ড (মূল সাইটের প্ল্যাটফর্ম কার্ডের মত) */
+        /* রেকর্ড কার্ড */
         .record-card {
             background: rgba(20,20,40,0.9);
             border-radius: 12px;
@@ -353,16 +353,22 @@
             text-decoration: none;
             transition: 0.3s;
         }
-        /* সোশ্যাল আইকনের রং (মূল সাইটের মতো) */
-        .social-link:hover:nth-child(1) i { color: #1877F2; }
-        .social-link:hover:nth-child(2) i { color: #E4405F; }
-        .social-link:hover:nth-child(3) i { color: #FF0000; }
-        .social-link:hover:nth-child(4) i { color: #000000; }
-        .social-link:hover:nth-child(5) i { color: #25D366; }
-        .social-link:hover:nth-child(6) i { color: #0088cc; }
+        /* মূল সাইটের মতো সোশ্যাল আইকনের ডিফল্ট রং ও হোভার ইফেক্ট */
+        .social-link i {
+            transition: color 0.3s;
+        }
+        .social-link:nth-child(1) i { color: #1877F2; }      /* Facebook */
+        .social-link:nth-child(2) i { color: #E4405F; }      /* Instagram */
+        .social-link:nth-child(3) i { color: #FF0000; }      /* YouTube */
+        .social-link:nth-child(4) i { color: #000000; }      /* Twitter (X) */
+        .social-link:nth-child(5) i { color: #25D366; }      /* WhatsApp */
+        .social-link:nth-child(6) i { color: #0088cc; }      /* Telegram */
         .social-link:hover {
             background: rgba(255,152,0,0.2);
             transform: translateY(-5px) scale(1.1);
+        }
+        .social-link:hover i {
+            color: #ff9800 !important;
         }
         .copyright {
             color: #b0bec5;
@@ -478,6 +484,39 @@
             cursor: pointer;
         }
         
+        /* ফ্লোটিং মেসেঞ্জার (মূল সাইটের মতো) */
+        .messenger-float {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, #0084ff, #00b2ff);
+            border-radius: 50%;
+            box-shadow: 0 10px 25px rgba(0, 132, 255, 0.4);
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            animation: messengerPulse 2s infinite;
+        }
+        .messenger-float:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 30px rgba(0, 132, 255, 0.6);
+        }
+        .messenger-float i {
+            color: white;
+            font-size: 2rem;
+        }
+        @keyframes messengerPulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 132, 255, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(0, 132, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 132, 255, 0); }
+        }
+        
         @media (max-width: 768px) {
             .hero h1 { font-size: 1.7rem; }
             .reviews-grid { grid-template-columns: 1fr; }
@@ -488,11 +527,13 @@
             .cart-modern-icon, .menu-modern-icon { width: 40px; height: 40px; }
             .cart-modern-icon i, .menu-modern-icon i { font-size: 1.2rem; }
             .hero h1 { font-size: 1.5rem; }
+            .messenger-float { width: 50px; height: 50px; bottom: 20px; right: 20px; }
+            .messenger-float i { font-size: 1.6rem; }
         }
     </style>
 </head>
 <body>
-    <!-- Header (মূল সাইটের মতো) -->
+    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <a href="https://www.easy-premium.com" class="logo">
@@ -514,7 +555,7 @@
         </div>
     </header>
 
-    <!-- ড্রয়ার (মূল সাইটের মতো) -->
+    <!-- Drawer -->
     <div id="drawerOverlay" class="drawer-overlay"></div>
     <div id="drawer" class="drawer">
         <button class="drawer-close" id="drawerClose"><i class="fas fa-times"></i></button>
@@ -524,14 +565,14 @@
         </div>
     </div>
 
-    <!-- হিরো সেকশন -->
+    <!-- Hero -->
     <section class="hero">
         <h1>ভয়েস রিভিউ</h1>
         <p>আমাদের প্রোডাক্ট নিয়ে আপনার মতামত দিন ভয়েস রেকর্ডের মাধ্যমে। সকল রিভিউ পাবলিক, শুনতে কোনো লগইন লাগে না।</p>
     </section>
 
     <div class="container">
-        <!-- রেকর্ড কার্ড (শুধু লগইন করা ইউজারদের জন্য) -->
+        <!-- Upload Card (only visible when logged in) -->
         <div id="uploadSection" class="record-card" style="display: none;">
             <h3><i class="fas fa-microphone-alt"></i> আপনার ভয়েস রিভিউ দিন</h3>
             <div class="record-area">
@@ -547,14 +588,14 @@
             </div>
         </div>
 
-        <!-- পাবলিক রিভিউ লিস্ট -->
+        <!-- Public Reviews -->
         <h2><i class="fas fa-star-of-life"></i> সকল ভয়েস রিভিউ</h2>
         <div id="reviewsContainer" class="reviews-grid">
             <div class="loading-spinner"><div class="spinner"></div><p>রিভিউ লোড হচ্ছে...</p></div>
         </div>
     </div>
 
-    <!-- ফুটার (মূল সাইটের মতো) -->
+    <!-- Footer (মূল সাইটের মতো) -->
     <footer class="footer">
         <div class="footer-policy-links">
             <a href="https://www.easy-premium.com/privacy-refund-policy-terms-of-service.html?data=PrivacyPolicy">Privacy Policy</a>
@@ -576,7 +617,12 @@
         </div>
     </footer>
 
-    <!-- লগইন মোডাল -->
+    <!-- Floating Messenger -->
+    <a href="https://m.me/906635592542978" target="_blank" class="messenger-float" title="মেসেঞ্জারে কথা বলুন">
+        <i class="fab fa-facebook-messenger"></i>
+    </a>
+
+    <!-- Login Modal -->
     <div id="loginModal" class="login-modal">
         <div class="login-content">
             <img src="https://cdn-icons-png.flaticon.com/512/8701/8701941.png" style="width:70px;">
@@ -587,7 +633,7 @@
     </div>
 
     <script>
-        // Firebase Config (মূল সাইটের মতো)
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
             authDomain: "easy-premium.firebaseapp.com",
@@ -601,7 +647,7 @@
         const auth = firebase.auth();
         const database = firebase.database();
 
-        // DOM elements
+        // DOM Elements
         const uploadSection = document.getElementById('uploadSection');
         const recordBtn = document.getElementById('recordBtn');
         const recordingStatus = document.getElementById('recordingStatus');
@@ -638,7 +684,6 @@
             }
         });
 
-        // Cart badge update (optional)
         async function updateCartBadge(uid) {
             const snap = await database.ref(`userOrders/${uid}`).once('value');
             const count = snap.numChildren();
