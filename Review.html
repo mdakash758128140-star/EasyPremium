@@ -655,11 +655,11 @@
         let recordedBlob = null;
         let isRecording = false;
 
-        // 24 hours in milliseconds
-        const COOLDOWN_HOURS = 24;
-        const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
+        // ========== COOLDOWN: 3 ঘন্টা (10800000 ms) ==========
+        const COOLDOWN_HOURS = 3;
+        const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000; // 3 hours
 
-        // Check if user can post (last review > 24h ago)
+        // Check if user can post (last review > 3h ago)
         async function canUserPost(userId) {
             const snapshot = await database.ref(`userLastReview/${userId}/lastReviewTime`).once('value');
             const lastTime = snapshot.val();
@@ -675,7 +675,7 @@
             });
         }
 
-        // Show/hide upload section based on cooldown
+        // Show/hide upload section based on login status and cooldown
         async function handleUploadVisibility(user) {
             if (!user) {
                 uploadSection.style.display = 'none';
@@ -683,6 +683,10 @@
             }
             const canPost = await canUserPost(user.uid);
             uploadSection.style.display = canPost ? 'block' : 'none';
+            // Optionally show a message if cooldown active (optional, not disturbing design)
+            if (!canPost) {
+                // silently hide, but no extra UI to keep design intact
+            }
         }
 
         // Auth state change
@@ -767,6 +771,7 @@
             const canPost = await canUserPost(user.uid);
             if (!canPost) {
                 uploadSection.style.display = 'none';
+                alert('আপনি ইতিমধ্যে ৩ ঘন্টার মধ্যে একটি রিভিউ দিয়েছেন। পরবর্তী রিভিউ দিতে ৩ ঘন্টা অপেক্ষা করুন।');
                 return;
             }
 
@@ -804,7 +809,7 @@
                 uploadStatus.innerHTML = '<i class="fas fa-check-circle"></i> রিভিউ সফল!';
                 resetRecordingUI();
                 loadReviews();
-                // Hide upload section immediately after upload
+                // Hide upload section immediately after upload due to cooldown
                 uploadSection.style.display = 'none';
             } catch(err) {
                 uploadStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> আপলোড ব্যর্থ: ' + err.message;
