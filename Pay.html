@@ -362,17 +362,6 @@
             animation: spin 1s linear infinite;
         }
 
-        .admin-warning {
-            background: rgba(255, 152, 0, 0.2);
-            border-left: 4px solid #ff9800;
-            padding: 10px 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            font-size: 14px;
-            color: #ff9800;
-            text-align: center;
-        }
-
         @media (max-width: 480px) {
             body { padding: 10px; padding-bottom: 75px; }
             .header h1 { font-size: 24px; }
@@ -382,7 +371,6 @@
             .instruction-note { font-size: 13px; padding: 12px; }
             .bdpg-total-amount { font-size: 16px; padding: 12px; }
             .bdpg-total-amount b { font-size: 22px; }
-            .breakdown-row { font-size: 14px; }
             .bdpg-s__acc p { font-size: 14px; }
             .account-number-text { font-size: 15px; padding: 4px 10px; }
             .copy-btn { font-size: 12px; padding: 4px 12px; }
@@ -408,6 +396,7 @@
         });
 
         const database = firebase.database();
+        const MAIN_WEBSITE = "https://www.easy-premium.com";
 
         function decryptData(encrypted) {
             try {
@@ -439,48 +428,146 @@
             return num;
         }
 
-        // অর্ডার বৈধতা যাচাই (স্ট্যাটাস, ২৪ ঘণ্টা, মালিক)
-        async function validateOrder(orderId, expectedUserId) {
+        async function setActiveAdminNumber() {
             try {
-                const snapshot = await database.ref(`transactions/${orderId}`).once('value');
-                const order = snapshot.val();
+                const snapshot = await database.ref('publicAdminInfo').once('value');
+                const admins = snapshot.val() || {};
+                const now = new Date();
+                const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
                 
-                if (!order) {
-                    console.log('❌ Order not found in DB');
-                    return { valid: false, reason: 'not_found' };
-                }
+                let activeNumber = null;
+                let latestTime = 0;
 
-                // 1. স্ট্যাটাস চেক
-                if (order.status === 'completed' || order.status === 'finished' || order.status === 'cancelled') {
-                    console.log(`❌ Order already ${order.status}`);
-                    return { valid: false, reason: 'completed' };
-                }
-
-                // 2. মালিক যাচাই
-                if (order.userId && order.userId !== expectedUserId) {
-                    console.log('❌ User mismatch');
-                    return { valid: false, reason: 'user_mismatch' };
-                }
-
-                // 3. ২৪ ঘণ্টা পুরনো কিনা
-                const orderDate = order.orderDate || order.timestamp;
-                if (orderDate) {
-                    const orderTime = new Date(orderDate).getTime();
-                    const now = Date.now();
-                    const hoursDiff = (now - orderTime) / (1000 * 60 * 60);
-                    if (hoursDiff > 24) {
-                        console.log(`❌ Order older than 24h (${hoursDiff.toFixed(1)}h)`);
-                        return { valid: false, reason: 'expired' };
+                for (let uid in admins) {
+                    const admin = admins[uid];
+                    if (!admin.lastActive) continue;
+                    const lastActive = new Date(admin.lastActive);
+                    if (lastActive >= oneMinuteAgo && lastActive.getTime() > latestTime) {
+                        latestTime = lastActive.getTime();
+                        activeNumber = admin.number;
                     }
-                } else {
-                    console.log('❌ No date field in order');
-                    return { valid: false, reason: 'no_date' };
                 }
 
-                return { valid: true, order };
-            } catch (err) {
-                console.error('Validation error:', err);
-                return { valid: false, reason: 'error' };
+                const formatted = activeNumber ? formatPhoneNumber(activeNumber) : null;
+                
+                if (formatted) {
+                    document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
+                    document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
+                    document.getElementById('payBtn').classList.remove('hidden');
+                } else {
+                    document.getElementById('payBtn').classList.add('hidden');
+                }
+                
+                return formatted;
+            } catch (e) {
+                console.error("Admin number error:", e);
+                return null;
+            }
+        }
+
+        function listenToAdminStatus() {
+            database.ref('publicAdminInfo').on('value', (snapshot) => {
+                const admins = snapshot.val() || {};
+                const now = new Date();
+                const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+                
+                let activeNumber = null;
+                let latestTime = 0;
+
+                for (let uid in admins) {
+                    const admin = admins[uid];
+                    if (!admin.lastActive) continue;
+                    const lastActive = new Date(admin.lastActive);
+                    if (lastActive >= oneMinuteAgo && lastActive.getTime() > latestTime) {
+                        latestTime = lastActive.getTime();
+                        activeNumber = admin.number;
+                    }
+                }
+
+                const formatted = activeNumber ? formatPhoneNumber(activeNumber) : null;
+                const payBtn = document.getElementById('payBtn');
+                
+                if (formatted) {
+                    document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
+                    document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
+                    if (payBtn) payBtn.classList.remove('hidden');
+                } else {
+                    if (payBtn) payBtn.classList.add('hidden');
+                }
+            });
+        }
+
+        async function fetchPlanData(platformId) {
+            try {
+                const plans2 = await database.ref('publicData/pricingPlans2').once('value');
+                if (plans2.exists()) {
+                    const allPlans = plans2.val();
+                    for (let key in allPlans) {
+                        if (key === platformId || allPlans[key].Products === platformId) {
+                            return allPlans[key];
+                        }
+                    }
+                }
+                
+                const plans1 = await database.ref('publicData/pricingPlans1').once('value');
+                if (plans1.exists()) {
+                    const allPlans = plans1.val();
+                    for (let key in allPlans) {
+                        if (key === platformId || allPlans[key].Products === platformId) {
+                            return allPlans[key];
+                        }
+                    }
+                }
+                
+                return null;
+            } catch (e) {
+                console.error("Fetch error:", e);
+                return null;
+            }
+        }
+
+        async function validateOrderAndProceed(urlData) {
+            const output = document.getElementById('output');
+            try {
+                // Fetch order from transactions
+                const orderSnapshot = await database.ref(`transactions/${urlData.orderId}`).once('value');
+                if (!orderSnapshot.exists()) {
+                    console.warn("Order not found:", urlData.orderId);
+                    window.location.href = MAIN_WEBSITE;
+                    return false;
+                }
+                
+                const order = orderSnapshot.val();
+                const now = Date.now();
+                const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+                const orderTimestamp = order.timestamp || 0;
+                const isExpired = (now - orderTimestamp) > TWENTY_FOUR_HOURS;
+                
+                // Order must be pending, not expired, and userId must match decrypted userId
+                if (order.status !== 'pending') {
+                    console.warn(`Order status is '${order.status}', redirecting.`);
+                    window.location.href = MAIN_WEBSITE;
+                    return false;
+                }
+                
+                if (isExpired) {
+                    console.warn("Order older than 24 hours, redirecting.");
+                    window.location.href = MAIN_WEBSITE;
+                    return false;
+                }
+                
+                if (order.userId !== urlData.userId) {
+                    console.warn("Order owner mismatch, redirecting.");
+                    window.location.href = MAIN_WEBSITE;
+                    return false;
+                }
+                
+                // All checks passed, allow payment flow
+                return true;
+            } catch (error) {
+                console.error("Validation error:", error);
+                window.location.href = MAIN_WEBSITE;
+                return false;
             }
         }
 
@@ -493,169 +580,34 @@
             const encodedData = urlParams.get('data');
             
             if (!encodedData) {
-                window.location.href = 'https://www.easy-premium.com';
+                output.innerHTML = '<div class="error">❌ URL-এ ডাটা নেই</div>';
+                setTimeout(() => { window.location.href = MAIN_WEBSITE; }, 2000);
                 return;
             }
             
             output.innerHTML = '<div class="loading">ডিক্রিপ্ট হচ্ছে...</div>';
             
             const urlData = decryptData(encodedData);
-            if (!urlData) {
-                window.location.href = 'https://www.easy-premium.com';
+            if (!urlData || !urlData.orderId) {
+                output.innerHTML = '<div class="error">❌ ডাটা ডিক্রিপ্ট করা যায়নি</div>';
+                setTimeout(() => { window.location.href = MAIN_WEBSITE; }, 2000);
                 return;
             }
-
-            // অর্ডার বৈধতা যাচাই
-            const validation = await validateOrder(urlData.orderId, urlData.userId);
-            if (!validation.valid) {
-                window.location.href = 'https://www.easy-premium.com';
+            
+            // Validate order before showing any payment UI
+            const isValid = await validateOrderAndProceed(urlData);
+            if (!isValid) {
+                // validateOrderAndProceed already redirects, but just in case
                 return;
             }
-
-            // এডমিন স্ট্যাটাস চেক (বাটন সবসময় দেখাবে, শুধু সতর্কতা দেবে)
-            let adminOnline = false;
-            let warningDiv = null;
-
-            async function setActiveAdminNumber() {
-                try {
-                    const snapshot = await database.ref('publicAdminInfo').once('value');
-                    const admins = snapshot.val() || {};
-                    const now = new Date();
-                    const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
-                    
-                    let activeNumber = null;
-                    let latestTime = 0;
-
-                    for (let uid in admins) {
-                        const admin = admins[uid];
-                        if (!admin.lastActive) continue;
-                        const lastActive = new Date(admin.lastActive);
-                        if (lastActive >= oneMinuteAgo && lastActive.getTime() > latestTime) {
-                            latestTime = lastActive.getTime();
-                            activeNumber = admin.number;
-                        }
-                    }
-
-                    const formatted = activeNumber ? formatPhoneNumber(activeNumber) : null;
-                    
-                    if (formatted) {
-                        document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
-                        document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
-                        adminOnline = true;
-                        if (warningDiv) warningDiv.remove();
-                    } else {
-                        adminOnline = false;
-                        // সতর্কতা দেখান
-                        if (!warningDiv && document.querySelector('.card')) {
-                            warningDiv = document.createElement('div');
-                            warningDiv.className = 'admin-warning';
-                            warningDiv.innerHTML = '⚠️ কোনো অ্যাডমিন অনলাইন নেই। আপনার টাকা পাঠানোর আগে নিশ্চিত করুন যে অ্যাডমিন সংযুক্ত আছে, নতুবা ডেলিভারি বিলম্বিত হতে পারে।';
-                            const firstCard = document.querySelector('.card');
-                            firstCard.parentNode.insertBefore(warningDiv, firstCard.nextSibling);
-                        }
-                    }
-                    
-                    // বাটন সবসময় দেখানো হবে, শুধু সতর্কতা দেব
-                    payBtn.classList.remove('hidden');
-                    
-                    return formatted;
-                } catch (e) {
-                    console.error("Admin number error:", e);
-                    payBtn.classList.remove('hidden'); // error হলে তাও বাটন দেখাও
-                    return null;
-                }
-            }
-
-            function listenToAdminStatus() {
-                database.ref('publicAdminInfo').on('value', (snapshot) => {
-                    const admins = snapshot.val() || {};
-                    const now = new Date();
-                    const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
-                    
-                    let activeNumber = null;
-                    let latestTime = 0;
-
-                    for (let uid in admins) {
-                        const admin = admins[uid];
-                        if (!admin.lastActive) continue;
-                        const lastActive = new Date(admin.lastActive);
-                        if (lastActive >= oneMinuteAgo && lastActive.getTime() > latestTime) {
-                            latestTime = lastActive.getTime();
-                            activeNumber = admin.number;
-                        }
-                    }
-
-                    const formatted = activeNumber ? formatPhoneNumber(activeNumber) : null;
-                    const payBtn = document.getElementById('payBtn');
-                    
-                    if (formatted) {
-                        document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
-                        document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
-                        if (warningDiv) warningDiv.remove();
-                        adminOnline = true;
-                    } else {
-                        adminOnline = false;
-                        if (!warningDiv && document.querySelector('.card')) {
-                            warningDiv = document.createElement('div');
-                            warningDiv.className = 'admin-warning';
-                            warningDiv.innerHTML = '⚠️ কোনো অ্যাডমিন অনলাইন নেই। আপনার টাকা পাঠানোর আগে নিশ্চিত করুন যে অ্যাডমিন সংযুক্ত আছে, নতুবা ডেলিভারি বিলম্বিত হতে পারে।';
-                            const firstCard = document.querySelector('.card');
-                            firstCard.parentNode.insertBefore(warningDiv, firstCard.nextSibling);
-                        }
-                    }
-                    if (payBtn) payBtn.classList.remove('hidden');
-                });
-            }
-
-            // প্ল্যান ডেটা লোড
-            async function fetchPlanData(platformId) {
-                try {
-                    const plans2 = await database.ref('publicData/pricingPlans2').once('value');
-                    if (plans2.exists()) {
-                        const allPlans = plans2.val();
-                        for (let key in allPlans) {
-                            if (key === platformId || allPlans[key].Products === platformId) {
-                                return allPlans[key];
-                            }
-                        }
-                    }
-                    
-                    const plans1 = await database.ref('publicData/pricingPlans1').once('value');
-                    if (plans1.exists()) {
-                        const allPlans = plans1.val();
-                        for (let key in allPlans) {
-                            if (key === platformId || allPlans[key].Products === platformId) {
-                                return allPlans[key];
-                            }
-                        }
-                    }
-                    
-                    return null;
-                } catch (e) {
-                    console.error("Fetch error:", e);
-                    return null;
-                }
-            }
-
-            // শুরু
-            await setActiveAdminNumber();
-            listenToAdminStatus();
-
+            
+            // If we reach here, order is valid (pending, not expired, owner match)
             const planData = await fetchPlanData(urlData.platformId);
             
             const serviceCharge = planData?.ServicCharge ? Number(planData.ServicCharge) : 0;
             const productPrice = Number(urlData.price) || 0;
             const totalAmount = productPrice + serviceCharge;
             
-            console.log('📊 Order Details:', {
-                orderId: urlData.orderId,
-                platformId: urlData.platformId,
-                productPrice: productPrice,
-                serviceCharge: serviceCharge,
-                totalAmount: totalAmount,
-                planData: planData
-            });
-
             function updatePaymentAmounts() {
                 document.querySelectorAll('#bkash-amount, #nagad-amount, #rocket-amount').forEach(el => {
                     el.textContent = totalAmount;
@@ -664,7 +616,6 @@
             
             const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
             const productSlug = planData?.Products || urlData.platformId;
-            
             const dField = planData?.D || planData?.description || '';
             
             let dFieldHTML = '';
@@ -683,7 +634,6 @@
             
             if (isVariable) {
                 minFace = productSlug.includes('mastercard') ? 5 : 1;
-                
                 if (planData?.faceValue) {
                     faceValueFromDB = parseFloat(planData.faceValue);
                     if (faceValueFromDB >= minFace && faceValueFromDB <= maxFace) {
@@ -717,13 +667,19 @@
                 </div>
             `;
 
+            // পেমেন্ট কনফার্ম বাটনের ক্লিক ইভেন্ট
             payBtn.onclick = () => {
                 output.style.display = 'none';
                 payBtn.style.display = 'none';
                 paymentPanel.style.display = 'block';
                 updatePaymentAmounts();
             };
+            
+            // Admin realtime status listener (already started later)
+            await setActiveAdminNumber();
+            listenToAdminStatus();
 
+            // Radio button change event
             const radios = document.querySelectorAll('input[name="payment_method"]');
             const bkashBox = document.getElementById('box-bkash');
             const nagadBox = document.getElementById('box-nagad');
@@ -755,6 +711,7 @@
                 });
             });
 
+            // VERIFY বাটন – অ্যাডমিন নম্বর সহ (JSON reference)
             const verifyBtn = document.getElementById('verifyInsideBtn');
             verifyBtn.addEventListener('click', async function() {
                 const selected = document.querySelector('input[name="payment_method"]:checked');
@@ -868,9 +825,11 @@
             document.querySelectorAll('.copy-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const num = this.dataset.number;
-                    navigator.clipboard?.writeText(num);
-                    this.textContent = 'Copied!';
-                    setTimeout(() => this.textContent = 'Copy', 2000);
+                    if (num) {
+                        navigator.clipboard?.writeText(num);
+                        this.textContent = 'Copied!';
+                        setTimeout(() => this.textContent = 'Copy', 2000);
+                    }
                 });
             });
         });
@@ -940,6 +899,6 @@
         </div>
     </div>
     
-    <button id="payBtn" class="pay-btn">পেমেন্ট কনফার্ম করুন</button>
+    <button id="payBtn" class="pay-btn hidden">পেমেন্ট কনফার্ম করুন</button>
 </body>
 </html>
