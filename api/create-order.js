@@ -60,14 +60,11 @@ export default async function handler(req, res) {
     }
 
     const finalOrderId = firebaseOrderId || 'REL' + Math.random().toString(36).substring(2, 15).toUpperCase();
-    const currentTime = new Date().toISOString();
+    // 🚫 বর্তমান সময় সরানো হয়েছে – পরিবর্তে ডামি সময় ব্যবহার করা হচ্ছে
+    const dummyTimestamp = "2024-01-01T00:00:00.000Z";
     
-    const formattedDate = new Date(currentTime).toLocaleDateString('bn-BD', {
-      timeZone: 'Asia/Dhaka',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    // ইমেইলের জন্য ডামি তারিখ (বাংলা লোকেলেও একই)
+    const dummyFormattedDate = "১ জানুয়ারি ২০২৪";
 
     const serviceChargeInt = serviceCharge ? parseInt(serviceCharge) : 0;
     const totalAmount = amountInt + serviceChargeInt;
@@ -88,6 +85,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // 🚫 টাইমস্ট্যাম্প বাদ – রেফারেন্সে এখন কোনো সময় নেই
     const relogradeReference = JSON.stringify({
       firebaseOrderId: finalOrderId,
       paymentMethod,
@@ -95,8 +93,8 @@ export default async function handler(req, res) {
       txid,
       userId,
       email,
-      admin,
-      timestamp: currentTime
+      admin
+      // timestamp omitted
     });
 
     const requestBody = {
@@ -121,12 +119,13 @@ export default async function handler(req, res) {
 
     const relogradeData = await response.json();
 
+    // 🚫 অর্ডার ডাটায়ও বর্তমান সময় বাদ, ডামি সময় বসানো
     const orderData = {
       OrderId: relogradeData.trx || finalOrderId,
       PaymentMethods: paymentMethod,
       PaymentNumber: phone || 'N/A',
       PaymentTrxID: txid || 'N/A',
-      Time: currentTime,
+      Time: dummyTimestamp,           // ডামি সময়
       email,
       platformId: productSlug,
       uid: userId || 'guest',
@@ -162,7 +161,7 @@ export default async function handler(req, res) {
           to_name: userId || 'Valued Customer',
           order_id: relogradeData.trx || finalOrderId,
           platform: platformName,
-          order_date: formattedDate,
+          order_date: dummyFormattedDate,   // ডামি তারিখ
           payment_link: orderLink,
           payment_method: paymentMethod,
           payment_number: phone || 'N/A',
@@ -221,7 +220,7 @@ export default async function handler(req, res) {
         paymentMethod,
         paymentNumber: phone,
         transactionId: txid,
-        time: currentTime,
+        time: dummyTimestamp,     // ডামি সময়
         email,
         platformId: productSlug,
         faceValue: faceValue || null,
