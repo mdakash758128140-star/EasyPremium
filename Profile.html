@@ -261,6 +261,15 @@
             border-left: 4px solid #ff9800;
             transition: 0.2s;
         }
+        /* Clickable styles for pending orders */
+        .order-card.clickable-pending {
+            cursor: pointer;
+        }
+        .order-card.clickable-pending:hover {
+            background: rgba(255,152,0,0.1);
+            border-left-color: #00bcd4;
+        }
+        /* Completed orders with voucher link */
         .order-card[data-voucher-link]:not([data-voucher-link=""]) {
             cursor: pointer;
         }
@@ -673,7 +682,8 @@
         function getStatusBangla(status) {
             if (status === 'completed') return 'সম্পন্ন';
             if (status === 'cancelled') return 'বাতিল';
-            return 'অপেক্ষমান';
+            if (status === 'waiting') return 'অপেক্ষমান';
+            return 'পেমেন্ট করুন'; // pending
         }
 
         async function updateCartBadge(uid) {
@@ -683,20 +693,28 @@
             else cartBadge.style.display = 'none';
         }
 
-        function attachVoucherClickHandlers() {
-            // Re-attach click events to order cards
-            document.querySelectorAll('.order-card').forEach(card => {
+        // Attach click handlers for both completed (voucher) and pending (payment link)
+        function attachClickHandlers() {
+            // Handle completed orders (voucher link)
+            document.querySelectorAll('.order-card[data-voucher-link]:not([data-voucher-link=""])').forEach(card => {
+                // Avoid duplicate listeners by replacing with clone (like before)
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
+                newCard.style.cursor = 'pointer';
+                newCard.addEventListener('click', (e) => {
+                    const link = newCard.dataset.voucherLink;
+                    if (link) window.open(link, '_blank');
+                });
             });
-            document.querySelectorAll('.order-card').forEach(card => {
-                const link = card.dataset.voucherLink;
-                if (link) {
-                    card.style.cursor = 'pointer';
-                    card.addEventListener('click', (e) => {
-                        window.open(link, '_blank');
-                    });
-                }
+
+            // Handle pending orders (payment link)
+            document.querySelectorAll('.order-card.clickable-pending').forEach(card => {
+                const newCard = card.cloneNode(true);
+                card.parentNode.replaceChild(newCard, card);
+                newCard.addEventListener('click', (e) => {
+                    const link = newCard.dataset.paymentLink;
+                    if (link) window.location.href = link;
+                });
             });
         }
 
@@ -711,11 +729,19 @@
             } else {
                 ordersHtml = '<div class="orders-cards">';
                 orders.forEach(order => {
-                    const statusClass = getStatusClass(order.status);
-                    const statusBangla = getStatusBangla(order.status);
-                    const voucherLink = order.voucherData?.voucherLink || '';
+                    const status = order.status || 'pending';
+                    const statusClass = getStatusClass(status);
+                    const statusBangla = getStatusBangla(status);
+                    const voucherLink = (status === 'completed' && order.voucherData?.voucherLink) ? order.voucherData.voucherLink : '';
+                    const paymentLink = (status === 'pending' && order.paymentLink) ? order.paymentLink : '';
+                    
+                    // For pending orders, add clickable class and data-payment-link
+                    const clickablePendingClass = paymentLink ? 'clickable-pending' : '';
+                    const voucherAttr = voucherLink ? `data-voucher-link="${voucherLink}"` : '';
+                    const paymentAttr = paymentLink ? `data-payment-link="${paymentLink}"` : '';
+                    
                     ordersHtml += `
-                        <div class="order-card" data-voucher-link="${voucherLink}">
+                        <div class="order-card ${clickablePendingClass}" ${voucherAttr} ${paymentAttr}>
                             <div class="order-row"><span class="order-label">প্ল্যাটফর্ম</span><span class="order-value">${order.platform || '—'}</span></div>
                             <div class="order-row"><span class="order-label">মূল্য</span><span class="order-value">${order.price || '—'}</span></div>
                             <div class="order-row"><span class="order-label">অর্ডার আইডি</span><span class="order-value">${order.orderId || order.id || '—'}</span></div>
@@ -760,7 +786,7 @@
                 orders.sort((a, b) => (b.orderDate || '').localeCompare(a.orderDate || ''));
                 
                 profileContent.innerHTML = renderProfile(user, orders);
-                attachVoucherClickHandlers();
+                attachClickHandlers();
                 await updateCartBadge(user.uid);
             } catch (error) {
                 profileContent.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> তথ্য লোড করতে সমস্যা হয়েছে: ${error.message}</div>`;
