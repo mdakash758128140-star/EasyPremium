@@ -5,7 +5,6 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // OPTIONS প্রিহ্যান্ডেল
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -23,40 +22,88 @@ export default async function handler(req, res) {
     }
 
     try {
-      // ১. অর্ডার ডাটা নিন (transactions টেবিল থেকে)
-      const orderRef = `${dbUrl}/transactions/${orderId}.json?auth=${secret}`;
-      const orderResp = await fetch(orderRef);
-      if (!orderResp.ok) throw new Error(`Failed to fetch order: ${orderResp.status}`);
-      const orderData = await orderResp.json();
-      if (!orderData) return res.status(404).json({ error: 'Order not found' });
+      // ওয়েবহুকের মতো প্রথমে direct path দিয়ে চেষ্টা
+      const directUrl = `${dbUrl}/transactions/${orderId}.json?auth=${secret}`;
+      const directRes = await fetch(directUrl);
+      let orderData = null;
 
-      // ২. ট্রানজেকশন নোড আপডেট
-      const updateData = {
-        status: 'waiting',
-        phone: phone,
-        txid: txid,
-        confirmedAt: new Date().toISOString()
-      };
-      const patchResp = await fetch(`${dbUrl}/transactions/${orderId}.json?auth=${secret}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updateData)
-      });
-      if (!patchResp.ok) {
-        const errText = await patchResp.text();
-        throw new Error(`Failed to update transaction: ${patchResp.status} - ${errText}`);
+      if (directRes.ok) {
+        orderData = await directRes.json();
+        if (orderData && orderData.orderId === orderId) {
+          // ✅ direct path কাজ করছে
+          const updates = {
+            status: 'waiting',
+            phone: phone,
+            txid: txid,
+            confirmedAt: new Date().toISOString()
+          };
+          await fetch(directUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+          });
+          console.log(`✅ Transaction ${orderId} updated directly with waiting status`);
+        } else {
+          // direct path পাওয়া গেলেও orderId মিলছে না → search needed
+          orderData = null;
+        }
       }
 
-      // ৩. userOrders নোডও আপডেট (যদি userId থাকে)
-      if (orderData.userId) {
-        await fetch(`${dbUrl}/userOrders/${orderData.userId}/${orderId}.json?auth=${secret}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'waiting', phone, txid })
-        });
+      // যদি direct path কাজ না করে, তাহলে search দিয়ে ট্রানজেকশন খুঁজুন
+      if (!orderData) {
+        const searchUrl = `${dbUrl}/transactions.json?orderBy="orderId"&equalTo="${orderId}"&auth=${secret}`;
+        const searchRes = await fetch(searchUrl);
+        const searchData = await searchRes.json();
+        if (searchData && typeof searchData === 'object') {
+          const keys = Object.keys(searchData);
+          if (keys.length > 0) {
+            const transactionKey = keys[0];
+            orderData = searchData[transactionKey];
+            const updates = {
+              status: 'waiting',
+              phone: phone,
+              txid: txid,
+              confirmedAt: new Date().toISOString()
+            };
+            const updateUrl = `${dbUrl}/transactions/${transactionKey}.json?auth=${secret}`;
+            await fetch(updateUrl, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updates)
+            });
+            console.log(`✅ Transaction ${orderId} updated via search (key: ${transactionKey}) with waiting status`);
+          } else {
+            console.warn(`⚠️ No transaction found with orderId ${orderId}`);
+            return res.status(404).json({ error: 'Order not found' });
+          }
+        } else {
+          console.warn(`⚠️ Transaction search failed for orderId ${orderId}`);
+          return res.status(404).json({ error: 'Order not found' });
+        }
       }
 
-      console.log(`✅ Order ${orderId} status updated to waiting`);
+      // এখন userOrders আপডেট (যদি userId থাকে)
+      if (orderData && orderData.userId) {
+        const userDirectUrl = `${dbUrl}/userOrders/${orderData.userId}/${orderId}.json?auth=${secret}`;
+        const userDirectRes = await fetch(userDirectUrl);
+        if (userDirectRes.ok) {
+          const userOrder = await userDirectRes.json();
+          if (userOrder) {
+            await fetch(userDirectUrl, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: 'waiting', phone, txid })
+            });
+            console.log(`✅ User order updated for user ${orderData.userId} directly`);
+          } else {
+            // direct path না থাকলে search দিয়ে userOrders আপডেট
+            await updateUserOrderViaSearch(orderData.userId, orderId, { status: 'waiting', phone, txid }, dbUrl, secret);
+          }
+        } else {
+          await updateUserOrderViaSearch(orderData.userId, orderId, { status: 'waiting', phone, txid }, dbUrl, secret);
+        }
+      }
+
       return res.status(200).json({
         success: true,
         message: 'Order status updated to waiting',
@@ -275,5 +322,30 @@ export default async function handler(req, res) {
       error: 'Failed to create order',
       details: error.message
     });
+  }
+}
+
+// Helper function: search and update user order (same as webhook)
+async function updateUserOrderViaSearch(userId, orderId, updates, dbUrl, secret) {
+  const userOrdersUrl = `${dbUrl}/userOrders/${userId}.json?auth=${secret}`;
+  const userOrdersRes = await fetch(userOrdersUrl);
+  const userOrders = await userOrdersRes.json();
+
+  if (userOrders && typeof userOrders === 'object') {
+    for (const key in userOrders) {
+      if (userOrders[key].orderId === orderId) {
+        const updateUrl = `${dbUrl}/userOrders/${userId}/${key}.json?auth=${secret}`;
+        await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        });
+        console.log(`✅ User order updated for user ${userId} via search (key: ${key}) with waiting status`);
+        return;
+      }
+    }
+    console.warn(`⚠️ No matching user order found for userId ${userId} with orderId ${orderId}`);
+  } else {
+    console.warn(`⚠️ No userOrders found for userId ${userId}`);
   }
 }
