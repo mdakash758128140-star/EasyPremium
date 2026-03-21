@@ -3,434 +3,485 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>পেমেন্ট পৃষ্ঠা · Easy Premium</title>
-    <meta name="theme-color" content="#0a0a1a">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:; style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval';">
-    <meta name="referrer" content="strict-origin-when-cross-origin">
-    <meta name="format-detection" content="telephone=no, address=no, email=no">
-    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
+    <title>পেমেন্ট · Easy Premium</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { background: #0a0a1a; width: 100%; min-height: 100vh; color: #fff; font-family: 'Segoe UI', 'Noto Sans Bengali', sans-serif; }
-        body { padding: 15px; padding-bottom: 85px; display: flex; justify-content: center; background: linear-gradient(135deg, #0a0a1a 0%, #121230 50%, #1a1a3a 100%) !important; background-attachment: fixed !important; position: relative; }
-        body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 20% 30%, rgba(255,152,0,0.05) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(0,188,212,0.05) 0%, transparent 50%), radial-gradient(circle at 40% 80%, rgba(255,152,0,0.03) 0%, transparent 50%); z-index: -1; pointer-events: none; }
-        .container { width: 100%; max-width: 100%; margin: 0 auto; position: relative; z-index: 1; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { color: #ff9800; font-size: 28px; text-shadow: 0 2px 10px rgba(255,152,0,0.3); }
-        .header p { color: #00bcd4; font-size: 16px; }
-        .card { background: rgba(20,20,40,0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255,152,0,0.3); border-radius: 16px; padding: 20px; margin-bottom: 15px; width: 100%; box-shadow: 0 8px 20px rgba(0,0,0,0.5); }
-        .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,152,0,0.2); font-size: 15px; }
-        .label { color: #b0bec5; font-weight: 600; }
-        .value { color: #ffb74d; font-weight: 700; text-align: right; max-width: 60%; word-break: break-word; }
-        .pay-btn { position: fixed; bottom: 0; left: 0; width: 100%; background: linear-gradient(45deg, #ff9800, #ff2222); color: white; border: none; padding: 16px; font-size: 18px; font-weight: bold; cursor: pointer; z-index: 1000; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s; box-shadow: 0 -5px 20px rgba(255,152,0,0.3); }
-        .pay-btn:hover { background: linear-gradient(45deg, #ff2222, #0008ff); transform: translateY(-2px); box-shadow: 0 -5px 25px rgba(255,152,0,0.5); }
-        .pay-btn.hidden { display: none !important; }
-        #paymentPanel { display: none; margin-top: 20px; margin-bottom: 20px; }
-        .wc_payment_methods { list-style: none; margin: 0 0 20px 0; padding: 0; }
-        .wc_payment_method { margin-bottom: 12px; border-radius: 16px; background: rgba(15,15,30,0.8); backdrop-filter: blur(5px); transition: all 0.15s; }
-        .wc_payment_method.selected-method { border-color: #ff9800; }
-        .wc_payment_method input[type="radio"] { margin: 0 12px 0 16px; transform: scale(1.1); accent-color: #ff9800; vertical-align: middle; }
-        .wc_payment_method label { display: inline-flex; align-items: center; width: calc(100% - 50px); padding: 16px 10px 16px 0; font-size: 18px; font-weight: 500; color: #eee; cursor: pointer; }
-        .wc_payment_method label img { width: 32px; height: 32px; margin-left: 10px; border-radius: 6px; object-fit: contain; filter: brightness(0.9); }
-        .payment_box { background: rgba(10,10,25,0.9); backdrop-filter: blur(5px); border-radius: 20px; margin: 0 12px 18px 12px; display: none; }
-        .payment_box.active-box { display: block; }
-        .bdpg-total-amount { background: rgba(255,152,0,0.1); border-radius: 40px; padding: 14px 20px; font-size: 18px; font-weight: 500; color: #ff9800; margin-bottom: 22px; border: 1px solid rgba(255,152,0,0.5); text-align: center; }
-        .bdpg-total-amount b { font-size: 26px; margin-left: 8px; color: #ff0000; }
-        .bdpg-available-accounts { background: rgba(0,0,0,0.3); padding: 18px 18px 12px 18px; border-radius: 18px; margin-bottom: 20px; border: 1px solid rgba(255,152,0,0.2); }
-        .bdpg-s__acc p { margin: 8px 0; font-size: 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: #ccc; }
-        .account-number-text { font-size: 18px; background: rgba(0,0,0,0.5); padding: 6px 15px; border-radius: 40px; border: 1px solid #ff9800; font-family: 'Courier New', monospace; margin: 0 8px; color: #ff9800; }
-        .copy-btn { background: #4CAF50; color: white; border: none; padding: 6px 18px; border-radius: 40px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 6px rgba(0,100,0,0.2); border: 1px solid #3e9144; }
-        .copy-btn:hover { background: #3e9144; }
-        .copy-btn.copied { background: #0d6efd !important; border-color: #0a58ca; }
-        .bdpg-user__acc { margin-top: 18px; border-top: 2px dashed rgba(255,152,0,0.3); padding-top: 20px; }
-        .bdpg-user__field { margin-bottom: 18px; }
-        .bdpg-user__field label { display: block; font-weight: 600; font-size: 15px; color: #ff9800; margin-bottom: 6px; }
-        .bdpg-user__field input { width: 100%; padding: 14px 18px; border: 1px solid rgba(255,152,0,0.5); border-radius: 50px; font-size: 15px; background: rgba(0,0,0,0.3); color: #fff; transition: 0.15s; }
-        .bdpg-user__field input:focus { border-color: #ff9800; outline: none; box-shadow: 0 0 0 3px rgba(255,152,0,0.2); }
-        .instruction-note { font-size: 15px; color: #b0bec5; background: rgba(0,0,0,0.3); padding: 14px 18px; border-radius: 20px; margin-bottom: 20px; line-height: 1.7; }
-        .account-type-text { font-weight: 600; background: rgba(255,152,0,0.2); padding: 4px 14px; border-radius: 30px; font-size: 14px; display: inline-block; color: #ff9800; }
-        .spinner { display: inline-block; width: 22px; height: 22px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .verify-inside-btn { background: linear-gradient(45deg, #ff9800, #ff2222); color: white; border: none; font-size: 18px; font-weight: 600; padding: 14px 30px; border-radius: 60px; width: 100%; cursor: pointer; transition: 0.2s; border: 1px solid #ff9800; margin-top: 10px; }
-        .verify-inside-btn:hover { background: linear-gradient(45deg, #ff2222, #0008ff); }
-        .verify-inside-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .error, .loading { text-align: center; padding: 30px; background: rgba(20,20,40,0.9); border-radius: 12px; font-size: 16px; backdrop-filter: blur(10px); border: 1px solid rgba(255,152,0,0.3); }
-        .error { color: #ff6666; }
-        .loading { color: #888; }
-        .loading::after { content: ''; display: inline-block; width: 16px; height: 16px; margin-left: 8px; border: 2px solid #ff9800; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
-        .admin-warning { background: rgba(255,152,0,0.2); border-left: 4px solid #ff9800; padding: 10px 15px; border-radius: 10px; margin-bottom: 15px; font-size: 14px; color: #ff9800; text-align: center; }
-        @media (max-width: 480px) {
-            body { padding: 10px; padding-bottom: 75px; }
-            .header h1 { font-size: 24px; }
-            .header p { font-size: 14px; }
-            .info-row { font-size: 14px; }
-            .wc_payment_method label { font-size: 16px; padding: 14px 5px; }
-            .instruction-note { font-size: 13px; padding: 12px; }
-            .bdpg-total-amount { font-size: 16px; padding: 12px; }
-            .bdpg-total-amount b { font-size: 22px; }
-            .account-number-text { font-size: 15px; padding: 4px 10px; }
-            .copy-btn { font-size: 12px; padding: 4px 12px; }
-            .bdpg-user__field label { font-size: 13px; }
-            .bdpg-user__field input { padding: 12px 15px; font-size: 14px; }
-            .verify-inside-btn { font-size: 16px; padding: 12px; }
-            .pay-btn { font-size: 16px; padding: 14px; }
+        body {
+            background: linear-gradient(135deg, #0a0a1a, #121230);
+            font-family: 'Segoe UI', 'Noto Sans Bengali', sans-serif;
+            padding: 20px;
+            padding-bottom: 85px;
+            color: #fff;
         }
+        .container { max-width: 500px; margin: 0 auto; }
+        .card {
+            background: rgba(20,20,40,0.95);
+            backdrop-filter: blur(8px);
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,152,0,0.3);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { color: #ff9800; font-size: 28px; }
+        .header p { color: #00bcd4; font-size: 14px; }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,152,0,0.2);
+        }
+        .label { color: #b0bec5; font-weight: 500; }
+        .value { color: #ffb74d; font-weight: bold; text-align: right; }
+        .total { color: #ff9800; font-size: 20px; }
+        .pay-btn {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(45deg, #ff9800, #ff2222);
+            border: none;
+            padding: 16px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+            z-index: 1000;
+        }
+        .pay-btn.hidden { display: none; }
+        .payment-panel { display: none; margin-top: 20px; }
+        .method {
+            background: rgba(30,30,60,0.9);
+            border-radius: 20px;
+            margin-bottom: 12px;
+            padding: 12px 16px;
+            cursor: pointer;
+        }
+        .method.selected { border: 1px solid #ff9800; background: rgba(255,152,0,0.1); }
+        .method-radio { margin-right: 12px; transform: scale(1.1); accent-color: #ff9800; }
+        .method-label { font-size: 18px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; }
+        .method-label img { width: 28px; height: 28px; border-radius: 6px; }
+        .payment-details { display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ff9800; }
+        .payment-details.show { display: block; }
+        .account-row {
+            background: #1a1a2e;
+            padding: 12px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 12px 0;
+        }
+        .admin-number {
+            font-family: monospace;
+            background: #2a2a4a;
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 16px;
+        }
+        .copy-btn {
+            background: #4caf50;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 40px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            margin: 8px 0;
+            background: #2a2a4a;
+            border: 1px solid #ff9800;
+            border-radius: 40px;
+            color: white;
+            font-size: 14px;
+        }
+        .verify-btn {
+            background: linear-gradient(45deg, #ff9800, #ff2222);
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 40px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            margin-top: 15px;
+            cursor: pointer;
+        }
+        .status {
+            background: #1e1e3a;
+            padding: 12px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            font-size: 13px;
+            word-break: break-all;
+            color: #0f0;
+        }
+        .error { color: #ff6666; }
+        .hidden { display: none; }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ff9800;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script>
-        // Firebase Config
-        const firebaseConfig = {
+        firebase.initializeApp({
             apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
             authDomain: "easy-premium.firebaseapp.com",
             databaseURL: "https://easy-premium-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "easy-premium",
             storageBucket: "easy-premium.firebasestorage.app",
             messagingSenderId: "155891252265",
-            appId: "1:155891252265:web:77ab41de24231e8e5ef038",
-            measurementId: "G-CHL8K8HRPX"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+            appId: "1:155891252265:web:77ab41de24231e8e5ef038"
+        });
+        const db = firebase.database();
+        const MAIN_SITE = "https://easy-premium.com";
 
-        function decryptData(encrypted) {
+        // Decode base64 (URL-safe)
+        function decodeBase64(str) {
             try {
-                const urlDecoded = decodeURIComponent(encrypted);
-                const base64Decoded = atob(urlDecoded);
-                const parts = base64Decoded.split('|');
-                if (parts.length >= 6) {
-                    return {
-                        orderId: parts[0],
-                        platformId: parts[1].replace(/[^a-zA-Z0-9_-]/g, ''),
-                        price: parts[2],
-                        timestamp: parts[3],
-                        userId: parts[4] || '',
-                        userEmail: parts[5] || ''
-                    };
-                }
-                return null;
+                let base64 = decodeURIComponent(str);
+                return atob(base64);
             } catch(e) {
-                console.error("Decrypt error", e);
+                console.error("Base64 decode error", e);
                 return null;
             }
         }
 
-        function formatPhoneNumber(num) {
-            if (typeof num === 'number') num = num.toString();
-            if (typeof num !== 'string') return num;
-            if (num.length === 10 && /^[1-9]\d{9}$/.test(num)) return '0' + num;
-            return num;
+        // Parse data parameter
+        function parseOrderData(encrypted) {
+            const decoded = decodeBase64(encrypted);
+            if (!decoded) return null;
+            const parts = decoded.split('|');
+            if (parts.length < 6) return null;
+            return {
+                orderId: parts[0],
+                platformId: parts[1].replace(/[^a-zA-Z0-9_-]/g, ''),
+                price: parts[2],
+                timestamp: parseInt(parts[3], 10),
+                userId: parts[4],
+                userEmail: parts[5]
+            };
         }
 
-        async function validateOrder(orderId, expectedUserId) {
-            try {
-                const snap = await database.ref(`transactions/${orderId}`).once('value');
-                const order = snap.val();
-                if (!order) return { valid: false, reason: 'not_found' };
-                // Status must be pending
-                if (order.status !== 'pending') return { valid: false, reason: 'status_not_pending' };
-                // User match
-                if (order.userId && order.userId !== expectedUserId) return { valid: false, reason: 'user_mismatch' };
-                // 24 hours check
-                const orderDate = order.orderDate || order.timestamp;
-                if (orderDate) {
-                    const hoursDiff = (Date.now() - new Date(orderDate).getTime()) / (1000*60*60);
-                    if (hoursDiff > 24) return { valid: false, reason: 'expired' };
-                } else {
-                    return { valid: false, reason: 'no_date' };
-                }
-                return { valid: true, order };
-            } catch(err) {
-                console.error("Validation error", err);
-                return { valid: false, reason: 'error' };
-            }
+        // Check if order is older than 24 hours (based on URL timestamp)
+        function isOrderExpired(timestamp) {
+            if (!timestamp) return false;
+            const now = Date.now();
+            const diffHours = (now - timestamp) / (1000 * 60 * 60);
+            return diffHours > 24;
         }
 
-        async function fetchPlanData(platformId) {
+        // Get product details (name, service charge) - this is public data, no auth needed
+        async function getProductDetails(platformId) {
             try {
-                const snap = await database.ref('publicData/pricingPlans1').once('value');
-                const plans = snap.val();
+                let snap = await db.ref('publicData/pricingPlans1').once('value');
+                let plans = snap.val();
                 if (plans) {
-                    for (let key in plans) {
-                        if (key === platformId || plans[key].Products === platformId) {
-                            return plans[key];
-                        }
+                    for (let k in plans) {
+                        if (k === platformId || plans[k]?.Products === platformId) return plans[k];
+                    }
+                }
+                snap = await db.ref('publicData/pricingPlans2').once('value');
+                plans = snap.val();
+                if (plans) {
+                    for (let k in plans) {
+                        if (k === platformId || plans[k]?.Products === platformId) return plans[k];
                     }
                 }
                 return null;
             } catch(e) {
-                console.error("Plan fetch error", e);
+                return null;
+            }
+        }
+
+        // Get active admin number (public data)
+        async function getActiveAdminNumber() {
+            try {
+                const snap = await db.ref('publicAdminInfo').once('value');
+                const admins = snap.val() || {};
+                const now = Date.now();
+                const oneMinuteAgo = now - 60 * 1000;
+                let latest = 0, activeNum = null;
+                for (let uid in admins) {
+                    const a = admins[uid];
+                    if (a.lastActive) {
+                        const t = new Date(a.lastActive).getTime();
+                        if (t >= oneMinuteAgo && t > latest) {
+                            latest = t;
+                            activeNum = a.number;
+                        }
+                    }
+                }
+                if (activeNum) {
+                    let num = activeNum.toString();
+                    if (num.length === 10 && !num.startsWith('0')) num = '0' + num;
+                    return num;
+                }
+                return null;
+            } catch(e) {
                 return null;
             }
         }
 
         window.addEventListener('DOMContentLoaded', async () => {
-            const output = document.getElementById('output');
-            const payBtn = document.getElementById('payBtn');
-            const paymentPanel = document.getElementById('paymentPanel');
             const urlParams = new URLSearchParams(window.location.search);
-            const encodedData = urlParams.get('data');
+            const encData = urlParams.get('data');
+            const statusDiv = document.getElementById('status');
+            const loadingCard = document.getElementById('loadingCard');
+            const orderCard = document.getElementById('orderCard');
+            const paymentPanel = document.getElementById('paymentPanel');
+            const payBtn = document.getElementById('payBtn');
 
-            if (!encodedData) {
-                window.location.href = 'https://www.easy-premium.com';
+            if (!encData) {
+                statusDiv.innerHTML = '❌ URL-এ data প্যারামিটার নেই';
+                statusDiv.classList.add('error');
+                setTimeout(() => location.href = MAIN_SITE, 3000);
                 return;
             }
 
-            output.innerHTML = '<div class="loading">ডিক্রিপ্ট হচ্ছে...</div>';
-            const urlData = decryptData(encodedData);
-            if (!urlData) {
-                window.location.href = 'https://www.easy-premium.com';
+            statusDiv.innerHTML = '🔍 ডাটা ডিকোড করা হচ্ছে...';
+            const orderInfo = parseOrderData(encData);
+            if (!orderInfo) {
+                statusDiv.innerHTML = '❌ ডাটা ডিকোড করতে ব্যর্থ';
+                statusDiv.classList.add('error');
+                setTimeout(() => location.href = MAIN_SITE, 3000);
                 return;
             }
 
-            const validation = await validateOrder(urlData.orderId, urlData.userId);
-            if (!validation.valid) {
-                window.location.href = 'https://www.easy-premium.com';
+            // Check expiration from URL timestamp
+            if (isOrderExpired(orderInfo.timestamp)) {
+                statusDiv.innerHTML = '❌ এই অর্ডারটি ২৪ ঘণ্টার বেশি পুরনো। পুনরায় অর্ডার করুন।';
+                statusDiv.classList.add('error');
+                setTimeout(() => location.href = MAIN_SITE, 3000);
                 return;
             }
 
-            // Admin status – warning only, button stays visible
-            let warningDiv = null;
-            async function updateAdminWarning() {
-                try {
-                    const snapshot = await database.ref('publicAdminInfo').once('value');
-                    const admins = snapshot.val() || {};
-                    const now = new Date();
-                    const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
-                    let activeNumber = null;
-                    for (let uid in admins) {
-                        const admin = admins[uid];
-                        if (admin.lastActive && new Date(admin.lastActive) >= oneMinuteAgo) {
-                            activeNumber = formatPhoneNumber(admin.number);
-                            break;
-                        }
-                    }
-                    if (activeNumber) {
-                        document.querySelectorAll('.account-number-text').forEach(el => el.textContent = activeNumber);
-                        document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', activeNumber));
-                        if (warningDiv) warningDiv.remove();
-                    } else {
-                        if (!warningDiv && document.querySelector('.card')) {
-                            warningDiv = document.createElement('div');
-                            warningDiv.className = 'admin-warning';
-                            warningDiv.innerHTML = '⚠️ কোনো অ্যাডমিন অনলাইন নেই। আপনার টাকা পাঠানোর আগে নিশ্চিত করুন যে অ্যাডমিন সংযুক্ত আছে, নতুবা ডেলিভারি বিলম্বিত হতে পারে।';
-                            const firstCard = document.querySelector('.card');
-                            firstCard.parentNode.insertBefore(warningDiv, firstCard.nextSibling);
-                        }
-                    }
-                } catch(e) { console.warn(e); }
-            }
-            updateAdminWarning();
-            database.ref('publicAdminInfo').on('value', updateAdminWarning);
+            statusDiv.innerHTML = `✅ অর্ডার বৈধ (২৪ ঘণ্টার মধ্যে)`;
 
-            const planData = await fetchPlanData(urlData.platformId);
-            const serviceCharge = planData?.ServicCharge ? Number(planData.ServicCharge) : 0;
-            const productPrice = Number(urlData.price) || 0;
-            const totalAmount = productPrice + serviceCharge;
-            const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
-            const productSlug = planData?.Products || urlData.platformId;
+            // Fetch product details (public, no auth)
+            const product = await getProductDetails(orderInfo.platformId);
+            const productPrice = Number(orderInfo.price);
+            const serviceCharge = product?.ServicCharge ? Number(product.ServicCharge) : 0;
+            const total = productPrice + serviceCharge;
+            const productName = product?.name || orderInfo.platformId.replace(/_/g, ' ');
 
-            function updatePaymentAmounts() {
-                document.querySelectorAll('#bkash-amount, #nagad-amount, #rocket-amount').forEach(el => el.textContent = totalAmount);
+            // Show order card
+            loadingCard.style.display = 'none';
+            orderCard.style.display = 'block';
+            document.getElementById('orderId').innerText = orderInfo.orderId;
+            document.getElementById('productName').innerText = productName;
+            document.getElementById('price').innerText = productPrice;
+            document.getElementById('serviceCharge').innerText = serviceCharge;
+            document.getElementById('totalAmount').innerText = total;
+
+            // Get admin number
+            const adminNum = await getActiveAdminNumber();
+            if (adminNum) {
+                document.querySelectorAll('.admin-number').forEach(el => el.innerText = adminNum);
+                document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', adminNum));
+                payBtn.classList.remove('hidden');
+                statusDiv.innerHTML += `<br>✅ প্রশাসক অনলাইন (${adminNum})। পেমেন্ট বাটন সক্রিয়।`;
+            } else {
+                statusDiv.innerHTML += `<br>⚠️ কোনো প্রশাসক এখন অনলাইনে নেই। পেমেন্ট বাটন অক্ষম।`;
+                payBtn.classList.add('hidden');
             }
 
-            const isVariable = productSlug.includes('variable');
-            let faceValueFromDB = null;
-            if (isVariable && planData?.faceValue) {
-                faceValueFromDB = parseFloat(planData.faceValue);
-            }
-
-            output.innerHTML = `
-                <div class="card">
-                    <h2 style="color:#ff9800; margin-bottom:15px; text-align:center;">📋 অর্ডার তথ্য</h2>
-                    <div class="info-row"><span class="label">অর্ডার আইডি:</span><span class="value">${urlData.orderId}</span></div>
-                    <div class="info-row"><span class="label">প্ল্যাটফর্ম:</span><span class="value">${platformName}</span></div>
-                    <div class="info-row"><span class="label">মূল্য:</span><span class="value">${productPrice} ৳</span></div>
-                    <div class="info-row"><span class="label">সার্ভিস চার্জ:</span><span class="value">${serviceCharge} ৳</span></div>
-                    <div class="info-row"><span class="label"><strong>সর্বমোট:</strong></span><span class="value" style="color:#ff0000;">${totalAmount} ৳</span></div>
-                    ${isVariable && faceValueFromDB ? `<div class="info-row"><span class="label">ফেস ভ্যালু:</span><span class="value">$${faceValueFromDB}</span></div>` : ''}
-                </div>
-                <div class="card">
-                    <h3 style="color:#ff9800; margin-bottom:15px;">📌 পেমেন্ট নির্দেশিকা</h3>
-                    <ul style="color: #b0bec5; line-height: 1.8; padding-left: 20px;">
-                        <li>✓ সঠিক অ্যাকাউন্ট নম্বরে টাকা পাঠান</li>
-                        <li>✓ ট্রানজেকশন আইডি সংগ্রহ করুন</li>
-                        <li>✓ নিচের ফর্ম পূরণ করে VERIFY বাটনে ক্লিক করুন</li>
-                        <li>✓ পেমেন্ট কনফার্ম হয়ে গেলে ইমেইলে লিংক পাবেন</li>
-                    </ul>
-                </div>
-            `;
-
-            // Show payment button – valid order
-            payBtn.classList.remove('hidden');
-
+            // Payment button click
             payBtn.onclick = () => {
-                output.style.display = 'none';
-                payBtn.style.display = 'none';
+                orderCard.style.display = 'none';
                 paymentPanel.style.display = 'block';
-                updatePaymentAmounts();
+                document.querySelectorAll('.total-display').forEach(el => el.innerText = total);
+                statusDiv.style.display = 'none';
             };
 
-            // Payment method toggle
-            const radios = document.querySelectorAll('input[name="payment_method"]');
-            const bkashBox = document.getElementById('box-bkash');
-            const nagadBox = document.getElementById('box-nagad');
-            const rocketBox = document.getElementById('box-rocket');
-            const methodItems = document.querySelectorAll('.wc_payment_method');
-            function updatePaymentBoxes(selectedValue) {
-                bkashBox.classList.remove('active-box');
-                nagadBox.classList.remove('active-box');
-                rocketBox.classList.remove('active-box');
-                methodItems.forEach(i => i.classList.remove('selected-method'));
-                if (selectedValue === 'woo_bkash') { bkashBox.classList.add('active-box'); document.getElementById('method-bkash').classList.add('selected-method'); }
-                else if (selectedValue === 'woo_nagad') { nagadBox.classList.add('active-box'); document.getElementById('method-nagad').classList.add('selected-method'); }
-                else if (selectedValue === 'woo_rocket') { rocketBox.classList.add('active-box'); document.getElementById('method-rocket').classList.add('selected-method'); }
+            // Payment method selection
+            const methods = document.querySelectorAll('.method');
+            const details = {
+                bkash: document.getElementById('bkash-details'),
+                nagad: document.getElementById('nagad-details'),
+                rocket: document.getElementById('rocket-details')
+            };
+            function showMethod(methodId) {
+                Object.values(details).forEach(d => d.classList.remove('show'));
+                details[methodId].classList.add('show');
+                methods.forEach(m => m.classList.remove('selected'));
+                document.getElementById(`method-${methodId}`).classList.add('selected');
+                document.getElementById(`radio-${methodId}`).checked = true;
             }
-            updatePaymentBoxes('woo_bkash');
-            radios.forEach(r => r.addEventListener('change', () => updatePaymentBoxes(r.value)));
-
-            const verifyBtn = document.getElementById('verifyInsideBtn');
-            verifyBtn.addEventListener('click', async function() {
-                const selected = document.querySelector('input[name="payment_method"]:checked');
-                if (!selected) { alert('পেমেন্ট পদ্ধতি নির্বাচন করুন'); return; }
-
-                let accInput, txInput, adminNumberElement;
-                if (selected.value === 'woo_bkash') {
-                    accInput = document.getElementById('bkash_acc_no');
-                    txInput = document.getElementById('bkash_trans_id');
-                    adminNumberElement = document.querySelector('#box-bkash .account-number-text');
-                } else if (selected.value === 'woo_nagad') {
-                    accInput = document.getElementById('nagad_acc_no');
-                    txInput = document.getElementById('nagad_trans_id');
-                    adminNumberElement = document.querySelector('#box-nagad .account-number-text');
-                } else {
-                    accInput = document.getElementById('rocket_acc_no');
-                    txInput = document.getElementById('rocket_trans_id');
-                    adminNumberElement = document.querySelector('#box-rocket .account-number-text');
-                }
-
-                const account = accInput.value.trim();
-                const txid = txInput.value.trim();
-                const adminNumber = adminNumberElement ? adminNumberElement.textContent.trim() : '';
-
-                if (!account || !txid) { alert('অ্যাকাউন্ট নম্বর এবং ট্রানজেকশন আইডি দিন'); return; }
-
-                let faceValue = null;
-                if (isVariable && faceValueFromDB) faceValue = faceValueFromDB;
-
-                const method = selected.value.replace('woo_', '').toUpperCase();
-                const reference = JSON.stringify({
-                    method: method,
-                    phone: account,
-                    txid: txid,
-                    userId: urlData.userId,
-                    email: urlData.userEmail,
-                    admin: adminNumber,
-                    firebaseOrderId: urlData.orderId,
-                    timestamp: new Date().toISOString()
-                });
-
-                this.disabled = true;
-                this.innerHTML = '<span class="spinner"></span> প্রসেসিং...';
-
-                try {
-                    const requestBody = {
-                        productSlug: productSlug,
-                        amount: productPrice,
-                        paymentCurrency: 'USD',
-                        reference: reference,
-                        firebaseOrderId: urlData.orderId,
-                        serviceCharge: serviceCharge
-                    };
-                    if (isVariable && faceValue) requestBody.faceValue = faceValue;
-
-                    const response = await fetch('/api/create-order', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(requestBody)
-                    });
-                    const result = await response.json();
-                    if (!response.ok) throw new Error(result.error || 'অর্ডার ব্যর্থ');
-                    if (result.link) {
-                        window.location.href = result.link;
-                    } else {
-                        paymentPanel.innerHTML = `<div class="card" style="text-align:center; padding:40px;"><h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3><p>অর্ডার আইডি: ${result.trx || urlData.orderId}</p><p>মোট: ${totalAmount} ৳</p><p>ইমেইলে কনফার্মেশন পাঠানো হয়েছে</p><div class="spinner"></div></div>`;
-                    }
-                } catch(err) {
-                    alert('অর্ডার ব্যর্থ: ' + err.message);
-                    this.disabled = false;
-                    this.innerHTML = 'VERIFY';
-                }
-            });
+            document.getElementById('method-bkash').onclick = () => showMethod('bkash');
+            document.getElementById('method-nagad').onclick = () => showMethod('nagad');
+            document.getElementById('method-rocket').onclick = () => showMethod('rocket');
 
             // Copy buttons
             document.querySelectorAll('.copy-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const num = this.getAttribute('data-number');
-                    if (num) { navigator.clipboard?.writeText(num); this.textContent = 'Copied!'; setTimeout(() => this.textContent = 'Copy', 2000); }
+                    if (num) {
+                        navigator.clipboard?.writeText(num);
+                        const original = this.innerText;
+                        this.innerText = 'Copied!';
+                        setTimeout(() => this.innerText = original, 1500);
+                    }
                 });
             });
+
+            // Verify button (submit to server)
+            const verifyBtn = document.getElementById('verifyBtn');
+            verifyBtn.onclick = async function() {
+                const selected = document.querySelector('input[name="payment_method"]:checked');
+                if (!selected) { alert('পেমেন্ট পদ্ধতি নির্বাচন করুন'); return; }
+                let accInput, txInput;
+                if (selected.value === 'bkash') {
+                    accInput = document.getElementById('bkash-account');
+                    txInput = document.getElementById('bkash-txid');
+                } else if (selected.value === 'nagad') {
+                    accInput = document.getElementById('nagad-account');
+                    txInput = document.getElementById('nagad-txid');
+                } else {
+                    accInput = document.getElementById('rocket-account');
+                    txInput = document.getElementById('rocket-txid');
+                }
+                const account = accInput.value.trim();
+                const txid = txInput.value.trim();
+                const adminNumber = document.querySelector('.admin-number')?.innerText || '';
+                if (!account || !txid) {
+                    alert('অ্যাকাউন্ট নম্বর এবং ট্রানজেকশন আইডি দিন');
+                    return;
+                }
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner"></span> প্রসেসিং...';
+                const reference = JSON.stringify({
+                    method: selected.value.toUpperCase(),
+                    phone: account,
+                    txid,
+                    userId: orderInfo.userId,
+                    email: orderInfo.userEmail,
+                    admin: adminNumber,
+                    firebaseOrderId: orderInfo.orderId,
+                    timestamp: new Date().toISOString()
+                });
+                try {
+                    const res = await fetch('/api/create-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            productSlug: product?.Products || orderInfo.platformId,
+                            amount: productPrice,
+                            paymentCurrency: 'USD',
+                            reference,
+                            firebaseOrderId: orderInfo.orderId,
+                            serviceCharge
+                        })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'অর্ডার ব্যর্থ');
+                    if (data.link) location.href = data.link;
+                    else {
+                        paymentPanel.innerHTML = '<div class="card" style="text-align:center"><h3 style="color:#ff9800">✅ অর্ডার জমা হয়েছে</h3><p>আপনার ইমেইলে নিশ্চিতকরণ পাঠানো হয়েছে</p></div>';
+                    }
+                } catch(err) {
+                    alert('ত্রুটি: ' + err.message);
+                    this.disabled = false;
+                    this.innerHTML = 'VERIFY';
+                }
+            };
         });
     </script>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>EASY PREMIUM</h1>
-            <p>পেমেন্ট পৃষ্ঠা</p>
-        </div>
-        <div id="output"></div>
-        <div id="paymentPanel">
-            <ul class="wc_payment_methods">
-                <li class="wc_payment_method" id="method-bkash">
-                    <input id="payment_method_woo_bkash" type="radio" name="payment_method" value="woo_bkash" checked>
-                    <label for="payment_method_woo_bkash">bKash Personal <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Bkash.png"></label>
-                    <div class="payment_box active-box" id="box-bkash">
-                        <div class="instruction-note">bKash Personal Number-এ টাকা পাঠান। অ্যাকাউন্ট নম্বর এবং Transaction ID দিন।</div>
-                        <div class="bdpg-total-amount">আপনাকে মোট <b>৳ <span id="bkash-amount">154</span></b> পাঠাতে হবে</div>
-                        <div class="bdpg-available-accounts">
-                            <div class="bdpg-s__acc"><p><span class="account-type-text">Personal</span><br><strong>bKash:</strong> <b class="account-number-text">01785926770</b> <button type="button" class="copy-btn" data-number="01785926770">Copy</button></p></div>
-                            <div class="bdpg-user__acc">
-                                <div class="bdpg-user__field"><label>bKash Account Number <span class="required-star">*</span></label><input type="text" id="bkash_acc_no" placeholder="01XXXXXXXXX" required></div>
-                                <div class="bdpg-user__field"><label>bKash Transaction ID <span class="required-star">*</span></label><input type="text" id="bkash_trans_id" placeholder="AH855PR805" required></div>
-                            </div>
-                        </div>
+<div class="container">
+    <div class="header">
+        <h1>EASY PREMIUM</h1>
+        <p>পেমেন্ট পৃষ্ঠা</p>
+    </div>
+
+    <div id="status" class="status">🚀 শুরু হচ্ছে...</div>
+
+    <div id="loadingCard" class="card" style="text-align:center">
+        <div class="spinner"></div> তথ্য যাচাই করা হচ্ছে...
+    </div>
+
+    <div id="orderCard" class="card" style="display:none">
+        <h3 style="color:#ff9800; margin-bottom:15px">📋 অর্ডার তথ্য</h3>
+        <div class="info-row"><span class="label">অর্ডার আইডি</span><span class="value" id="orderId">-</span></div>
+        <div class="info-row"><span class="label">প্ল্যাটফর্ম</span><span class="value" id="productName">-</span></div>
+        <div class="info-row"><span class="label">মূল্য</span><span class="value" id="price">0</span><span> ৳</span></div>
+        <div class="info-row"><span class="label">সার্ভিস চার্জ</span><span class="value" id="serviceCharge">0</span><span> ৳</span></div>
+        <div class="info-row"><span class="label"><strong>সর্বমোট</strong></span><span class="value total" id="totalAmount">0</span><span> ৳</span></div>
+    </div>
+
+    <div id="paymentPanel" class="payment-panel">
+        <div class="card">
+            <div style="text-align:center; font-size:20px; margin-bottom:15px">আপনাকে মোট <b class="total-display">0</b> ৳ পাঠাতে হবে</div>
+
+            <!-- bKash -->
+            <div id="method-bkash" class="method selected">
+                <input type="radio" name="payment_method" value="bkash" id="radio-bkash" checked style="display:none">
+                <span class="method-radio">🔘</span>
+                <span class="method-label">bKash Personal <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Bkash.png"></span>
+                <div id="bkash-details" class="payment-details show">
+                    <div class="account-row">
+                        <span><strong>bKash:</strong> <span class="admin-number">01785926770</span></span>
+                        <button type="button" class="copy-btn" data-number="01785926770">Copy</button>
                     </div>
-                </li>
-                <li class="wc_payment_method" id="method-nagad">
-                    <input id="payment_method_woo_nagad" type="radio" name="payment_method" value="woo_nagad">
-                    <label for="payment_method_woo_nagad">Nagad Personal <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Nagad.png"></label>
-                    <div class="payment_box" id="box-nagad">
-                        <div class="instruction-note">Nagad Personal Number-এ টাকা পাঠান। অ্যাকাউন্ট নম্বর এবং Transaction ID দিন।</div>
-                        <div class="bdpg-total-amount">আপনাকে মোট <b>৳ <span id="nagad-amount">154</span></b> পাঠাতে হবে</div>
-                        <div class="bdpg-available-accounts">
-                            <div class="bdpg-s__acc"><p><span class="account-type-text">Personal</span><br><strong>Nagad:</strong> <b class="account-number-text">01338156280</b> <button type="button" class="copy-btn" data-number="01338156280">Copy</button></p></div>
-                            <div class="bdpg-user__acc">
-                                <div class="bdpg-user__field"><label>Nagad Account Number <span class="required-star">*</span></label><input type="text" id="nagad_acc_no" placeholder="01XXXXXXXXX" required></div>
-                                <div class="bdpg-user__field"><label>Nagad Transaction ID <span class="required-star">*</span></label><input type="text" id="nagad_trans_id" placeholder="719AQ34C" required></div>
-                            </div>
-                        </div>
+                    <input type="text" id="bkash-account" placeholder="আপনার bKash নম্বর">
+                    <input type="text" id="bkash-txid" placeholder="Transaction ID">
+                </div>
+            </div>
+
+            <!-- Nagad -->
+            <div id="method-nagad" class="method">
+                <input type="radio" name="payment_method" value="nagad" id="radio-nagad" style="display:none">
+                <span class="method-radio">🔘</span>
+                <span class="method-label">Nagad Personal <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Nagad.png"></span>
+                <div id="nagad-details" class="payment-details">
+                    <div class="account-row">
+                        <span><strong>Nagad:</strong> <span class="admin-number">01338156280</span></span>
+                        <button type="button" class="copy-btn" data-number="01338156280">Copy</button>
                     </div>
-                </li>
-                <li class="wc_payment_method" id="method-rocket">
-                    <input id="payment_method_woo_rocket" type="radio" name="payment_method" value="woo_rocket">
-                    <label for="payment_method_woo_rocket">Rocket Personal <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Rocket.png"></label>
-                    <div class="payment_box" id="box-rocket">
-                        <div class="instruction-note">Rocket Personal Number-এ টাকা পাঠান। অ্যাকাউন্ট নম্বর এবং Transaction ID দিন।</div>
-                        <div class="bdpg-total-amount">আপনাকে মোট <b>৳ <span id="rocket-amount">154</span></b> পাঠাতে হবে</div>
-                        <div class="bdpg-available-accounts">
-                            <div class="bdpg-s__acc"><p><span class="account-type-text">Personal</span><br><strong>Rocket:</strong> <b class="account-number-text">014013018874</b> <button type="button" class="copy-btn" data-number="014013018874">Copy</button></p></div>
-                            <div class="bdpg-user__acc">
-                                <div class="bdpg-user__field"><label>Rocket Account Number <span class="required-star">*</span></label><input type="text" id="rocket_acc_no" placeholder="01XXXXXXXXX" required></div>
-                                <div class="bdpg-user__field"><label>Rocket Transaction ID <span class="required-star">*</span></label><input type="text" id="rocket_trans_id" placeholder="2988708467" required></div>
-                            </div>
-                        </div>
+                    <input type="text" id="nagad-account" placeholder="আপনার Nagad নম্বর">
+                    <input type="text" id="nagad-txid" placeholder="Transaction ID">
+                </div>
+            </div>
+
+            <!-- Rocket -->
+            <div id="method-rocket" class="method">
+                <input type="radio" name="payment_method" value="rocket" id="radio-rocket" style="display:none">
+                <span class="method-radio">🔘</span>
+                <span class="method-label">Rocket Personal <img src="https://www.bdgameghor.net/wp-content/plugins/bangladeshi-payment-gateways/assets/images/Rocket.png"></span>
+                <div id="rocket-details" class="payment-details">
+                    <div class="account-row">
+                        <span><strong>Rocket:</strong> <span class="admin-number">014013018874</span></span>
+                        <button type="button" class="copy-btn" data-number="014013018874">Copy</button>
                     </div>
-                </li>
-            </ul>
-            <button class="verify-inside-btn" id="verifyInsideBtn">VERIFY</button>
+                    <input type="text" id="rocket-account" placeholder="আপনার Rocket নম্বর">
+                    <input type="text" id="rocket-txid" placeholder="Transaction ID">
+                </div>
+            </div>
+
+            <button id="verifyBtn" class="verify-btn">VERIFY</button>
         </div>
     </div>
+
     <button id="payBtn" class="pay-btn hidden">পেমেন্ট কনফার্ম করুন</button>
+</div>
 </body>
 </html>
