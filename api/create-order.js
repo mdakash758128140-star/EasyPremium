@@ -8,46 +8,36 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // --------------------------------------------------------------
-  // 1️⃣ ORDER CONFIRMATION – updates status to "waiting"
-  // --------------------------------------------------------------
+  // ========================
+  // 🔁 ORDER CONFIRMATION (waiting status)
+  // ========================
   const { orderId, phone, txid } = req.body;
   if (orderId && phone && txid) {
     const dbUrl = process.env.FIREBASE_DATABASE_URL;
     const secret = process.env.FIREBASE_SECRET;
     if (!dbUrl || !secret) {
-      console.error('❌ Firebase credentials missing');
+      console.error('❌ Missing Firebase config');
       return res.status(500).json({ error: 'Firebase configuration missing' });
     }
 
     try {
-      // ---- Step 1: Try direct path first (exactly like webhook) ----
+      // Step 1: Try direct path (key = orderId)
       const directUrl = `${dbUrl}/transactions/${orderId}.json?auth=${secret}`;
       const directRes = await fetch(directUrl);
       let orderData = null;
+      let transactionKey = orderId; // assume key is orderId
 
       if (directRes.ok) {
         orderData = await directRes.json();
         if (orderData && orderData.orderId === orderId) {
-          // Direct path found – update directly
-          const updates = {
-            status: 'waiting',
-            phone: phone,
-            txid: txid,
-            confirmedAt: new Date().toISOString()
-          };
-          await fetch(directUrl, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updates)
-          });
-          console.log(`✅ Transaction ${orderId} updated directly (waiting)`);
+          console.log(`✅ Found order at direct path: ${orderId}`);
         } else {
-          orderData = null; // path existed but orderId mismatch -> need search
+          // Direct path exists but orderId field doesn't match? Then search.
+          orderData = null;
         }
       }
 
-      // ---- Step 2: If direct path fails, search by orderId ----
+      // If direct path didn't work, search (like webhook does)
       if (!orderData) {
         const searchUrl = `${dbUrl}/transactions.json?orderBy="orderId"&equalTo="${orderId}"&auth=${secret}`;
         const searchRes = await fetch(searchUrl);
@@ -55,33 +45,36 @@ export default async function handler(req, res) {
         if (searchData && typeof searchData === 'object') {
           const keys = Object.keys(searchData);
           if (keys.length > 0) {
-            const transactionKey = keys[0];
+            transactionKey = keys[0];
             orderData = searchData[transactionKey];
-            const updates = {
-              status: 'waiting',
-              phone: phone,
-              txid: txid,
-              confirmedAt: new Date().toISOString()
-            };
-            const updateUrl = `${dbUrl}/transactions/${transactionKey}.json?auth=${secret}`;
-            await fetch(updateUrl, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(updates)
-            });
-            console.log(`✅ Transaction ${orderId} updated via search (key: ${transactionKey})`);
-          } else {
-            console.warn(`⚠️ No transaction found with orderId ${orderId}`);
-            return res.status(404).json({ error: 'Order not found' });
+            console.log(`✅ Found order via search with key: ${transactionKey}`);
           }
-        } else {
-          console.warn(`⚠️ Transaction search failed for orderId ${orderId}`);
-          return res.status(404).json({ error: 'Order not found' });
         }
       }
 
-      // ---- Step 3: Update userOrders if userId exists (same pattern) ----
-      if (orderData && orderData.userId) {
+      if (!orderData) {
+        console.warn(`⚠️ No order found with orderId: ${orderId}`);
+        return res.status(404).json({ error: 'Order not found' });
+      }
+
+      // Update transaction status to waiting
+      const updates = {
+        status: 'waiting',
+        phone: phone,
+        txid: txid,
+        confirmedAt: new Date().toISOString()
+      };
+      const updateUrl = `${dbUrl}/transactions/${transactionKey}.json?auth=${secret}`;
+      const patchRes = await fetch(updateUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (!patchRes.ok) throw new Error(`Update failed: ${patchRes.status}`);
+      console.log(`✅ Transaction ${orderId} updated to waiting`);
+
+      // Update userOrders if userId exists
+      if (orderData.userId) {
         const userDirectUrl = `${dbUrl}/userOrders/${orderData.userId}/${orderId}.json?auth=${secret}`;
         const userDirectRes = await fetch(userDirectUrl);
         if (userDirectRes.ok) {
@@ -94,6 +87,7 @@ export default async function handler(req, res) {
             });
             console.log(`✅ User order updated directly for ${orderData.userId}`);
           } else {
+            // Search within userOrders (like webhook helper)
             await updateUserOrderViaSearch(orderData.userId, orderId, { status: 'waiting', phone, txid }, dbUrl, secret);
           }
         } else {
@@ -108,14 +102,14 @@ export default async function handler(req, res) {
         status: 'waiting'
       });
     } catch (err) {
-      console.error('❌ Confirm error:', err.message);
+      console.error('❌ Confirmation error:', err.message);
       return res.status(500).json({ error: 'Failed to update order', details: err.message });
     }
   }
 
-  // --------------------------------------------------------------
-  // 2️⃣ ORDER CREATION – original code (unchanged)
-  // --------------------------------------------------------------
+  // ========================
+  // 🛒 ORDER CREATION (original code, unchanged)
+  // ========================
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
 
@@ -322,9 +316,7 @@ export default async function handler(req, res) {
   }
 }
 
-// --------------------------------------------------------------
-// Helper: update userOrders by searching (same as webhook)
-// --------------------------------------------------------------
+// Helper function to update userOrders by searching (same as webhook)
 async function updateUserOrderViaSearch(userId, orderId, updates, dbUrl, secret) {
   const userOrdersUrl = `${dbUrl}/userOrders/${userId}.json?auth=${secret}`;
   const userOrdersRes = await fetch(userOrdersUrl);
@@ -337,14 +329,14 @@ async function updateUserOrderViaSearch(userId, orderId, updates, dbUrl, secret)
         await fetch(updateUrl, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates),
+          body: JSON.stringify(updates)
         });
-        console.log(`✅ User order updated via search (key: ${key}) for user ${userId}`);
+        console.log(`✅ User order updated via search (key: ${key}) for ${userId}`);
         return;
       }
     }
-    console.warn(`⚠️ No matching user order found for userId ${userId} with orderId ${orderId}`);
+    console.warn(`⚠️ No matching user order found for user ${userId} with orderId ${orderId}`);
   } else {
-    console.warn(`⚠️ No userOrders found for userId ${userId}`);
+    console.warn(`⚠️ No userOrders found for user ${userId}`);
   }
 }
