@@ -11,6 +11,55 @@ export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  // ---------- 🔄 নতুন অংশ: অর্ডার কনফার্মেশন (waiting status আপডেট) ----------
+  const { orderId, phone, txid, ...rest } = req.body;
+  if (orderId && phone && txid) {
+    const dbUrl = process.env.FIREBASE_DATABASE_URL;
+    const secret = process.env.FIREBASE_SECRET;
+    if (!dbUrl || !secret) {
+      return res.status(500).json({ error: 'Firebase configuration missing' });
+    }
+
+    try {
+      // 1. অর্ডার আছে কিনা চেক
+      const orderRef = `${dbUrl}/transactions/${orderId}.json?auth=${secret}`;
+      const orderResp = await fetch(orderRef);
+      if (!orderResp.ok) throw new Error(`Failed to fetch order: ${orderResp.status}`);
+      const orderData = await orderResp.json();
+      if (!orderData) return res.status(404).json({ error: 'Order not found' });
+
+      // 2. ট্রানজেকশন আপডেট
+      const updateData = {
+        status: 'waiting',
+        phone: phone,
+        txid: txid,
+        confirmedAt: new Date().toISOString()
+      };
+      const patchResp = await fetch(`${dbUrl}/transactions/${orderId}.json?auth=${secret}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+      if (!patchResp.ok) throw new Error(`Failed to update transaction: ${patchResp.status}`);
+
+      // 3. userOrders আপডেট (যদি userId থাকে)
+      if (orderData.userId) {
+        const userOrderRef = `${dbUrl}/userOrders/${orderData.userId}/${orderId}.json?auth=${secret}`;
+        await fetch(userOrderRef, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'waiting', phone, txid })
+        });
+      }
+
+      return res.status(200).json({ success: true, message: 'Order status updated to waiting', orderId, status: 'waiting' });
+    } catch (error) {
+      console.error('❌ Confirm error:', error.message);
+      return res.status(500).json({ error: 'Failed to update order', details: error.message });
+    }
+  }
+
+  // ---------- ✅ পুরনো অংশ: অর্ডার তৈরি (অপরিবর্তিত) ----------
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
 
@@ -34,7 +83,6 @@ export default async function handler(req, res) {
     let paymentMethod = 'UNKNOWN';
     let phone = '', txid = '', userId = '', email = '', admin = '';
     
-    // reference এখন JSON স্ট্রিং হবে
     if (reference) {
       try {
         const parsedRef = JSON.parse(reference);
@@ -46,7 +94,6 @@ export default async function handler(req, res) {
         admin = parsedRef.admin || '';
       } catch (e) {
         console.error('Failed to parse reference JSON, falling back to pipe parsing:', e);
-        // fallback: পুরনো পদ্ধতি
         const referenceParts = reference.split('|');
         paymentMethod = referenceParts[0] || 'UNKNOWN';
         referenceParts.forEach(part => {
@@ -60,10 +107,7 @@ export default async function handler(req, res) {
     }
 
     const finalOrderId = firebaseOrderId || 'REL' + Math.random().toString(36).substring(2, 15).toUpperCase();
-    // 🚫 বর্তমান সময় সরানো হয়েছে – পরিবর্তে ডামি সময় ব্যবহার করা হচ্ছে
     const dummyTimestamp = "2024-01-01T00:00:00.000Z";
-    
-    // ইমেইলের জন্য ডামি তারিখ (বাংলা লোকেলেও একই)
     const dummyFormattedDate = "১ জানুয়ারি ২০২৪";
 
     const serviceChargeInt = serviceCharge ? parseInt(serviceCharge) : 0;
@@ -85,7 +129,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 🚫 টাইমস্ট্যাম্প বাদ – রেফারেন্সে এখন কোনো সময় নেই
     const relogradeReference = JSON.stringify({
       firebaseOrderId: finalOrderId,
       paymentMethod,
@@ -94,7 +137,6 @@ export default async function handler(req, res) {
       userId,
       email,
       admin
-      // timestamp omitted
     });
 
     const requestBody = {
@@ -119,13 +161,12 @@ export default async function handler(req, res) {
 
     const relogradeData = await response.json();
 
-    // 🚫 অর্ডার ডাটায়ও বর্তমান সময় বাদ, ডামি সময় বসানো
     const orderData = {
       OrderId: relogradeData.trx || finalOrderId,
       PaymentMethods: paymentMethod,
       PaymentNumber: phone || 'N/A',
       PaymentTrxID: txid || 'N/A',
-      Time: dummyTimestamp,           // ডামি সময়
+      Time: dummyTimestamp,
       email,
       platformId: productSlug,
       uid: userId || 'guest',
@@ -139,7 +180,6 @@ export default async function handler(req, res) {
 
     const jsonString = JSON.stringify(orderData);
     const base64Data = Buffer.from(jsonString).toString('base64');
-    
     const orderLink = `https://www.easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
     async function sendEmailWithLink() {
@@ -147,21 +187,18 @@ export default async function handler(req, res) {
         console.log('❌ EmailJS credentials missing');
         return false;
       }
-
       if (!email) {
         console.log('❌ No email provided');
         return false;
       }
-
       try {
         const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
-        
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
           order_id: relogradeData.trx || finalOrderId,
           platform: platformName,
-          order_date: dummyFormattedDate,   // ডামি তারিখ
+          order_date: dummyFormattedDate,
           payment_link: orderLink,
           payment_method: paymentMethod,
           payment_number: phone || 'N/A',
@@ -174,9 +211,7 @@ export default async function handler(req, res) {
           from_name: 'Easy Premium',
           reply_to: 'support@easy-premium.com'
         };
-
         console.log('📧 Sending email with params:', templateParams);
-
         const emailResponse = await fetch(emailjsUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -188,15 +223,12 @@ export default async function handler(req, res) {
             accessToken: EMAILJS_PRIVATE_KEY
           })
         });
-
         const responseText = await emailResponse.text();
         console.log('📨 EmailJS response:', responseText);
-        
         if (!emailResponse.ok) {
           console.error('❌ EmailJS error:', responseText);
           return false;
         }
-
         return true;
       } catch (emailError) {
         console.error('❌ Email error:', emailError);
@@ -220,7 +252,7 @@ export default async function handler(req, res) {
         paymentMethod,
         paymentNumber: phone,
         transactionId: txid,
-        time: dummyTimestamp,     // ডামি সময়
+        time: dummyTimestamp,
         email,
         platformId: productSlug,
         faceValue: faceValue || null,
