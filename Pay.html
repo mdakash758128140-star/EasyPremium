@@ -396,7 +396,11 @@
         });
 
         const database = firebase.database();
-        const MAIN_WEBSITE = "https://www.easy-premium.com";
+        const MAIN_WEBSITE = "https://easy-premium.com";  // সঠিক মূল সাইট
+        
+        let orderValidationPassed = false;
+        let currentOrderData = null;
+        let orderStatusListener = null;
 
         function decryptData(encrypted) {
             try {
@@ -526,49 +530,60 @@
             }
         }
 
-        async function validateOrderAndProceed(urlData) {
-            const output = document.getElementById('output');
-            try {
-                // Fetch order from transactions
-                const orderSnapshot = await database.ref(`transactions/${urlData.orderId}`).once('value');
-                if (!orderSnapshot.exists()) {
-                    console.warn("Order not found:", urlData.orderId);
-                    window.location.href = MAIN_WEBSITE;
-                    return false;
-                }
-                
-                const order = orderSnapshot.val();
-                const now = Date.now();
-                const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
-                const orderTimestamp = order.timestamp || 0;
-                const isExpired = (now - orderTimestamp) > TWENTY_FOUR_HOURS;
-                
-                // Order must be pending, not expired, and userId must match decrypted userId
-                if (order.status !== 'pending') {
-                    console.warn(`Order status is '${order.status}', redirecting.`);
-                    window.location.href = MAIN_WEBSITE;
-                    return false;
-                }
-                
-                if (isExpired) {
-                    console.warn("Order older than 24 hours, redirecting.");
-                    window.location.href = MAIN_WEBSITE;
-                    return false;
-                }
-                
-                if (order.userId !== urlData.userId) {
-                    console.warn("Order owner mismatch, redirecting.");
-                    window.location.href = MAIN_WEBSITE;
-                    return false;
-                }
-                
-                // All checks passed, allow payment flow
-                return true;
-            } catch (error) {
-                console.error("Validation error:", error);
+        // অর্ডার ভ্যালিডেশন এবং রিয়েলটাইম মনিটরিং
+        async function validateOrderAndMonitor(urlData) {
+            const orderRef = database.ref(`transactions/${urlData.orderId}`);
+            const snapshot = await orderRef.once('value');
+            
+            if (!snapshot.exists()) {
+                console.warn("Order not found");
                 window.location.href = MAIN_WEBSITE;
                 return false;
             }
+            
+            const order = snapshot.val();
+            const now = Date.now();
+            const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+            const orderTimestamp = order.timestamp || 0;
+            const isExpired = (now - orderTimestamp) > TWENTY_FOUR_HOURS;
+            
+            // মালিকানা যাচাই
+            const isOwner = (order.userId === urlData.userId);
+            
+            // পেন্ডিং না হলে বা এক্সপায়ার্ড হলে বা মালিক না হলে রিডাইরেক্ট
+            if (order.status !== 'pending' || isExpired || !isOwner) {
+                console.warn(`Redirect: status=${order.status}, expired=${isExpired}, owner=${isOwner}`);
+                window.location.href = MAIN_WEBSITE;
+                return false;
+            }
+            
+            // সব ঠিক থাকলে রিয়েলটাইম লিসনার যোগ করি
+            orderStatusListener = orderRef.on('value', (snap) => {
+                const updatedOrder = snap.val();
+                if (!updatedOrder) return;
+                const updatedNow = Date.now();
+                const updatedExpired = (updatedNow - (updatedOrder.timestamp || 0)) > TWENTY_FOUR_HOURS;
+                if (updatedOrder.status !== 'pending' || updatedExpired) {
+                    console.warn("Order status changed or expired, redirecting.");
+                    window.location.href = MAIN_WEBSITE;
+                }
+            });
+            
+            currentOrderData = order;
+            return true;
+        }
+
+        // পেমেন্ট প্যানেল দেখানোর আগে আবার ভ্যালিডেশন (নিশ্চিত করতে)
+        async function doubleCheckBeforePayment() {
+            if (!currentOrderData) return false;
+            const now = Date.now();
+            const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+            const isExpired = (now - (currentOrderData.timestamp || 0)) > TWENTY_FOUR_HOURS;
+            if (currentOrderData.status !== 'pending' || isExpired) {
+                window.location.href = MAIN_WEBSITE;
+                return false;
+            }
+            return true;
         }
 
         window.addEventListener('DOMContentLoaded', async () => {
@@ -585,7 +600,7 @@
                 return;
             }
             
-            output.innerHTML = '<div class="loading">ডিক্রিপ্ট হচ্ছে...</div>';
+            output.innerHTML = '<div class="loading">অর্ডার যাচাই করা হচ্ছে...</div>';
             
             const urlData = decryptData(encodedData);
             if (!urlData || !urlData.orderId) {
@@ -594,14 +609,16 @@
                 return;
             }
             
-            // Validate order before showing any payment UI
-            const isValid = await validateOrderAndProceed(urlData);
+            // ভ্যালিডেশন ও মনিটরিং শুরু
+            const isValid = await validateOrderAndMonitor(urlData);
             if (!isValid) {
-                // validateOrderAndProceed already redirects, but just in case
+                // validateOrderAndMonitor ইতিমধ্যে রিডাইরেক্ট করে
                 return;
             }
             
-            // If we reach here, order is valid (pending, not expired, owner match)
+            orderValidationPassed = true;
+            
+            // প্ল্যান ডাটা fetch
             const planData = await fetchPlanData(urlData.platformId);
             
             const serviceCharge = planData?.ServicCharge ? Number(planData.ServicCharge) : 0;
@@ -623,7 +640,7 @@
                 dFieldHTML = `
                     <div class="card" style="margin-top:10px;">
                         <div style="color:#ff9800; margin-bottom:8px; font-weight:600;">📝 বিস্তারিত বিবরণ</div>
-                        <div style="color:#b0bec5; font-size:14px; white-space: pre-line;">${dField}</div>
+                        <div style="color:#b0bec5; font-size:14px; white-space: pre-line;">${escapeHtml(dField)}</div>
                     </div>
                 `;
             }
@@ -647,8 +664,8 @@
             output.innerHTML = `
                 <div class="card">
                     <h2 style="color:#ff9800; margin-bottom:15px; text-align:center;">📋 অর্ডার তথ্য</h2>
-                    <div class="info-row"><span class="label">অর্ডার আইডি:</span><span class="value">${urlData.orderId}</span></div>
-                    <div class="info-row"><span class="label">প্ল্যাটফর্ম:</span><span class="value">${platformName}</span></div>
+                    <div class="info-row"><span class="label">অর্ডার আইডি:</span><span class="value">${escapeHtml(urlData.orderId)}</span></div>
+                    <div class="info-row"><span class="label">প্ল্যাটফর্ম:</span><span class="value">${escapeHtml(platformName)}</span></div>
                     <div class="info-row"><span class="label">মূল্য:</span><span class="value">${productPrice} ৳</span></div>
                     <div class="info-row"><span class="label">সার্ভিস চার্জ:</span><span class="value">${serviceCharge} ৳</span></div>
                     <div class="info-row"><span class="label"><strong>সর্বমোট:</strong></span><span class="value" style="color:#ff0000;">${totalAmount} ৳</span></div>
@@ -667,19 +684,21 @@
                 </div>
             `;
 
-            // পেমেন্ট কনফার্ম বাটনের ক্লিক ইভেন্ট
-            payBtn.onclick = () => {
+            payBtn.onclick = async () => {
+                // পেমেন্ট প্যানেল দেখানোর আগে আরেকবার যাচাই
+                const stillValid = await doubleCheckBeforePayment();
+                if (!stillValid) return;
+                
                 output.style.display = 'none';
                 payBtn.style.display = 'none';
                 paymentPanel.style.display = 'block';
                 updatePaymentAmounts();
             };
             
-            // Admin realtime status listener (already started later)
             await setActiveAdminNumber();
             listenToAdminStatus();
 
-            // Radio button change event
+            // রেডিও বাটন ইভেন্ট
             const radios = document.querySelectorAll('input[name="payment_method"]');
             const bkashBox = document.getElementById('box-bkash');
             const nagadBox = document.getElementById('box-nagad');
@@ -711,7 +730,7 @@
                 });
             });
 
-            // VERIFY বাটন – অ্যাডমিন নম্বর সহ (JSON reference)
+            // VERIFY বাটন
             const verifyBtn = document.getElementById('verifyInsideBtn');
             verifyBtn.addEventListener('click', async function() {
                 const selected = document.querySelector('input[name="payment_method"]:checked');
@@ -743,6 +762,10 @@
                     alert('অ্যাকাউন্ট নম্বর এবং ট্রানজেকশন আইডি দিন');
                     return;
                 }
+
+                // পেমেন্টের আগে শেষবার যাচাই
+                const stillValid = await doubleCheckBeforePayment();
+                if (!stillValid) return;
 
                 let faceValue = null;
                 if (isVariable) {
@@ -803,7 +826,7 @@
                         paymentPanel.innerHTML = `
                             <div class="card" style="text-align:center; padding:40px;">
                                 <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
-                                <p>অর্ডার আইডি: ${result.trx || urlData.orderId}</p>
+                                <p>অর্ডার আইডি: ${escapeHtml(result.trx || urlData.orderId)}</p>
                                 <p>মূল্য: ${productPrice} ৳</p>
                                 <p>সার্ভিস চার্জ: ${serviceCharge} ৳</p>
                                 <p><strong>মোট: ${productPrice + serviceCharge} ৳</strong></p>
@@ -833,6 +856,18 @@
                 });
             });
         });
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+                return c;
+            });
+        }
     </script>
 </head>
 <body>
