@@ -1,39 +1,24 @@
 // --- Voucher Code ---
 let voucherCode = null;
 
-// পুরোনো প্যাটার্ন ১
-match = html.match(/Your Voucher Code\s*<\/?\w+>\s*([^\s<]+)/);
-if (match) voucherCode = match[1];
+// সবচেয়ে নির্ভরযোগ্য: truncate ক্লাস + style="--text-length" যুক্ত <p> এর টেক্সট
+let match = html.match(/<p[^>]*truncate[^>]*style="--text-length[^>]*>([A-Z0-9]{10,20})<\/p>/i);
+if (match) {
+  voucherCode = match[1].trim();
+}
 
-// পুরোনো প্যাটার্ন ২
+// ফলব্যাক: Your Voucher Code টেক্সটের পরের বড় অক্ষরের কোড (১২-২০ অক্ষর)
 if (!voucherCode) {
-  match = html.match(/voucher-code["']?>\s*([^<]+)/i);
+  match = html.match(/Your Voucher Code[^<]*(?:<\/p>[\s\S]*?<p[^>]*>)([A-Z0-9]{12,20})/i);
   if (match) voucherCode = match[1].trim();
 }
 
-// নতুন প্যাটার্ন ৩: class/id যেকোনো হতে পারে, শুধু Voucher Code শব্দ খুঁজে তার পরের টেক্সট
+// আরও ফলব্যাক: শুধু ১৪-১৮ অক্ষরের alphanumeric (UUID এড়ানো)
 if (!voucherCode) {
-  match = html.match(/(?:Voucher Code|Voucher|Code|কোড)[^<]*?<\/[^>]+>\s*([^<\s]{8,})[^<]*/i);
-  if (match) voucherCode = match[1].trim();
-}
-
-// নতুন প্যাটার্ন ৪: সবচেয়ে সহজ — ১০-২০ অক্ষরের বড় হাতের/সংখ্যার কম্বিনেশন (অনেক ভাউচার কোড এরকম হয়)
-if (!voucherCode) {
-  match = html.match(/([A-Z0-9]{10,25})/g);   // গ্লোবাল ম্যাচ
-  if (match && match.length > 0) {
-    // সিরিয়াল কোড যদি UUID হয় তাহলে সেটা এড়ানোর চেষ্টা
-    const possibleCodes = match.filter(code => 
-      !code.includes('-') && code.length >= 12 && code.length <= 20
-    );
-    if (possibleCodes.length > 0) {
-      voucherCode = possibleCodes[0];   // প্রথম সম্ভাব্যটা নাও
-    }
+  const candidates = [...html.matchAll(/([A-Z0-9]{14,18})/g)]
+    .map(m => m[1])
+    .filter(code => !code.includes('-')); // UUID ফিল্টার
+  if (candidates.length > 0) {
+    voucherCode = candidates.find(c => c.length === 16) || candidates[0]; // এই কেসে 16 অক্ষরেরটা
   }
-}
-
-// নতুন প্যাটার্ন ৫: শেষ চেষ্টা — শুধু alphanumeric ১২+ অক্ষরের স্ট্রিং (সিরিয়াল কোডের পরে আসতে পারে)
-if (!voucherCode && serialCode) {
-  const afterSerial = html.split(serialCode)[1] || '';
-  match = afterSerial.match(/([A-Z0-9]{10,})/);
-  if (match) voucherCode = match[1];
 }
