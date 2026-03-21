@@ -387,9 +387,9 @@
         }
     </style>
     
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
     
     <!-- No Script Fallback -->
     <noscript>
@@ -447,6 +447,19 @@
             window.location.href = "https://easy-premium.com";
         }
         
+        // 🆕 NEW: Check if order status is already "waiting"
+        async function checkOrderStatus(orderId) {
+            try {
+                const snapshot = await database.ref(`transactions/${orderId}`).once('value');
+                if (!snapshot.exists()) return false;
+                const order = snapshot.val();
+                return order.status === 'waiting';
+            } catch (err) {
+                console.error("Status check error:", err);
+                return false;
+            }
+        }
+        
         // Validate order: status, time, user match
         async function validateOrder(orderId, expectedUserId, expectedUserEmail) {
             try {
@@ -457,7 +470,7 @@
                 }
                 const order = snapshot.val();
                 
-                // 1. Status must be "pending"
+                // 1. Status must be "pending" (if it's waiting, we already redirected earlier)
                 if (order.status !== "pending") {
                     console.warn("Order status not pending:", order.status);
                     return false;
@@ -602,6 +615,14 @@
                 
                 const urlData = decryptData(encodedData);
                 if (!urlData) {
+                    redirectToMain();
+                    return;
+                }
+                
+                // 🆕 Check if order is already waiting – if yes, redirect to main
+                const isWaiting = await checkOrderStatus(urlData.orderId);
+                if (isWaiting) {
+                    console.log("Order is already waiting, redirecting to main");
                     redirectToMain();
                     return;
                 }
