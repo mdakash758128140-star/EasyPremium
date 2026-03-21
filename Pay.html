@@ -428,131 +428,64 @@
             return num;
         }
 
-        async function setActiveAdminNumber() {
+        // ================== নতুন: অর্ডার বৈধতা যাচাই (স্ট্যাটাস, ২৪ ঘণ্টা, মালিক) ==================
+        async function validateOrder(orderId, expectedUserId) {
             try {
-                const snapshot = await database.ref('publicAdminInfo').once('value');
-                const admins = snapshot.val() || {};
-                const now = new Date();
-                const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+                const snapshot = await database.ref(`transactions/${orderId}`).once('value');
+                const order = snapshot.val();
                 
-                let activeNumber = null;
-                let latestTime = 0;
+                if (!order) {
+                    console.log('❌ Order not found in DB');
+                    return { valid: false, reason: 'not_found' };
+                }
 
-                for (let uid in admins) {
-                    const admin = admins[uid];
-                    if (!admin.lastActive) continue;
-                    const lastActive = new Date(admin.lastActive);
-                    if (lastActive >= oneMinuteAgo && lastActive.getTime() > latestTime) {
-                        latestTime = lastActive.getTime();
-                        activeNumber = admin.number;
+                // 1. স্ট্যাটাস চেক
+                if (order.status === 'completed' || order.status === 'finished' || order.status === 'cancelled') {
+                    console.log(`❌ Order already ${order.status}`);
+                    return { valid: false, reason: 'completed' };
+                }
+
+                // 2. মালিক যাচাই (লিংকের userId এবং ডাটাবেজের userId তুলনা)
+                if (order.userId && order.userId !== expectedUserId) {
+                    console.log('❌ User mismatch');
+                    return { valid: false, reason: 'user_mismatch' };
+                }
+
+                // 3. ২৪ ঘণ্টা পুরনো কিনা
+                const orderDate = order.orderDate || order.timestamp;
+                if (orderDate) {
+                    const orderTime = new Date(orderDate).getTime();
+                    const now = Date.now();
+                    const hoursDiff = (now - orderTime) / (1000 * 60 * 60);
+                    if (hoursDiff > 24) {
+                        console.log(`❌ Order older than 24h (${hoursDiff.toFixed(1)}h)`);
+                        return { valid: false, reason: 'expired' };
                     }
+                } else {
+                    // যদি তারিখ না থাকে, নিরাপত্তার জন্য invalid ধরা
+                    console.log('❌ No date field in order');
+                    return { valid: false, reason: 'no_date' };
                 }
 
-                const formatted = activeNumber ? formatPhoneNumber(activeNumber) : null;
-                
-                if (formatted) {
-                    document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
-                    document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
-                    
-                    // এডমিন অনলাইন থাকলে বাটন দেখাও
-                    document.getElementById('payBtn').classList.remove('hidden');
-                } else {
-                    // এডমিন অফলাইনে থাকলে বাটন লুকাও
-                    document.getElementById('payBtn').classList.add('hidden');
-                }
-                
-                return formatted;
-            } catch (e) {
-                console.error("Admin number error:", e);
-                return null;
+                return { valid: true, order };
+            } catch (err) {
+                console.error('Validation error:', err);
+                return { valid: false, reason: 'error' };
             }
         }
 
-        // রিয়েলটাইমে এডমিন স্ট্যাটাস চেক করার জন্য লিসনার
-        function listenToAdminStatus() {
-            database.ref('publicAdminInfo').on('value', (snapshot) => {
-                const admins = snapshot.val() || {};
-                const now = new Date();
-                const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
-                
-                let activeNumber = null;
-                let latestTime = 0;
-
-                for (let uid in admins) {
-                    const admin = admins[uid];
-                    if (!admin.lastActive) continue;
-                    const lastActive = new Date(admin.lastActive);
-                    if (lastActive >= oneMinuteAgo && lastActive.getTime() > latestTime) {
-                        latestTime = lastActive.getTime();
-                        activeNumber = admin.number;
-                    }
-                }
-
-                const formatted = activeNumber ? formatPhoneNumber(activeNumber) : null;
-                const payBtn = document.getElementById('payBtn');
-                
-                if (formatted) {
-                    document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
-                    document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
-                    
-                    // এডমিন অনলাইন থাকলে বাটন দেখাও
-                    if (payBtn) payBtn.classList.remove('hidden');
-                } else {
-                    // এডমিন অফলাইনে থাকলে বাটন লুকাও
-                    if (payBtn) payBtn.classList.add('hidden');
-                    
-                    // যদি পেমেন্ট প্যানেল ওপেন থাকে তাহলে সেটাও বন্ধ করে দিতে পারেন (ঐচ্ছিক)
-                    // document.getElementById('paymentPanel').style.display = 'none';
-                    // document.getElementById('output').style.display = 'block';
-                }
-            });
-        }
-
-        async function fetchPlanData(platformId) {
-            try {
-                const plans2 = await database.ref('publicData/pricingPlans2').once('value');
-                if (plans2.exists()) {
-                    const allPlans = plans2.val();
-                    for (let key in allPlans) {
-                        if (key === platformId || allPlans[key].Products === platformId) {
-                            return allPlans[key];
-                        }
-                    }
-                }
-                
-                const plans1 = await database.ref('publicData/pricingPlans1').once('value');
-                if (plans1.exists()) {
-                    const allPlans = plans1.val();
-                    for (let key in allPlans) {
-                        if (key === platformId || allPlans[key].Products === platformId) {
-                            return allPlans[key];
-                        }
-                    }
-                }
-                
-                return null;
-            } catch (e) {
-                console.error("Fetch error:", e);
-                return null;
-            }
-        }
-
+        // মূল ফাংশন
         window.addEventListener('DOMContentLoaded', async () => {
             const output = document.getElementById('output');
             const payBtn = document.getElementById('payBtn');
             const paymentPanel = document.getElementById('paymentPanel');
             
-            // প্রথমবার এডমিন স্ট্যাটাস চেক
-            await setActiveAdminNumber();
-            
-            // রিয়েলটাইম লিসনার শুরু
-            listenToAdminStatus();
-
             const urlParams = new URLSearchParams(window.location.search);
             const encodedData = urlParams.get('data');
             
             if (!encodedData) {
-                output.innerHTML = '<div class="error">❌ URL-এ ডাটা নেই</div>';
+                // লিংকে ডাটা না থাকলে মূল সাইটে রিডাইরেক্ট
+                window.location.href = 'https://www.easy-premium.com';
                 return;
             }
             
@@ -560,9 +493,125 @@
             
             const urlData = decryptData(encodedData);
             if (!urlData) {
-                output.innerHTML = '<div class="error">❌ ডাটা ডিক্রিপ্ট করা যায়নি</div>';
+                // ডাটা ডিক্রিপ্ট ব্যর্থ
+                window.location.href = 'https://www.easy-premium.com';
                 return;
             }
+
+            // ** অর্ডার বৈধতা যাচাই **
+            const validation = await validateOrder(urlData.orderId, urlData.userId);
+            if (!validation.valid) {
+                // যেকোনো কারণে অর্ডার বৈধ না হলে সাইলেন্ট রিডাইরেক্ট
+                window.location.href = 'https://www.easy-premium.com';
+                return;
+            }
+
+            // ================== এখান থেকে আগের মূল কোড (বৈধ অর্ডারের জন্য) ==================
+            
+            // এডমিন স্ট্যাটাস লিসনার (শুধুমাত্র বৈধ অর্ডারের জন্য কাজ করবে)
+            async function setActiveAdminNumber() {
+                try {
+                    const snapshot = await database.ref('publicAdminInfo').once('value');
+                    const admins = snapshot.val() || {};
+                    const now = new Date();
+                    const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+                    
+                    let activeNumber = null;
+                    let latestTime = 0;
+
+                    for (let uid in admins) {
+                        const admin = admins[uid];
+                        if (!admin.lastActive) continue;
+                        const lastActive = new Date(admin.lastActive);
+                        if (lastActive >= oneMinuteAgo && lastActive.getTime() > latestTime) {
+                            latestTime = lastActive.getTime();
+                            activeNumber = admin.number;
+                        }
+                    }
+
+                    const formatted = activeNumber ? formatPhoneNumber(activeNumber) : null;
+                    
+                    if (formatted) {
+                        document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
+                        document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
+                        
+                        document.getElementById('payBtn').classList.remove('hidden');
+                    } else {
+                        document.getElementById('payBtn').classList.add('hidden');
+                    }
+                    
+                    return formatted;
+                } catch (e) {
+                    console.error("Admin number error:", e);
+                    return null;
+                }
+            }
+
+            function listenToAdminStatus() {
+                database.ref('publicAdminInfo').on('value', (snapshot) => {
+                    const admins = snapshot.val() || {};
+                    const now = new Date();
+                    const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+                    
+                    let activeNumber = null;
+                    let latestTime = 0;
+
+                    for (let uid in admins) {
+                        const admin = admins[uid];
+                        if (!admin.lastActive) continue;
+                        const lastActive = new Date(admin.lastActive);
+                        if (lastActive >= oneMinuteAgo && lastActive.getTime() > latestTime) {
+                            latestTime = lastActive.getTime();
+                            activeNumber = admin.number;
+                        }
+                    }
+
+                    const formatted = activeNumber ? formatPhoneNumber(activeNumber) : null;
+                    const payBtn = document.getElementById('payBtn');
+                    
+                    if (formatted) {
+                        document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
+                        document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
+                        if (payBtn) payBtn.classList.remove('hidden');
+                    } else {
+                        if (payBtn) payBtn.classList.add('hidden');
+                    }
+                });
+            }
+
+            // প্ল্যান ডেটা লোড
+            async function fetchPlanData(platformId) {
+                try {
+                    const plans2 = await database.ref('publicData/pricingPlans2').once('value');
+                    if (plans2.exists()) {
+                        const allPlans = plans2.val();
+                        for (let key in allPlans) {
+                            if (key === platformId || allPlans[key].Products === platformId) {
+                                return allPlans[key];
+                            }
+                        }
+                    }
+                    
+                    const plans1 = await database.ref('publicData/pricingPlans1').once('value');
+                    if (plans1.exists()) {
+                        const allPlans = plans1.val();
+                        for (let key in allPlans) {
+                            if (key === platformId || allPlans[key].Products === platformId) {
+                                return allPlans[key];
+                            }
+                        }
+                    }
+                    
+                    return null;
+                } catch (e) {
+                    console.error("Fetch error:", e);
+                    return null;
+                }
+            }
+
+            // শুরু
+            await setActiveAdminNumber();
+            listenToAdminStatus();
 
             const planData = await fetchPlanData(urlData.platformId);
             
@@ -570,7 +619,6 @@
             const productPrice = Number(urlData.price) || 0;
             const totalAmount = productPrice + serviceCharge;
             
-            // ডিবাগ লগ
             console.log('📊 Order Details:', {
                 orderId: urlData.orderId,
                 platformId: urlData.platformId,
@@ -580,7 +628,6 @@
                 planData: planData
             });
 
-            // সঠিক অ্যামাউন্টগুলো পেমেন্ট প্যানেলে আপডেট করার জন্য ফাংশন
             function updatePaymentAmounts() {
                 document.querySelectorAll('#bkash-amount, #nagad-amount, #rocket-amount').forEach(el => {
                     el.textContent = totalAmount;
@@ -602,7 +649,6 @@
                 `;
             }
             
-            // ভেরিয়েবল প্রোডাক্ট চেক
             const isVariable = productSlug.includes('variable');
             let minFace = 1, maxFace = 1000;
             let faceValueFromDB = null;
@@ -643,7 +689,6 @@
                 </div>
             `;
 
-            // পেমেন্ট কনফার্ম বাটনের ক্লিক ইভেন্ট
             payBtn.onclick = () => {
                 output.style.display = 'none';
                 payBtn.style.display = 'none';
@@ -651,7 +696,6 @@
                 updatePaymentAmounts();
             };
 
-            // Radio button change event
             const radios = document.querySelectorAll('input[name="payment_method"]');
             const bkashBox = document.getElementById('box-bkash');
             const nagadBox = document.getElementById('box-nagad');
@@ -683,7 +727,6 @@
                 });
             });
 
-            // VERIFY বাটন – অ্যাডমিন নম্বর সহ (এখন JSON reference)
             const verifyBtn = document.getElementById('verifyInsideBtn');
             verifyBtn.addEventListener('click', async function() {
                 const selected = document.querySelector('input[name="payment_method"]:checked');
@@ -716,7 +759,6 @@
                     return;
                 }
 
-                // ফেস ভ্যালু নির্ধারণ
                 let faceValue = null;
                 if (isVariable) {
                     if (faceValueFromDB) {
@@ -728,7 +770,6 @@
 
                 const method = selected.value.replace('woo_', '').toUpperCase();
 
-                // ✅ এখন reference একটি সুন্দর JSON স্ট্রিং
                 const reference = JSON.stringify({
                     method: method,
                     phone: account,
@@ -748,7 +789,7 @@
                         productSlug: productSlug,
                         amount: productPrice,
                         paymentCurrency: 'USD',
-                        reference: reference,   // JSON স্ট্রিং
+                        reference: reference,
                         firebaseOrderId: urlData.orderId,
                         serviceCharge: serviceCharge
                     };
@@ -771,7 +812,6 @@
                         throw new Error(result.error || 'অর্ডার ব্যর্থ');
                     }
 
-                    // অটোমেটিক ব্রাউজারে লিংক ওপেন
                     if (result.link) {
                         window.location.href = result.link;
                     } else {
