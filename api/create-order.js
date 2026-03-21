@@ -5,30 +5,31 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle OPTIONS request for CORS
+  // OPTIONS প্রিহ্যান্ডেল
   if (req.method === 'OPTIONS') return res.status(200).end();
-  
-  // Only allow POST requests
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // ---------- 🔄 নতুন অংশ: অর্ডার কনফার্মেশন (waiting status আপডেট) ----------
-  const { orderId, phone, txid, ...rest } = req.body;
+  // --------------------------------------------------------------
+  // 1️⃣ অর্ডার কনফার্মেশন (ফোন + ট্রানজেকশন আইডি)
+  // --------------------------------------------------------------
+  const { orderId, phone, txid } = req.body;
   if (orderId && phone && txid) {
     const dbUrl = process.env.FIREBASE_DATABASE_URL;
     const secret = process.env.FIREBASE_SECRET;
+
     if (!dbUrl || !secret) {
+      console.error('❌ Firebase credentials missing');
       return res.status(500).json({ error: 'Firebase configuration missing' });
     }
 
     try {
-      // 1. অর্ডার আছে কিনা চেক
-      const orderRef = `${dbUrl}/transactions/${orderId}.json?auth=${secret}`;
-      const orderResp = await fetch(orderRef);
-      if (!orderResp.ok) throw new Error(`Failed to fetch order: ${orderResp.status}`);
+      // ১. অর্ডার ডাটা পাওয়া
+      const orderResp = await fetch(`${dbUrl}/transactions/${orderId}.json?auth=${secret}`);
+      if (!orderResp.ok) throw new Error(`Fetch order failed: ${orderResp.status}`);
       const orderData = await orderResp.json();
       if (!orderData) return res.status(404).json({ error: 'Order not found' });
 
-      // 2. ট্রানজেকশন আপডেট
+      // ২. ট্রানজেকশন আপডেট
       const updateData = {
         status: 'waiting',
         phone: phone,
@@ -40,26 +41,36 @@ export default async function handler(req, res) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData)
       });
-      if (!patchResp.ok) throw new Error(`Failed to update transaction: ${patchResp.status}`);
+      if (!patchResp.ok) {
+        const errText = await patchResp.text();
+        throw new Error(`Patch failed: ${patchResp.status} - ${errText}`);
+      }
 
-      // 3. userOrders আপডেট (যদি userId থাকে)
+      // ৩. userOrders আপডেট (যদি userId থাকে)
       if (orderData.userId) {
-        const userOrderRef = `${dbUrl}/userOrders/${orderData.userId}/${orderId}.json?auth=${secret}`;
-        await fetch(userOrderRef, {
+        await fetch(`${dbUrl}/userOrders/${orderData.userId}/${orderId}.json?auth=${secret}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'waiting', phone, txid })
         });
       }
 
-      return res.status(200).json({ success: true, message: 'Order status updated to waiting', orderId, status: 'waiting' });
-    } catch (error) {
-      console.error('❌ Confirm error:', error.message);
-      return res.status(500).json({ error: 'Failed to update order', details: error.message });
+      console.log(`✅ Order ${orderId} status updated to waiting`);
+      return res.status(200).json({
+        success: true,
+        message: 'Order status updated to waiting',
+        orderId,
+        status: 'waiting'
+      });
+    } catch (err) {
+      console.error('❌ Confirm error:', err.message);
+      return res.status(500).json({ error: 'Failed to update order', details: err.message });
     }
   }
 
-  // ---------- ✅ পুরনো অংশ: অর্ডার তৈরি (অপরিবর্তিত) ----------
+  // --------------------------------------------------------------
+  // 2️⃣ অর্ডার তৈরি (পুরনো লজিক – কোনো পরিবর্তন নেই)
+  // --------------------------------------------------------------
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
 
@@ -82,7 +93,7 @@ export default async function handler(req, res) {
   try {
     let paymentMethod = 'UNKNOWN';
     let phone = '', txid = '', userId = '', email = '', admin = '';
-    
+
     if (reference) {
       try {
         const parsedRef = JSON.parse(reference);
@@ -117,11 +128,7 @@ export default async function handler(req, res) {
     const formattedTotalPrice = `${totalAmount} ${paymentCurrency}`;
     const platformName = productSlug.includes('variable') ? 'Rewarble Visa Variable USD' : productSlug;
 
-    const items = [{
-      productSlug,
-      amount: 1
-    }];
-
+    const items = [{ productSlug, amount: 1 }];
     if (faceValue !== undefined && faceValue !== null) {
       const faceValueNum = parseFloat(faceValue);
       if (!isNaN(faceValueNum) && faceValueNum > 0) {
@@ -263,9 +270,9 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('❌ Error:', error.message);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to create order',
-      details: error.message 
+      details: error.message
     });
   }
 }
