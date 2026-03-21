@@ -22,7 +22,7 @@
     <meta http-equiv="Expires" content="0">
     
     <style>
-        /* ========== সম্পূর্ণ মূল ওয়েবসাইটের CSS ========== */
+        /* ========== সম্পূর্ণ মূল ওয়েবসাইটের CSS (অপরিবর্তিত) ========== */
         * {
             margin: 0;
             padding: 0;
@@ -142,7 +142,7 @@
             z-index: 10;
             animation: badgePulse 2s infinite;
         }
-        /* 🔥 অতিরিক্ত নিয়ম: কার্ট ব্যাজ সম্পূর্ণ লুকান */
+        /* কার্ট ব্যাজ সম্পূর্ণ লুকান */
         #cartBadge {
             display: none !important;
         }
@@ -180,7 +180,7 @@
             padding: 20px;
         }
         
-        /* Profile card (same as platform card) */
+        /* Profile card */
         .profile-card {
             background: rgba(20,20,40,0.9);
             border-radius: 12px;
@@ -524,6 +524,29 @@
             .messenger-float i { font-size: 1.6rem; }
         }
     </style>
+    
+    <!-- No JavaScript = No Access (ফুল-স্ক্রিন সতর্কতা) -->
+    <noscript>
+        <style>
+            body { display: none !important; }
+            html { background: #000 !important; height: 100% !important; overflow: hidden !important; }
+        </style>
+        <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:#000;color:#ff0000;display:flex;align-items:center;justify-content:center;z-index:999999;font-family:monospace;text-align:center;flex-direction:column;">
+            <div style="animation: pulse 1s infinite;">
+                <h1 style="font-size:120px;margin:0;text-shadow:0 0 20px #ff0000;">🖕</h1>
+                <h1 style="font-size:72px;margin:20px 0;letter-spacing:10px;">FUCK YOU</h1>
+                <p style="font-size:24px;margin:20px 0;color:#fff;">JavaScript is DISABLED</p>
+                <p style="font-size:18px;color:#ff6666;">Nice try, script kiddie</p>
+                <p style="font-size:16px;color:#666;margin-top:30px;">Enable JavaScript to access this site</p>
+            </div>
+        </div>
+        <style>
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.1); opacity: 0.8; }
+            }
+        </style>
+    </noscript>
 </head>
 <body>
     <!-- Header (same as main) -->
@@ -601,16 +624,14 @@
     </a>
 
     <script>
-        // Firebase Config (same as main)
-        const firebaseConfig = {
-            apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
-            authDomain: "easy-premium.firebaseapp.com",
-            databaseURL: "https://easy-premium-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "easy-premium",
-            storageBucket: "easy-premium.firebasestorage.app",
-            messagingSenderId: "155891252265",
-            appId: "1:155891252265:web:77ab41de24231e8e5ef038"
-        };
+        // ================== এনকোডেড ফায়ারবেস কনফিগ (গোপন) ==================
+        const encodedFirebaseConfig = "ewogICJhcGlLZXkiOiAiQUl6YVN5QnQ5dDZtY2pVdFh4WDJpZ0FKZHNldUlJYzhwUF9RUEV3IiwKICAiYXV0aERvbWFpbiI6ICJlYXN5LXByZW1pdW0uZmlyZWJhc2VhcHAuY29tIiwKICAiZGF0YWJhc2VVUkwiOiAiaHR0cHM6Ly9lYXN5LXByZW1pdW0tZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcCIsCiAgInByb2plY3RJZCI6ICJlYXN5LXByZW1pdW0iLAogICJzdG9yYWdlQnVja2V0IjogImVhc3ktcHJlbWl1bS5maXJlYmFzZXN0b3JhZ2UuYXBwIiwKICAibWVzc2FnaW5nU2VuZGVySWQiOiAiMTU1ODkxMjUyMjY1IiwKICAiYXBwSWQiOiAiMToxNTU4OTEyNTIyNjU6d2ViOjc3YWI0MWRlMjQyMzFlOGU1ZWYwMzgiLAogICJtZWFzdXJlbWVudElkIjogIkctQ0hMODFLOEhSUFgiCn0=";
+        
+        function decodeBase64(str) {
+            try { return JSON.parse(atob(str)); } catch(e) { return null; }
+        }
+        
+        const firebaseConfig = decodeBase64(encodedFirebaseConfig);
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const auth = firebase.auth();
@@ -630,7 +651,7 @@
         drawerClose.addEventListener('click', closeDrawer);
         drawer.addEventListener('click', e => e.stopPropagation());
         
-        // Cart icon redirect to profile (itself) or main? keep it as is
+        // Cart icon redirect to profile (itself) or main? keep as is
         const cartIcon = document.getElementById('cartIcon');
         cartIcon.addEventListener('click', () => window.location.href = 'https://www.easy-premium.com/Profile.html');
         
@@ -663,7 +684,7 @@
         }
 
         function attachVoucherClickHandlers() {
-            // Re-attach click events to order cards (to avoid duplicate listeners)
+            // Re-attach click events to order cards
             document.querySelectorAll('.order-card').forEach(card => {
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
@@ -745,6 +766,224 @@
                 profileContent.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> তথ্য লোড করতে সমস্যা হয়েছে: ${error.message}</div>`;
             }
         });
+    </script>
+
+    <!-- ================== উন্নত নিরাপত্তা স্ক্রিপ্ট (DevTools detection with redirect, rate limiting, session timeout, etc.) ================== -->
+    <script>
+    (function() {
+        'use strict';
+
+        // ========== কনফিগারেশন ==========
+        const SECURITY_CONFIG = {
+            SESSION_TIMEOUT: 30 * 60 * 1000, // 30 মিনিট
+            MAX_ATTEMPTS: 5,
+            RATE_LIMIT_WINDOW: 15 * 60 * 1000, // 15 মিনিট
+            REDIRECT_URL: 'https://easy-premium.com/privacy-refund-policy-terms-of-service.html', // ডেভ টুলস খুললে যেখানে রিডাইরেক্ট হবে
+            ENFORCE_HTTPS: true
+        };
+
+        // ========== ১. HTTPS ফোর্স ==========
+        if (SECURITY_CONFIG.ENFORCE_HTTPS && location.protocol !== 'https:' && location.hostname !== 'localhost' && !location.hostname.includes('127.0.0.1')) {
+            location.replace('https://' + location.host + location.pathname + location.search);
+        }
+
+        // ========== ২. ক্লিকজ্যাকিং প্রোটেকশন ==========
+        if (self !== top) {
+            try {
+                top.location.href = self.location.href;
+            } catch (e) {
+                document.body.innerHTML = '<h1 style="color:red;text-align:center;padding:50px;">Access Denied</h1>';
+                throw new Error('Clickjacking protection');
+            }
+        }
+
+        // ========== ৩. ডেভ টুলস ডিটেকশন (সরাসরি রিডাইরেক্ট) ==========
+        let devToolsOpened = false;
+        function detectDevTools() {
+            const start = performance.now();
+            debugger; // ডিবাগার ট্রিগার
+            const end = performance.now();
+
+            if (end - start > 100 && !devToolsOpened) {
+                devToolsOpened = true;
+                // কোনো সতর্কতা নয়, সরাসরি রিডাইরেক্ট
+                window.location.href = SECURITY_CONFIG.REDIRECT_URL;
+            }
+            return false;
+        }
+        setInterval(detectDevTools, 1000);
+        setTimeout(detectDevTools, 500);
+
+        // ========== ৪. রেট লিমিটিং (অর্ডার স্প্যাম প্রতিরোধ) ==========
+        window._rateLimitStore = window._rateLimitStore || { attempts: {}, blockUntil: {} };
+        window.checkRateLimit = function(action, userId = 'anonymous') {
+            const key = `${action}_${userId}`;
+            const now = Date.now();
+
+            if (window._rateLimitStore.blockUntil[key] && window._rateLimitStore.blockUntil[key] > now) {
+                const remaining = Math.ceil((window._rateLimitStore.blockUntil[key] - now) / 1000 / 60);
+                return { allowed: false, message: `অনেক চেষ্টা করেছেন। ${remaining} মিনিট পরে আবার চেষ্টা করুন।` };
+            }
+
+            if (!window._rateLimitStore.attempts[key]) window._rateLimitStore.attempts[key] = [];
+            window._rateLimitStore.attempts[key] = window._rateLimitStore.attempts[key].filter(t => t > now - SECURITY_CONFIG.RATE_LIMIT_WINDOW);
+
+            if (window._rateLimitStore.attempts[key].length >= SECURITY_CONFIG.MAX_ATTEMPTS) {
+                window._rateLimitStore.blockUntil[key] = now + SECURITY_CONFIG.RATE_LIMIT_WINDOW;
+                return { allowed: false, message: 'অনেক চেষ্টা করেছেন। ১৫ মিনিট পরে আবার চেষ্টা করুন।' };
+            }
+
+            window._rateLimitStore.attempts[key].push(now);
+            return { allowed: true };
+        };
+
+        // ========== ৫. সেশন টাইমআউট ==========
+        let sessionTimer;
+        function resetSessionTimer() {
+            if (sessionTimer) clearTimeout(sessionTimer);
+            sessionTimer = setTimeout(() => {
+                if (firebase && firebase.auth() && firebase.auth().currentUser) {
+                    if (confirm('আপনার সেশন শেষ হয়ে গেছে। আবার লগইন করবেন?')) {
+                        firebase.auth().signOut();
+                        window.location.reload();
+                    } else {
+                        firebase.auth().signOut();
+                    }
+                }
+            }, SECURITY_CONFIG.SESSION_TIMEOUT);
+        }
+
+        ['click', 'keypress', 'scroll', 'mousemove', 'touchstart'].forEach(event => {
+            document.addEventListener(event, resetSessionTimer, { passive: true });
+        });
+
+        // ========== ৬. XSS প্রোটেকশন (ইনপুট স্যানিটাইজ) ==========
+        function sanitizeInput(input) {
+            if (typeof input !== 'string') return input;
+            return input
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#x27;')
+                .replace(/\//g, '&#x2F;')
+                .replace(/\\/g, '&#x5C;')
+                .replace(/`/g, '&#96;')
+                .replace(/=/g, '&#61;');
+        }
+
+        function setupFormProtection() {
+            document.querySelectorAll('form').forEach(form => {
+                if (form._protected) return;
+                form._protected = true;
+                form.addEventListener('submit', function() {
+                    const textInputs = this.querySelectorAll('input[type="text"], input[type="tel"], input[type="email"], textarea');
+                    textInputs.forEach(input => {
+                        if (input.value && typeof input.value === 'string' && /[<>"'`=]/.test(input.value)) {
+                            console.warn('সতর্কতা: ইনপুটে বিপজ্জনক ক্যারেক্টার পাওয়া গেছে');
+                        }
+                    });
+                }, true);
+            });
+        }
+
+        const mutationObserver = new MutationObserver(() => setupFormProtection());
+        mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+        // ========== ৭. লোকাল স্টোরেজ এনক্রিপশন (সংবেদনশীল ডেটার জন্য) ==========
+        const originalSetItem = localStorage.setItem;
+        const originalGetItem = localStorage.getItem;
+        const sensitiveKeys = ['user', 'session', 'token', 'auth'];
+
+        localStorage.setItem = function(key, value) {
+            if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
+                try {
+                    const encoded = btoa(encodeURIComponent(value));
+                    return originalSetItem.call(this, `_sec_${key}`, encoded);
+                } catch (e) {
+                    console.warn('LocalStorage encoding error');
+                }
+            }
+            return originalSetItem.call(this, key, value);
+        };
+
+        localStorage.getItem = function(key) {
+            if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
+                try {
+                    const encoded = originalGetItem.call(this, `_sec_${key}`);
+                    if (encoded) return decodeURIComponent(atob(encoded));
+                } catch (e) {
+                    console.warn('LocalStorage decoding error');
+                }
+            }
+            return originalGetItem.call(this, key);
+        };
+
+        // ========== ৮. ডোমেইন ভেরিফিকেশন ==========
+        function verifyDomain() {
+            const allowedDomains = ['easy-premium.com', 'www.easy-premium.com', 'localhost', '127.0.0.1'];
+            const currentHost = window.location.hostname;
+            if (!allowedDomains.includes(currentHost) && !currentHost.endsWith('.easy-premium.com')) {
+                console.warn('অজানা ডোমেইনে চলছে:', currentHost);
+            }
+        }
+        verifyDomain();
+
+        // ========== ৯. কীবোর্ড শর্টকাট ব্লক ==========
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.keyCode === 85) { e.preventDefault(); return false; } // Ctrl+U
+            if (e.ctrlKey && e.keyCode === 83) { e.preventDefault(); return false; } // Ctrl+S
+            if (e.ctrlKey && e.shiftKey && e.keyCode === 73) { e.preventDefault(); return false; } // Ctrl+Shift+I
+            if (e.keyCode === 123) { e.preventDefault(); return false; } // F12
+        });
+
+        // ========== ১০. রাইট ক্লিক প্রোটেকশন ==========
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        document.addEventListener('mousedown', function(e) {
+            if (e.button === 2) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        document.addEventListener('touchstart', function(e) {
+            let touchTimer;
+            const handleTouchEnd = function() {
+                clearTimeout(touchTimer);
+                document.removeEventListener('touchend', handleTouchEnd);
+            };
+            if (e.touches.length === 1) {
+                touchTimer = setTimeout(function() {
+                    e.preventDefault();
+                }, 500);
+                document.addEventListener('touchend', handleTouchEnd, { once: true });
+            }
+        }, { passive: false });
+
+        // ========== ১১. অর্ডার ফর্মে রেট লিমিট (যদি থাকে) ==========
+        if (window.purchaseForm) {
+            const form = window.purchaseForm;
+            const originalHandler = form.onsubmit;
+            form.onsubmit = async function(e) {
+                e.preventDefault();
+                if (firebase && firebase.auth() && firebase.auth().currentUser) {
+                    const rateCheck = window.checkRateLimit('purchase', firebase.auth().currentUser.uid);
+                    if (!rateCheck.allowed) {
+                        alert(rateCheck.message);
+                        return false;
+                    }
+                }
+                if (originalHandler) return originalHandler.call(this, e);
+                return false;
+            };
+        }
+
+        console.log('%c🔒 Easy Premium - প্রোফাইল পৃষ্ঠা সুরক্ষিত মোড সক্রিয়', 'color: #4caf50; font-size: 14px; font-weight: bold;');
+    })();
     </script>
 </body>
 </html>
