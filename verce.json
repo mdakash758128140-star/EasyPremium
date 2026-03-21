@@ -1,9 +1,23 @@
 {
-  "redirects": [
+  "version": 2,
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "routes": [
     {
-      "source": "^/(?!api/|AccountDelete\\.html|Admin1\\.html|Admin2\\.html|Pay\\.html|Shalil\\.html|admin\\.html|googlefacccb74cd9982733\\.html|index\\.html|privacy-refund-policy-terms-of-service\\.html|sitemap\\.xml|virtual-mastercard-bd\\.html).+$",
-      "destination": "https://www.easy-premium.com",
-      "permanent": true
+      "src": "/api/(.*)",
+      "dest": "/api/$1",
+      "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "https://www.easy-premium.com",
+      "status": 308,
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      }
     }
   ]
 }
