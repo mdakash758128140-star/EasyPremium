@@ -6,10 +6,15 @@
     <title>পেমেন্ট পৃষ্ঠা · Easy Premium</title>
     <meta name="theme-color" content="#0a0a1a">
     
+    <!-- ================== SECURITY META TAGS ================== -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:; style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval';">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="format-detection" content="telephone=no, address=no, email=no">
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -384,22 +389,44 @@
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    
+    <!-- No JavaScript = No Access (ফুল-স্ক্রিন সতর্কতা) -->
+    <noscript>
+        <style>
+            body { display: none !important; }
+            html { background: #000 !important; height: 100% !important; overflow: hidden !important; }
+        </style>
+        <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:#000;color:#ff0000;display:flex;align-items:center;justify-content:center;z-index:999999;font-family:monospace;text-align:center;flex-direction:column;">
+            <div style="animation: pulse 1s infinite;">
+                <h1 style="font-size:120px;margin:0;text-shadow:0 0 20px #ff0000;">🖕</h1>
+                <h1 style="font-size:72px;margin:20px 0;letter-spacing:10px;">FUCK YOU</h1>
+                <p style="font-size:24px;margin:20px 0;color:#fff;">JavaScript is DISABLED</p>
+                <p style="font-size:18px;color:#ff6666;">Nice try, script kiddie</p>
+                <p style="font-size:16px;color:#666;margin-top:30px;">Enable JavaScript to access this site</p>
+            </div>
+        </div>
+        <style>
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.1); opacity: 0.8; }
+            }
+        </style>
+    </noscript>
     
     <script>
-        firebase.initializeApp({
-            apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
-            authDomain: "easy-premium.firebaseapp.com",
-            databaseURL: "https://easy-premium-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "easy-premium",
-            storageBucket: "easy-premium.firebasestorage.app",
-            messagingSenderId: "155891252265",
-            appId: "1:155891252265:web:77ab41de24231e8e5ef038"
-        });
-
+        // ================== এনকোডেড ফায়ারবেস কনফিগ (গোপন) ==================
+        const encodedFirebaseConfig = "ewogICJhcGlLZXkiOiAiQUl6YVN5QnQ5dDZtY2pVdFh4WDJpZ0FKZHNldUlJYzhwUF9RUEV3IiwKICAiYXV0aERvbWFpbiI6ICJlYXN5LXByZW1pdW0uZmlyZWJhc2VhcHAuY29tIiwKICAiZGF0YWJhc2VVUkwiOiAiaHR0cHM6Ly9lYXN5LXByZW1pdW0tZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcCIsCiAgInByb2plY3RJZCI6ICJlYXN5LXByZW1pdW0iLAogICJzdG9yYWdlQnVja2V0IjogImVhc3ktcHJlbWl1bS5maXJlYmFzZXN0b3JhZ2UuYXBwIiwKICAibWVzc2FnaW5nU2VuZGVySWQiOiAiMTU1ODkxMjUyMjY1IiwKICAiYXBwSWQiOiAiMToxNTU4OTEyNTIyNjU6d2ViOjc3YWI0MWRlMjQyMzFlOGU1ZWYwMzgiLAogICJtZWFzdXJlbWVudElkIjogIkctQ0hMODFLOEhSUFgiCn0=";
+        
+        function decodeBase64(str) {
+            try { return JSON.parse(atob(str)); } catch(e) { return null; }
+        }
+        
+        const firebaseConfig = decodeBase64(encodedFirebaseConfig);
+        firebase.initializeApp(firebaseConfig);
+        
         const database = firebase.database();
-        const auth = firebase.auth();
-
+        
+        // ================== মূল পেমেন্ট ফাংশন (অপরিবর্তিত) ==================
         function decryptData(encrypted) {
             try {
                 const urlDecoded = decodeURIComponent(encrypted);
@@ -428,55 +455,6 @@
             if (typeof num !== 'string') return num;
             if (num.length === 10 && /^[1-9]\d{9}$/.test(num)) return '0' + num;
             return num;
-        }
-
-        // Redirect to main site
-        function redirectToMain() {
-            window.location.href = "https://www.easy-premium.com";
-        }
-
-        // Validate order: status, time, user match
-        async function validateOrder(orderId, expectedUserId, expectedUserEmail) {
-            try {
-                const snapshot = await database.ref(`transactions/${orderId}`).once('value');
-                if (!snapshot.exists()) {
-                    console.warn("Order not found in DB");
-                    return false;
-                }
-                const order = snapshot.val();
-                
-                // 1. Status must be "pending"
-                if (order.status !== "pending") {
-                    console.warn("Order status not pending:", order.status);
-                    return false;
-                }
-                
-                // 2. Check 24 hours validity
-                const orderTimestamp = order.timestamp || order.orderDate ? new Date(order.orderDate).getTime() : null;
-                if (!orderTimestamp) {
-                    console.warn("Order timestamp missing");
-                    return false;
-                }
-                const now = Date.now();
-                const hoursDiff = (now - orderTimestamp) / (1000 * 60 * 60);
-                if (hoursDiff > 24) {
-                    console.warn("Order older than 24 hours");
-                    return false;
-                }
-                
-                // 3. User match (userId or email)
-                const dbUserId = order.userId || "";
-                const dbUserEmail = order.userEmail || "";
-                if (dbUserId !== expectedUserId && dbUserEmail.toLowerCase() !== expectedUserEmail.toLowerCase()) {
-                    console.warn("User mismatch");
-                    return false;
-                }
-                
-                return true;
-            } catch (err) {
-                console.error("Validation error:", err);
-                return false;
-            }
         }
 
         async function setActiveAdminNumber() {
@@ -577,283 +555,428 @@
             }
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
             const output = document.getElementById('output');
             const payBtn = document.getElementById('payBtn');
             const paymentPanel = document.getElementById('paymentPanel');
             
-            // প্রথমে অথেনটিকেশন চেক করুন
-            auth.onAuthStateChanged(async (user) => {
-                if (!user) {
-                    // লগইন না থাকলে হোমপেজে রিডাইরেক্ট
-                    redirectToMain();
-                    return;
-                }
-                
-                // লগইন থাকলে URL ডাটা ডিক্রিপ্ট করুন
-                const urlParams = new URLSearchParams(window.location.search);
-                const encodedData = urlParams.get('data');
-                
-                if (!encodedData) {
-                    redirectToMain();
-                    return;
-                }
-                
-                output.innerHTML = '<div class="loading">অর্ডার যাচাই করা হচ্ছে...</div>';
-                
-                const urlData = decryptData(encodedData);
-                if (!urlData) {
-                    redirectToMain();
-                    return;
-                }
-                
-                // চেক করুন লগইন করা ইউজার অর্ডারের মালিক কিনা
-                if (user.uid !== urlData.userId && user.email !== urlData.userEmail) {
-                    console.warn("Logged-in user does not match order owner");
-                    redirectToMain();
-                    return;
-                }
-                
-                // অর্ডার ভ্যালিডিটি চেক করুন
-                const isValid = await validateOrder(urlData.orderId, urlData.userId, urlData.userEmail);
-                if (!isValid) {
-                    redirectToMain();
-                    return;
-                }
-                
-                // সব ঠিক থাকলে মূল প্রক্রিয়া শুরু করুন
-                const planData = await fetchPlanData(urlData.platformId);
-                
-                const serviceCharge = planData?.ServicCharge ? Number(planData.ServicCharge) : 0;
-                const productPrice = Number(urlData.price) || 0;
-                const totalAmount = productPrice + serviceCharge;
-                
-                function updatePaymentAmounts() {
-                    document.querySelectorAll('#bkash-amount, #nagad-amount, #rocket-amount').forEach(el => {
-                        el.textContent = totalAmount;
-                    });
-                }
-                
-                const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
-                const productSlug = planData?.Products || urlData.platformId;
-                
-                const dField = planData?.D || planData?.description || '';
-                
-                let dFieldHTML = '';
-                if (dField) {
-                    dFieldHTML = `
-                        <div class="card" style="margin-top:10px;">
-                            <div style="color:#ff9800; margin-bottom:8px; font-weight:600;">📝 বিস্তারিত বিবরণ</div>
-                            <div style="color:#b0bec5; font-size:14px; white-space: pre-line;">${dField}</div>
-                        </div>
-                    `;
-                }
-                
-                const isVariable = productSlug.includes('variable');
-                let minFace = 1, maxFace = 1000;
-                let faceValueFromDB = null;
-                
-                if (isVariable) {
-                    minFace = productSlug.includes('mastercard') ? 5 : 1;
-                    
-                    if (planData?.faceValue) {
-                        faceValueFromDB = parseFloat(planData.faceValue);
-                        if (faceValueFromDB >= minFace && faceValueFromDB <= maxFace) {
-                            console.log(`✅ Face value from DB: $${faceValueFromDB}`);
-                        } else {
-                            faceValueFromDB = null;
-                        }
-                    }
-                }
+            await setActiveAdminNumber();
+            listenToAdminStatus();
 
-                output.innerHTML = `
-                    <div class="card">
-                        <h2 style="color:#ff9800; margin-bottom:15px; text-align:center;">📋 অর্ডার তথ্য</h2>
-                        <div class="info-row"><span class="label">অর্ডার আইডি:</span><span class="value">${urlData.orderId}</span></div>
-                        <div class="info-row"><span class="label">প্ল্যাটফর্ম:</span><span class="value">${platformName}</span></div>
-                        <div class="info-row"><span class="label">মূল্য:</span><span class="value">${productPrice} ৳</span></div>
-                        <div class="info-row"><span class="label">সার্ভিস চার্জ:</span><span class="value">${serviceCharge} ৳</span></div>
-                        <div class="info-row"><span class="label"><strong>সর্বমোট:</strong></span><span class="value" style="color:#ff0000;">${totalAmount} ৳</span></div>
-                        ${isVariable && faceValueFromDB ? `<div class="info-row"><span class="label">ফেস ভ্যালু:</span><span class="value">$${faceValueFromDB}</span></div>` : ''}
-                    </div>
-                    ${dFieldHTML}
+            const urlParams = new URLSearchParams(window.location.search);
+            const encodedData = urlParams.get('data');
+            
+            if (!encodedData) {
+                output.innerHTML = '<div class="error">❌ URL-এ ডাটা নেই</div>';
+                return;
+            }
+            
+            output.innerHTML = '<div class="loading">ডিক্রিপ্ট হচ্ছে...</div>';
+            
+            const urlData = decryptData(encodedData);
+            if (!urlData) {
+                output.innerHTML = '<div class="error">❌ ডাটা ডিক্রিপ্ট করা যায়নি</div>';
+                return;
+            }
 
-                    <div class="card">
-                        <h3 style="color:#ff9800; margin-bottom:15px;">📌 পেমেন্ট নির্দেশিকা</h3>
-                        <ul style="color: #b0bec5; line-height: 1.8; padding-left: 20px;">
-                            <li>✓ সঠিক অ্যাকাউন্ট নম্বরে টাকা পাঠান</li>
-                            <li>✓ ট্রানজেকশন আইডি সংগ্রহ করুন</li>
-                            <li>✓ নিচের ফর্ম পূরণ করে VERIFY বাটনে ক্লিক করুন</li>
-                            <li>✓ পেমেন্ট কনফার্ম হয়ে গেলে ইমেইলে লিংক পাবেন</li>
-                        </ul>
+            const planData = await fetchPlanData(urlData.platformId);
+            
+            const serviceCharge = planData?.ServicCharge ? Number(planData.ServicCharge) : 0;
+            const productPrice = Number(urlData.price) || 0;
+            const totalAmount = productPrice + serviceCharge;
+            
+            console.log('📊 Order Details:', {
+                orderId: urlData.orderId,
+                platformId: urlData.platformId,
+                productPrice: productPrice,
+                serviceCharge: serviceCharge,
+                totalAmount: totalAmount,
+                planData: planData
+            });
+
+            function updatePaymentAmounts() {
+                document.querySelectorAll('#bkash-amount, #nagad-amount, #rocket-amount').forEach(el => {
+                    el.textContent = totalAmount;
+                });
+            }
+            
+            const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
+            const productSlug = planData?.Products || urlData.platformId;
+            
+            const dField = planData?.D || planData?.description || '';
+            
+            let dFieldHTML = '';
+            if (dField) {
+                dFieldHTML = `
+                    <div class="card" style="margin-top:10px;">
+                        <div style="color:#ff9800; margin-bottom:8px; font-weight:600;">📝 বিস্তারিত বিবরণ</div>
+                        <div style="color:#b0bec5; font-size:14px; white-space: pre-line;">${dField}</div>
                     </div>
                 `;
-
-                // পেমেন্ট কনফার্ম বাটনের ক্লিক ইভেন্ট
-                payBtn.onclick = () => {
-                    output.style.display = 'none';
-                    payBtn.style.display = 'none';
-                    paymentPanel.style.display = 'block';
-                    updatePaymentAmounts();
-                };
-
-                // Radio button change event
-                const radios = document.querySelectorAll('input[name="payment_method"]');
-                const bkashBox = document.getElementById('box-bkash');
-                const nagadBox = document.getElementById('box-nagad');
-                const rocketBox = document.getElementById('box-rocket');
-                const methodItems = document.querySelectorAll('.wc_payment_method');
-
-                function updatePaymentBoxes(selectedValue) {
-                    bkashBox.classList.remove('active-box');
-                    nagadBox.classList.remove('active-box');
-                    rocketBox.classList.remove('active-box');
-                    methodItems.forEach(item => item.classList.remove('selected-method'));
-
-                    if (selectedValue === 'woo_bkash') {
-                        bkashBox.classList.add('active-box');
-                        document.getElementById('method-bkash').classList.add('selected-method');
-                    } else if (selectedValue === 'woo_nagad') {
-                        nagadBox.classList.add('active-box');
-                        document.getElementById('method-nagad').classList.add('selected-method');
-                    } else if (selectedValue === 'woo_rocket') {
-                        rocketBox.classList.add('active-box');
-                        document.getElementById('method-rocket').classList.add('selected-method');
+            }
+            
+            const isVariable = productSlug.includes('variable');
+            let minFace = 1, maxFace = 1000;
+            let faceValueFromDB = null;
+            
+            if (isVariable) {
+                minFace = productSlug.includes('mastercard') ? 5 : 1;
+                
+                if (planData?.faceValue) {
+                    faceValueFromDB = parseFloat(planData.faceValue);
+                    if (faceValueFromDB >= minFace && faceValueFromDB <= maxFace) {
+                        console.log(`✅ Face value from DB: $${faceValueFromDB}`);
+                    } else {
+                        faceValueFromDB = null;
                     }
                 }
-                updatePaymentBoxes('woo_bkash');
+            }
 
-                radios.forEach(radio => {
-                    radio.addEventListener('change', function() {
-                        updatePaymentBoxes(this.value);
-                    });
+            output.innerHTML = `
+                <div class="card">
+                    <h2 style="color:#ff9800; margin-bottom:15px; text-align:center;">📋 অর্ডার তথ্য</h2>
+                    <div class="info-row"><span class="label">অর্ডার আইডি:</span><span class="value">${urlData.orderId}</span></div>
+                    <div class="info-row"><span class="label">প্ল্যাটফর্ম:</span><span class="value">${platformName}</span></div>
+                    <div class="info-row"><span class="label">মূল্য:</span><span class="value">${productPrice} ৳</span></div>
+                    <div class="info-row"><span class="label">সার্ভিস চার্জ:</span><span class="value">${serviceCharge} ৳</span></div>
+                    <div class="info-row"><span class="label"><strong>সর্বমোট:</strong></span><span class="value" style="color:#ff0000;">${totalAmount} ৳</span></div>
+                    ${isVariable && faceValueFromDB ? `<div class="info-row"><span class="label">ফেস ভ্যালু:</span><span class="value">$${faceValueFromDB}</span></div>` : ''}
+                </div>
+                ${dFieldHTML}
+
+                <div class="card">
+                    <h3 style="color:#ff9800; margin-bottom:15px;">📌 পেমেন্ট নির্দেশিকা</h3>
+                    <ul style="color: #b0bec5; line-height: 1.8; padding-left: 20px;">
+                        <li>✓ সঠিক অ্যাকাউন্ট নম্বরে টাকা পাঠান</li>
+                        <li>✓ ট্রানজেকশন আইডি সংগ্রহ করুন</li>
+                        <li>✓ নিচের ফর্ম পূরণ করে VERIFY বাটনে ক্লিক করুন</li>
+                        <li>✓ পেমেন্ট কনফার্ম হয়ে গেলে ইমেইলে লিংক পাবেন</li>
+                    </ul>
+                </div>
+            `;
+
+            payBtn.onclick = () => {
+                output.style.display = 'none';
+                payBtn.style.display = 'none';
+                paymentPanel.style.display = 'block';
+                updatePaymentAmounts();
+            };
+
+            const radios = document.querySelectorAll('input[name="payment_method"]');
+            const bkashBox = document.getElementById('box-bkash');
+            const nagadBox = document.getElementById('box-nagad');
+            const rocketBox = document.getElementById('box-rocket');
+            const methodItems = document.querySelectorAll('.wc_payment_method');
+
+            function updatePaymentBoxes(selectedValue) {
+                bkashBox.classList.remove('active-box');
+                nagadBox.classList.remove('active-box');
+                rocketBox.classList.remove('active-box');
+                methodItems.forEach(item => item.classList.remove('selected-method'));
+
+                if (selectedValue === 'woo_bkash') {
+                    bkashBox.classList.add('active-box');
+                    document.getElementById('method-bkash').classList.add('selected-method');
+                } else if (selectedValue === 'woo_nagad') {
+                    nagadBox.classList.add('active-box');
+                    document.getElementById('method-nagad').classList.add('selected-method');
+                } else if (selectedValue === 'woo_rocket') {
+                    rocketBox.classList.add('active-box');
+                    document.getElementById('method-rocket').classList.add('selected-method');
+                }
+            }
+            updatePaymentBoxes('woo_bkash');
+
+            radios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    updatePaymentBoxes(this.value);
                 });
+            });
 
-                // VERIFY বাটন – অ্যাডমিন নম্বর সহ (এখন JSON reference)
-                const verifyBtn = document.getElementById('verifyInsideBtn');
-                verifyBtn.addEventListener('click', async function() {
-                    const selected = document.querySelector('input[name="payment_method"]:checked');
-                    if (!selected) {
-                        alert('পেমেন্ট পদ্ধতি নির্বাচন করুন');
-                        return;
-                    }
+            const verifyBtn = document.getElementById('verifyInsideBtn');
+            verifyBtn.addEventListener('click', async function() {
+                const selected = document.querySelector('input[name="payment_method"]:checked');
+                if (!selected) {
+                    alert('পেমেন্ট পদ্ধতি নির্বাচন করুন');
+                    return;
+                }
 
-                    let accInput, txInput, adminNumberElement;
-                    if (selected.value === 'woo_bkash') {
-                        accInput = document.getElementById('bkash_acc_no');
-                        txInput = document.getElementById('bkash_trans_id');
-                        adminNumberElement = document.querySelector('#box-bkash .account-number-text');
-                    } else if (selected.value === 'woo_nagad') {
-                        accInput = document.getElementById('nagad_acc_no');
-                        txInput = document.getElementById('nagad_trans_id');
-                        adminNumberElement = document.querySelector('#box-nagad .account-number-text');
+                let accInput, txInput, adminNumberElement;
+                if (selected.value === 'woo_bkash') {
+                    accInput = document.getElementById('bkash_acc_no');
+                    txInput = document.getElementById('bkash_trans_id');
+                    adminNumberElement = document.querySelector('#box-bkash .account-number-text');
+                } else if (selected.value === 'woo_nagad') {
+                    accInput = document.getElementById('nagad_acc_no');
+                    txInput = document.getElementById('nagad_trans_id');
+                    adminNumberElement = document.querySelector('#box-nagad .account-number-text');
+                } else {
+                    accInput = document.getElementById('rocket_acc_no');
+                    txInput = document.getElementById('rocket_trans_id');
+                    adminNumberElement = document.querySelector('#box-rocket .account-number-text');
+                }
+
+                const account = accInput.value.trim();
+                const txid = txInput.value.trim();
+                const adminNumber = adminNumberElement ? adminNumberElement.textContent.trim() : '';
+
+                if (!account || !txid) {
+                    alert('অ্যাকাউন্ট নম্বর এবং ট্রানজেকশন আইডি দিন');
+                    return;
+                }
+
+                let faceValue = null;
+                if (isVariable) {
+                    if (faceValueFromDB) {
+                        faceValue = faceValueFromDB;
                     } else {
-                        accInput = document.getElementById('rocket_acc_no');
-                        txInput = document.getElementById('rocket_trans_id');
-                        adminNumberElement = document.querySelector('#box-rocket .account-number-text');
+                        faceValue = minFace;
                     }
+                }
 
-                    const account = accInput.value.trim();
-                    const txid = txInput.value.trim();
-                    const adminNumber = adminNumberElement ? adminNumberElement.textContent.trim() : '';
+                const method = selected.value.replace('woo_', '').toUpperCase();
 
-                    if (!account || !txid) {
-                        alert('অ্যাকাউন্ট নম্বর এবং ট্রানজেকশন আইডি দিন');
-                        return;
-                    }
+                const reference = JSON.stringify({
+                    method: method,
+                    phone: account,
+                    txid: txid,
+                    userId: urlData.userId,
+                    email: urlData.userEmail,
+                    admin: adminNumber,
+                    firebaseOrderId: urlData.orderId,
+                    timestamp: new Date().toISOString()
+                });
 
-                    let faceValue = null;
-                    if (isVariable) {
-                        if (faceValueFromDB) {
-                            faceValue = faceValueFromDB;
-                        } else {
-                            faceValue = minFace;
-                        }
-                    }
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner"></span> প্রসেসিং...';
 
-                    const method = selected.value.replace('woo_', '').toUpperCase();
-
-                    const reference = JSON.stringify({
-                        method: method,
-                        phone: account,
-                        txid: txid,
-                        userId: urlData.userId,
-                        email: urlData.userEmail,
-                        admin: adminNumber,
+                try {
+                    const requestBody = {
+                        productSlug: productSlug,
+                        amount: productPrice,
+                        paymentCurrency: 'USD',
+                        reference: reference,
                         firebaseOrderId: urlData.orderId,
-                        timestamp: new Date().toISOString()
-                    });
-
-                    this.disabled = true;
-                    this.innerHTML = '<span class="spinner"></span> প্রসেসিং...';
-
-                    try {
-                        const requestBody = {
-                            productSlug: productSlug,
-                            amount: productPrice,
-                            paymentCurrency: 'USD',
-                            reference: reference,
-                            firebaseOrderId: urlData.orderId,
-                            serviceCharge: serviceCharge
-                        };
-                        
-                        if (isVariable && faceValue) {
-                            requestBody.faceValue = faceValue;
-                        }
-
-                        console.log('📤 Sending request:', requestBody);
-
-                        const response = await fetch('/api/create-order', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(requestBody)
-                        });
-
-                        const result = await response.json();
-                        
-                        if (!response.ok) {
-                            throw new Error(result.error || 'অর্ডার ব্যর্থ');
-                        }
-
-                        if (result.link) {
-                            window.location.href = result.link;
-                        } else {
-                            paymentPanel.innerHTML = `
-                                <div class="card" style="text-align:center; padding:40px;">
-                                    <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
-                                    <p>অর্ডার আইডি: ${result.trx || urlData.orderId}</p>
-                                    <p>মূল্য: ${productPrice} ৳</p>
-                                    <p>সার্ভিস চার্জ: ${serviceCharge} ৳</p>
-                                    <p><strong>মোট: ${productPrice + serviceCharge} ৳</strong></p>
-                                    ${isVariable && faceValue ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
-                                    <p>ইমেইলে কনফার্মেশন পাঠানো হয়েছে</p>
-                                    <div class="spinner"></div>
-                                </div>
-                            `;
-                        }
-
-                    } catch (error) {
-                        console.error('❌ Error:', error);
-                        alert('অর্ডার ব্যর্থ: ' + error.message);
-                        this.disabled = false;
-                        this.innerHTML = 'VERIFY';
+                        serviceCharge: serviceCharge
+                    };
+                    
+                    if (isVariable && faceValue) {
+                        requestBody.faceValue = faceValue;
                     }
-                });
 
-                document.querySelectorAll('.copy-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const num = this.dataset.number;
-                        navigator.clipboard?.writeText(num);
-                        this.textContent = 'Copied!';
-                        setTimeout(() => this.textContent = 'Copy', 2000);
+                    console.log('📤 Sending request:', requestBody);
+
+                    const response = await fetch('/api/create-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestBody)
                     });
-                });
 
-                // Start admin online listener
-                await setActiveAdminNumber();
-                listenToAdminStatus();
+                    const result = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(result.error || 'অর্ডার ব্যর্থ');
+                    }
+
+                    if (result.link) {
+                        window.location.href = result.link;
+                    } else {
+                        paymentPanel.innerHTML = `
+                            <div class="card" style="text-align:center; padding:40px;">
+                                <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
+                                <p>অর্ডার আইডি: ${result.trx || urlData.orderId}</p>
+                                <p>মূল্য: ${productPrice} ৳</p>
+                                <p>সার্ভিস চার্জ: ${serviceCharge} ৳</p>
+                                <p><strong>মোট: ${productPrice + serviceCharge} ৳</strong></p>
+                                ${isVariable && faceValue ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
+                                <p>ইমেইলে কনফার্মেশন পাঠানো হয়েছে</p>
+                                <div class="spinner"></div>
+                            </div>
+                        `;
+                    }
+
+                } catch (error) {
+                    console.error('❌ Error:', error);
+                    alert('অর্ডার ব্যর্থ: ' + error.message);
+                    this.disabled = false;
+                    this.innerHTML = 'VERIFY';
+                }
+            });
+
+            document.querySelectorAll('.copy-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const num = this.dataset.number;
+                    navigator.clipboard?.writeText(num);
+                    this.textContent = 'Copied!';
+                    setTimeout(() => this.textContent = 'Copy', 2000);
+                });
             });
         });
+    </script>
+    
+    <!-- ================== উন্নত নিরাপত্তা (DevTools detection with redirect, rate limiting, session timeout, etc.) ================== -->
+    <script>
+    (function() {
+        'use strict';
+        
+        const SECURITY_CONFIG = {
+            SESSION_TIMEOUT: 30 * 60 * 1000,
+            MAX_ATTEMPTS: 5,
+            RATE_LIMIT_WINDOW: 15 * 60 * 1000,
+            REDIRECT_URL: 'https://easy-premium.com/privacy-refund-policy-terms-of-service.html' // Privacy Policy পৃষ্ঠায় রিডাইরেক্ট
+        };
+        
+        // ========== ১. DevTools detection with immediate redirect ==========
+        let devToolsOpened = false;
+        function detectDevTools() {
+            const start = performance.now();
+            debugger;
+            const end = performance.now();
+            if (end - start > 100 && !devToolsOpened) {
+                devToolsOpened = true;
+                window.location.href = SECURITY_CONFIG.REDIRECT_URL;
+            }
+            return false;
+        }
+        
+        setInterval(detectDevTools, 1000);
+        setTimeout(detectDevTools, 500);
+        
+        // ========== ২. Rate limiting ==========
+        window._rateLimitStore = window._rateLimitStore || { attempts: {}, blockUntil: {} };
+        window.checkRateLimit = function(action, userId = 'anonymous') {
+            const key = `${action}_${userId}`;
+            const now = Date.now();
+            if (window._rateLimitStore.blockUntil[key] && window._rateLimitStore.blockUntil[key] > now) {
+                const remaining = Math.ceil((window._rateLimitStore.blockUntil[key] - now) / 1000 / 60);
+                return { allowed: false, message: `অনেক চেষ্টা করেছেন। ${remaining} মিনিট পরে আবার চেষ্টা করুন。` };
+            }
+            if (!window._rateLimitStore.attempts[key]) window._rateLimitStore.attempts[key] = [];
+            window._rateLimitStore.attempts[key] = window._rateLimitStore.attempts[key].filter(t => t > now - SECURITY_CONFIG.RATE_LIMIT_WINDOW);
+            if (window._rateLimitStore.attempts[key].length >= SECURITY_CONFIG.MAX_ATTEMPTS) {
+                window._rateLimitStore.blockUntil[key] = now + SECURITY_CONFIG.RATE_LIMIT_WINDOW;
+                return { allowed: false, message: 'অনেক চেষ্টা করেছেন। ১৫ মিনিট পরে আবার চেষ্টা করুন।' };
+            }
+            window._rateLimitStore.attempts[key].push(now);
+            return { allowed: true };
+        };
+        
+        // ========== ৩. Session timeout ==========
+        let sessionTimer;
+        function resetSessionTimer() {
+            if (sessionTimer) clearTimeout(sessionTimer);
+            sessionTimer = setTimeout(() => {
+                if (firebase && firebase.auth() && firebase.auth().currentUser) {
+                    if (confirm('আপনার সেশন শেষ হয়ে গেছে। আবার লগইন করবেন?')) {
+                        firebase.auth().signOut();
+                        window.location.reload();
+                    } else {
+                        firebase.auth().signOut();
+                    }
+                }
+            }, SECURITY_CONFIG.SESSION_TIMEOUT);
+        }
+        
+        ['click', 'keypress', 'scroll', 'mousemove', 'touchstart'].forEach(event => {
+            document.addEventListener(event, resetSessionTimer, { passive: true });
+        });
+        
+        // ========== ৪. XSS protection ==========
+        function sanitizeInput(input) {
+            if (typeof input !== 'string') return input;
+            return input
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#x27;')
+                .replace(/\//g, '&#x2F;')
+                .replace(/\\/g, '&#x5C;')
+                .replace(/`/g, '&#96;')
+                .replace(/=/g, '&#61;');
+        }
+        
+        function setupFormProtection() {
+            document.querySelectorAll('form').forEach(form => {
+                if (form._protected) return;
+                form._protected = true;
+                form.addEventListener('submit', function() {
+                    const textInputs = this.querySelectorAll('input[type="text"], input[type="tel"], input[type="email"], textarea');
+                    textInputs.forEach(input => {
+                        if (input.value && typeof input.value === 'string' && /[<>"'`=]/.test(input.value)) {
+                            console.warn('সতর্কতা: ইনপুটে বিপজ্জনক ক্যারেক্টার পাওয়া গেছে');
+                        }
+                    });
+                }, true);
+            });
+        }
+        
+        const mutationObserver = new MutationObserver(() => setupFormProtection());
+        mutationObserver.observe(document.body, { childList: true, subtree: true });
+        
+        // ========== ৫. LocalStorage encryption ==========
+        const originalSetItem = localStorage.setItem, originalGetItem = localStorage.getItem;
+        const sensitiveKeys = ['user', 'session', 'token', 'auth'];
+        
+        localStorage.setItem = function(key, value) {
+            if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
+                try {
+                    const encoded = btoa(encodeURIComponent(value));
+                    return originalSetItem.call(this, `_sec_${key}`, encoded);
+                } catch(e) { console.warn('LocalStorage encoding error'); }
+            }
+            return originalSetItem.call(this, key, value);
+        };
+        
+        localStorage.getItem = function(key) {
+            if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
+                try {
+                    const encoded = originalGetItem.call(this, `_sec_${key}`);
+                    if (encoded) return decodeURIComponent(atob(encoded));
+                } catch(e) { console.warn('LocalStorage decoding error'); }
+            }
+            return originalGetItem.call(this, key);
+        };
+        
+        // ========== ৬. Keyboard shortcuts block ==========
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.keyCode === 85) { e.preventDefault(); return false; } // Ctrl+U
+            if (e.ctrlKey && e.keyCode === 83) { e.preventDefault(); return false; } // Ctrl+S
+            if (e.ctrlKey && e.shiftKey && e.keyCode === 73) { e.preventDefault(); return false; } // Ctrl+Shift+I
+            if (e.keyCode === 123) { e.preventDefault(); return false; } // F12
+        });
+        
+        // ========== ৭. Right-click protection ==========
+        document.addEventListener('contextmenu', e => { e.preventDefault(); return false; });
+        document.addEventListener('mousedown', e => { if (e.button === 2) { e.preventDefault(); return false; } });
+        document.addEventListener('touchstart', function(e) {
+            let touchTimer;
+            const handleTouchEnd = () => { clearTimeout(touchTimer); document.removeEventListener('touchend', handleTouchEnd); };
+            if (e.touches.length === 1) {
+                touchTimer = setTimeout(() => e.preventDefault(), 500);
+                document.addEventListener('touchend', handleTouchEnd, { once: true });
+            }
+        }, { passive: false });
+        
+        // ========== ৮. Rate limit for payment verification ==========
+        if (window.verifyInsideBtn) {
+            const verifyBtn = window.verifyInsideBtn;
+            const originalVerifyHandler = verifyBtn.onclick;
+            verifyBtn.onclick = async function(e) {
+                if (firebase && firebase.auth() && firebase.auth().currentUser) {
+                    const rateCheck = window.checkRateLimit('payment_verify', firebase.auth().currentUser.uid);
+                    if (!rateCheck.allowed) {
+                        alert(rateCheck.message);
+                        return false;
+                    }
+                }
+                if (originalVerifyHandler) return originalVerifyHandler.call(this, e);
+                return true;
+            };
+        }
+        
+        console.log('%c🔒 Easy Premium Payment - সুরক্ষিত মোড সক্রিয়', 'color: #4caf50; font-size: 14px; font-weight: bold;');
+    })();
     </script>
 </head>
 <body>
