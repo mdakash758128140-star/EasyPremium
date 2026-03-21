@@ -384,6 +384,7 @@
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     
     <script>
         firebase.initializeApp({
@@ -397,6 +398,7 @@
         });
 
         const database = firebase.database();
+        const auth = firebase.auth();
 
         function decryptData(encrypted) {
             try {
@@ -575,265 +577,282 @@
             }
         }
 
-        window.addEventListener('DOMContentLoaded', async () => {
+        window.addEventListener('DOMContentLoaded', () => {
             const output = document.getElementById('output');
             const payBtn = document.getElementById('payBtn');
             const paymentPanel = document.getElementById('paymentPanel');
             
-            const urlParams = new URLSearchParams(window.location.search);
-            const encodedData = urlParams.get('data');
-            
-            if (!encodedData) {
-                redirectToMain();
-                return;
-            }
-            
-            output.innerHTML = '<div class="loading">অর্ডার যাচাই করা হচ্ছে...</div>';
-            
-            const urlData = decryptData(encodedData);
-            if (!urlData) {
-                redirectToMain();
-                return;
-            }
+            // প্রথমে অথেনটিকেশন চেক করুন
+            auth.onAuthStateChanged(async (user) => {
+                if (!user) {
+                    // লগইন না থাকলে হোমপেজে রিডাইরেক্ট
+                    redirectToMain();
+                    return;
+                }
+                
+                // লগইন থাকলে URL ডাটা ডিক্রিপ্ট করুন
+                const urlParams = new URLSearchParams(window.location.search);
+                const encodedData = urlParams.get('data');
+                
+                if (!encodedData) {
+                    redirectToMain();
+                    return;
+                }
+                
+                output.innerHTML = '<div class="loading">অর্ডার যাচাই করা হচ্ছে...</div>';
+                
+                const urlData = decryptData(encodedData);
+                if (!urlData) {
+                    redirectToMain();
+                    return;
+                }
+                
+                // চেক করুন লগইন করা ইউজার অর্ডারের মালিক কিনা
+                if (user.uid !== urlData.userId && user.email !== urlData.userEmail) {
+                    console.warn("Logged-in user does not match order owner");
+                    redirectToMain();
+                    return;
+                }
+                
+                // অর্ডার ভ্যালিডিটি চেক করুন
+                const isValid = await validateOrder(urlData.orderId, urlData.userId, urlData.userEmail);
+                if (!isValid) {
+                    redirectToMain();
+                    return;
+                }
+                
+                // সব ঠিক থাকলে মূল প্রক্রিয়া শুরু করুন
+                const planData = await fetchPlanData(urlData.platformId);
+                
+                const serviceCharge = planData?.ServicCharge ? Number(planData.ServicCharge) : 0;
+                const productPrice = Number(urlData.price) || 0;
+                const totalAmount = productPrice + serviceCharge;
+                
+                function updatePaymentAmounts() {
+                    document.querySelectorAll('#bkash-amount, #nagad-amount, #rocket-amount').forEach(el => {
+                        el.textContent = totalAmount;
+                    });
+                }
+                
+                const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
+                const productSlug = planData?.Products || urlData.platformId;
+                
+                const dField = planData?.D || planData?.description || '';
+                
+                let dFieldHTML = '';
+                if (dField) {
+                    dFieldHTML = `
+                        <div class="card" style="margin-top:10px;">
+                            <div style="color:#ff9800; margin-bottom:8px; font-weight:600;">📝 বিস্তারিত বিবরণ</div>
+                            <div style="color:#b0bec5; font-size:14px; white-space: pre-line;">${dField}</div>
+                        </div>
+                    `;
+                }
+                
+                const isVariable = productSlug.includes('variable');
+                let minFace = 1, maxFace = 1000;
+                let faceValueFromDB = null;
+                
+                if (isVariable) {
+                    minFace = productSlug.includes('mastercard') ? 5 : 1;
+                    
+                    if (planData?.faceValue) {
+                        faceValueFromDB = parseFloat(planData.faceValue);
+                        if (faceValueFromDB >= minFace && faceValueFromDB <= maxFace) {
+                            console.log(`✅ Face value from DB: $${faceValueFromDB}`);
+                        } else {
+                            faceValueFromDB = null;
+                        }
+                    }
+                }
 
-            // Validate order
-            const isValid = await validateOrder(urlData.orderId, urlData.userId, urlData.userEmail);
-            if (!isValid) {
-                redirectToMain();
-                return;
-            }
+                output.innerHTML = `
+                    <div class="card">
+                        <h2 style="color:#ff9800; margin-bottom:15px; text-align:center;">📋 অর্ডার তথ্য</h2>
+                        <div class="info-row"><span class="label">অর্ডার আইডি:</span><span class="value">${urlData.orderId}</span></div>
+                        <div class="info-row"><span class="label">প্ল্যাটফর্ম:</span><span class="value">${platformName}</span></div>
+                        <div class="info-row"><span class="label">মূল্য:</span><span class="value">${productPrice} ৳</span></div>
+                        <div class="info-row"><span class="label">সার্ভিস চার্জ:</span><span class="value">${serviceCharge} ৳</span></div>
+                        <div class="info-row"><span class="label"><strong>সর্বমোট:</strong></span><span class="value" style="color:#ff0000;">${totalAmount} ৳</span></div>
+                        ${isVariable && faceValueFromDB ? `<div class="info-row"><span class="label">ফেস ভ্যালু:</span><span class="value">$${faceValueFromDB}</span></div>` : ''}
+                    </div>
+                    ${dFieldHTML}
 
-            // If validation passed, continue normal flow
-            const planData = await fetchPlanData(urlData.platformId);
-            
-            const serviceCharge = planData?.ServicCharge ? Number(planData.ServicCharge) : 0;
-            const productPrice = Number(urlData.price) || 0;
-            const totalAmount = productPrice + serviceCharge;
-            
-            function updatePaymentAmounts() {
-                document.querySelectorAll('#bkash-amount, #nagad-amount, #rocket-amount').forEach(el => {
-                    el.textContent = totalAmount;
-                });
-            }
-            
-            const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
-            const productSlug = planData?.Products || urlData.platformId;
-            
-            const dField = planData?.D || planData?.description || '';
-            
-            let dFieldHTML = '';
-            if (dField) {
-                dFieldHTML = `
-                    <div class="card" style="margin-top:10px;">
-                        <div style="color:#ff9800; margin-bottom:8px; font-weight:600;">📝 বিস্তারিত বিবরণ</div>
-                        <div style="color:#b0bec5; font-size:14px; white-space: pre-line;">${dField}</div>
+                    <div class="card">
+                        <h3 style="color:#ff9800; margin-bottom:15px;">📌 পেমেন্ট নির্দেশিকা</h3>
+                        <ul style="color: #b0bec5; line-height: 1.8; padding-left: 20px;">
+                            <li>✓ সঠিক অ্যাকাউন্ট নম্বরে টাকা পাঠান</li>
+                            <li>✓ ট্রানজেকশন আইডি সংগ্রহ করুন</li>
+                            <li>✓ নিচের ফর্ম পূরণ করে VERIFY বাটনে ক্লিক করুন</li>
+                            <li>✓ পেমেন্ট কনফার্ম হয়ে গেলে ইমেইলে লিংক পাবেন</li>
+                        </ul>
                     </div>
                 `;
-            }
-            
-            const isVariable = productSlug.includes('variable');
-            let minFace = 1, maxFace = 1000;
-            let faceValueFromDB = null;
-            
-            if (isVariable) {
-                minFace = productSlug.includes('mastercard') ? 5 : 1;
-                
-                if (planData?.faceValue) {
-                    faceValueFromDB = parseFloat(planData.faceValue);
-                    if (faceValueFromDB >= minFace && faceValueFromDB <= maxFace) {
-                        console.log(`✅ Face value from DB: $${faceValueFromDB}`);
-                    } else {
-                        faceValueFromDB = null;
+
+                // পেমেন্ট কনফার্ম বাটনের ক্লিক ইভেন্ট
+                payBtn.onclick = () => {
+                    output.style.display = 'none';
+                    payBtn.style.display = 'none';
+                    paymentPanel.style.display = 'block';
+                    updatePaymentAmounts();
+                };
+
+                // Radio button change event
+                const radios = document.querySelectorAll('input[name="payment_method"]');
+                const bkashBox = document.getElementById('box-bkash');
+                const nagadBox = document.getElementById('box-nagad');
+                const rocketBox = document.getElementById('box-rocket');
+                const methodItems = document.querySelectorAll('.wc_payment_method');
+
+                function updatePaymentBoxes(selectedValue) {
+                    bkashBox.classList.remove('active-box');
+                    nagadBox.classList.remove('active-box');
+                    rocketBox.classList.remove('active-box');
+                    methodItems.forEach(item => item.classList.remove('selected-method'));
+
+                    if (selectedValue === 'woo_bkash') {
+                        bkashBox.classList.add('active-box');
+                        document.getElementById('method-bkash').classList.add('selected-method');
+                    } else if (selectedValue === 'woo_nagad') {
+                        nagadBox.classList.add('active-box');
+                        document.getElementById('method-nagad').classList.add('selected-method');
+                    } else if (selectedValue === 'woo_rocket') {
+                        rocketBox.classList.add('active-box');
+                        document.getElementById('method-rocket').classList.add('selected-method');
                     }
                 }
-            }
+                updatePaymentBoxes('woo_bkash');
 
-            output.innerHTML = `
-                <div class="card">
-                    <h2 style="color:#ff9800; margin-bottom:15px; text-align:center;">📋 অর্ডার তথ্য</h2>
-                    <div class="info-row"><span class="label">অর্ডার আইডি:</span><span class="value">${urlData.orderId}</span></div>
-                    <div class="info-row"><span class="label">প্ল্যাটফর্ম:</span><span class="value">${platformName}</span></div>
-                    <div class="info-row"><span class="label">মূল্য:</span><span class="value">${productPrice} ৳</span></div>
-                    <div class="info-row"><span class="label">সার্ভিস চার্জ:</span><span class="value">${serviceCharge} ৳</span></div>
-                    <div class="info-row"><span class="label"><strong>সর্বমোট:</strong></span><span class="value" style="color:#ff0000;">${totalAmount} ৳</span></div>
-                    ${isVariable && faceValueFromDB ? `<div class="info-row"><span class="label">ফেস ভ্যালু:</span><span class="value">$${faceValueFromDB}</span></div>` : ''}
-                </div>
-                ${dFieldHTML}
-
-                <div class="card">
-                    <h3 style="color:#ff9800; margin-bottom:15px;">📌 পেমেন্ট নির্দেশিকা</h3>
-                    <ul style="color: #b0bec5; line-height: 1.8; padding-left: 20px;">
-                        <li>✓ সঠিক অ্যাকাউন্ট নম্বরে টাকা পাঠান</li>
-                        <li>✓ ট্রানজেকশন আইডি সংগ্রহ করুন</li>
-                        <li>✓ নিচের ফর্ম পূরণ করে VERIFY বাটনে ক্লিক করুন</li>
-                        <li>✓ পেমেন্ট কনফার্ম হয়ে গেলে ইমেইলে লিংক পাবেন</li>
-                    </ul>
-                </div>
-            `;
-
-            // পেমেন্ট কনফার্ম বাটনের ক্লিক ইভেন্ট
-            payBtn.onclick = () => {
-                output.style.display = 'none';
-                payBtn.style.display = 'none';
-                paymentPanel.style.display = 'block';
-                updatePaymentAmounts();
-            };
-
-            // Radio button change event
-            const radios = document.querySelectorAll('input[name="payment_method"]');
-            const bkashBox = document.getElementById('box-bkash');
-            const nagadBox = document.getElementById('box-nagad');
-            const rocketBox = document.getElementById('box-rocket');
-            const methodItems = document.querySelectorAll('.wc_payment_method');
-
-            function updatePaymentBoxes(selectedValue) {
-                bkashBox.classList.remove('active-box');
-                nagadBox.classList.remove('active-box');
-                rocketBox.classList.remove('active-box');
-                methodItems.forEach(item => item.classList.remove('selected-method'));
-
-                if (selectedValue === 'woo_bkash') {
-                    bkashBox.classList.add('active-box');
-                    document.getElementById('method-bkash').classList.add('selected-method');
-                } else if (selectedValue === 'woo_nagad') {
-                    nagadBox.classList.add('active-box');
-                    document.getElementById('method-nagad').classList.add('selected-method');
-                } else if (selectedValue === 'woo_rocket') {
-                    rocketBox.classList.add('active-box');
-                    document.getElementById('method-rocket').classList.add('selected-method');
-                }
-            }
-            updatePaymentBoxes('woo_bkash');
-
-            radios.forEach(radio => {
-                radio.addEventListener('change', function() {
-                    updatePaymentBoxes(this.value);
+                radios.forEach(radio => {
+                    radio.addEventListener('change', function() {
+                        updatePaymentBoxes(this.value);
+                    });
                 });
-            });
 
-            // VERIFY বাটন – অ্যাডমিন নম্বর সহ (এখন JSON reference)
-            const verifyBtn = document.getElementById('verifyInsideBtn');
-            verifyBtn.addEventListener('click', async function() {
-                const selected = document.querySelector('input[name="payment_method"]:checked');
-                if (!selected) {
-                    alert('পেমেন্ট পদ্ধতি নির্বাচন করুন');
-                    return;
-                }
-
-                let accInput, txInput, adminNumberElement;
-                if (selected.value === 'woo_bkash') {
-                    accInput = document.getElementById('bkash_acc_no');
-                    txInput = document.getElementById('bkash_trans_id');
-                    adminNumberElement = document.querySelector('#box-bkash .account-number-text');
-                } else if (selected.value === 'woo_nagad') {
-                    accInput = document.getElementById('nagad_acc_no');
-                    txInput = document.getElementById('nagad_trans_id');
-                    adminNumberElement = document.querySelector('#box-nagad .account-number-text');
-                } else {
-                    accInput = document.getElementById('rocket_acc_no');
-                    txInput = document.getElementById('rocket_trans_id');
-                    adminNumberElement = document.querySelector('#box-rocket .account-number-text');
-                }
-
-                const account = accInput.value.trim();
-                const txid = txInput.value.trim();
-                const adminNumber = adminNumberElement ? adminNumberElement.textContent.trim() : '';
-
-                if (!account || !txid) {
-                    alert('অ্যাকাউন্ট নম্বর এবং ট্রানজেকশন আইডি দিন');
-                    return;
-                }
-
-                let faceValue = null;
-                if (isVariable) {
-                    if (faceValueFromDB) {
-                        faceValue = faceValueFromDB;
-                    } else {
-                        faceValue = minFace;
+                // VERIFY বাটন – অ্যাডমিন নম্বর সহ (এখন JSON reference)
+                const verifyBtn = document.getElementById('verifyInsideBtn');
+                verifyBtn.addEventListener('click', async function() {
+                    const selected = document.querySelector('input[name="payment_method"]:checked');
+                    if (!selected) {
+                        alert('পেমেন্ট পদ্ধতি নির্বাচন করুন');
+                        return;
                     }
-                }
 
-                const method = selected.value.replace('woo_', '').toUpperCase();
+                    let accInput, txInput, adminNumberElement;
+                    if (selected.value === 'woo_bkash') {
+                        accInput = document.getElementById('bkash_acc_no');
+                        txInput = document.getElementById('bkash_trans_id');
+                        adminNumberElement = document.querySelector('#box-bkash .account-number-text');
+                    } else if (selected.value === 'woo_nagad') {
+                        accInput = document.getElementById('nagad_acc_no');
+                        txInput = document.getElementById('nagad_trans_id');
+                        adminNumberElement = document.querySelector('#box-nagad .account-number-text');
+                    } else {
+                        accInput = document.getElementById('rocket_acc_no');
+                        txInput = document.getElementById('rocket_trans_id');
+                        adminNumberElement = document.querySelector('#box-rocket .account-number-text');
+                    }
 
-                const reference = JSON.stringify({
-                    method: method,
-                    phone: account,
-                    txid: txid,
-                    userId: urlData.userId,
-                    email: urlData.userEmail,
-                    admin: adminNumber,
-                    firebaseOrderId: urlData.orderId,
-                    timestamp: new Date().toISOString()
-                });
+                    const account = accInput.value.trim();
+                    const txid = txInput.value.trim();
+                    const adminNumber = adminNumberElement ? adminNumberElement.textContent.trim() : '';
 
-                this.disabled = true;
-                this.innerHTML = '<span class="spinner"></span> প্রসেসিং...';
+                    if (!account || !txid) {
+                        alert('অ্যাকাউন্ট নম্বর এবং ট্রানজেকশন আইডি দিন');
+                        return;
+                    }
 
-                try {
-                    const requestBody = {
-                        productSlug: productSlug,
-                        amount: productPrice,
-                        paymentCurrency: 'USD',
-                        reference: reference,
+                    let faceValue = null;
+                    if (isVariable) {
+                        if (faceValueFromDB) {
+                            faceValue = faceValueFromDB;
+                        } else {
+                            faceValue = minFace;
+                        }
+                    }
+
+                    const method = selected.value.replace('woo_', '').toUpperCase();
+
+                    const reference = JSON.stringify({
+                        method: method,
+                        phone: account,
+                        txid: txid,
+                        userId: urlData.userId,
+                        email: urlData.userEmail,
+                        admin: adminNumber,
                         firebaseOrderId: urlData.orderId,
-                        serviceCharge: serviceCharge
-                    };
-                    
-                    if (isVariable && faceValue) {
-                        requestBody.faceValue = faceValue;
-                    }
-
-                    console.log('📤 Sending request:', requestBody);
-
-                    const response = await fetch('/api/create-order', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(requestBody)
+                        timestamp: new Date().toISOString()
                     });
 
-                    const result = await response.json();
-                    
-                    if (!response.ok) {
-                        throw new Error(result.error || 'অর্ডার ব্যর্থ');
+                    this.disabled = true;
+                    this.innerHTML = '<span class="spinner"></span> প্রসেসিং...';
+
+                    try {
+                        const requestBody = {
+                            productSlug: productSlug,
+                            amount: productPrice,
+                            paymentCurrency: 'USD',
+                            reference: reference,
+                            firebaseOrderId: urlData.orderId,
+                            serviceCharge: serviceCharge
+                        };
+                        
+                        if (isVariable && faceValue) {
+                            requestBody.faceValue = faceValue;
+                        }
+
+                        console.log('📤 Sending request:', requestBody);
+
+                        const response = await fetch('/api/create-order', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(requestBody)
+                        });
+
+                        const result = await response.json();
+                        
+                        if (!response.ok) {
+                            throw new Error(result.error || 'অর্ডার ব্যর্থ');
+                        }
+
+                        if (result.link) {
+                            window.location.href = result.link;
+                        } else {
+                            paymentPanel.innerHTML = `
+                                <div class="card" style="text-align:center; padding:40px;">
+                                    <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
+                                    <p>অর্ডার আইডি: ${result.trx || urlData.orderId}</p>
+                                    <p>মূল্য: ${productPrice} ৳</p>
+                                    <p>সার্ভিস চার্জ: ${serviceCharge} ৳</p>
+                                    <p><strong>মোট: ${productPrice + serviceCharge} ৳</strong></p>
+                                    ${isVariable && faceValue ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
+                                    <p>ইমেইলে কনফার্মেশন পাঠানো হয়েছে</p>
+                                    <div class="spinner"></div>
+                                </div>
+                            `;
+                        }
+
+                    } catch (error) {
+                        console.error('❌ Error:', error);
+                        alert('অর্ডার ব্যর্থ: ' + error.message);
+                        this.disabled = false;
+                        this.innerHTML = 'VERIFY';
                     }
-
-                    if (result.link) {
-                        window.location.href = result.link;
-                    } else {
-                        paymentPanel.innerHTML = `
-                            <div class="card" style="text-align:center; padding:40px;">
-                                <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
-                                <p>অর্ডার আইডি: ${result.trx || urlData.orderId}</p>
-                                <p>মূল্য: ${productPrice} ৳</p>
-                                <p>সার্ভিস চার্জ: ${serviceCharge} ৳</p>
-                                <p><strong>মোট: ${productPrice + serviceCharge} ৳</strong></p>
-                                ${isVariable && faceValue ? `<p>ফেস ভ্যালু: $${faceValue}</p>` : ''}
-                                <p>ইমেইলে কনফার্মেশন পাঠানো হয়েছে</p>
-                                <div class="spinner"></div>
-                            </div>
-                        `;
-                    }
-
-                } catch (error) {
-                    console.error('❌ Error:', error);
-                    alert('অর্ডার ব্যর্থ: ' + error.message);
-                    this.disabled = false;
-                    this.innerHTML = 'VERIFY';
-                }
-            });
-
-            document.querySelectorAll('.copy-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const num = this.dataset.number;
-                    navigator.clipboard?.writeText(num);
-                    this.textContent = 'Copied!';
-                    setTimeout(() => this.textContent = 'Copy', 2000);
                 });
-            });
 
-            // Start admin online listener
-            await setActiveAdminNumber();
-            listenToAdminStatus();
+                document.querySelectorAll('.copy-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const num = this.dataset.number;
+                        navigator.clipboard?.writeText(num);
+                        this.textContent = 'Copied!';
+                        setTimeout(() => this.textContent = 'Copy', 2000);
+                    });
+                });
+
+                // Start admin online listener
+                await setActiveAdminNumber();
+                listenToAdminStatus();
+            });
         });
     </script>
 </head>
