@@ -362,6 +362,17 @@
             animation: spin 1s linear infinite;
         }
 
+        .admin-warning {
+            background: rgba(255, 152, 0, 0.2);
+            border-left: 4px solid #ff9800;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #ff9800;
+            text-align: center;
+        }
+
         @media (max-width: 480px) {
             body { padding: 10px; padding-bottom: 75px; }
             .header h1 { font-size: 24px; }
@@ -428,7 +439,7 @@
             return num;
         }
 
-        // ================== নতুন: অর্ডার বৈধতা যাচাই (স্ট্যাটাস, ২৪ ঘণ্টা, মালিক) ==================
+        // অর্ডার বৈধতা যাচাই (স্ট্যাটাস, ২৪ ঘণ্টা, মালিক)
         async function validateOrder(orderId, expectedUserId) {
             try {
                 const snapshot = await database.ref(`transactions/${orderId}`).once('value');
@@ -445,7 +456,7 @@
                     return { valid: false, reason: 'completed' };
                 }
 
-                // 2. মালিক যাচাই (লিংকের userId এবং ডাটাবেজের userId তুলনা)
+                // 2. মালিক যাচাই
                 if (order.userId && order.userId !== expectedUserId) {
                     console.log('❌ User mismatch');
                     return { valid: false, reason: 'user_mismatch' };
@@ -462,7 +473,6 @@
                         return { valid: false, reason: 'expired' };
                     }
                 } else {
-                    // যদি তারিখ না থাকে, নিরাপত্তার জন্য invalid ধরা
                     console.log('❌ No date field in order');
                     return { valid: false, reason: 'no_date' };
                 }
@@ -474,7 +484,6 @@
             }
         }
 
-        // মূল ফাংশন
         window.addEventListener('DOMContentLoaded', async () => {
             const output = document.getElementById('output');
             const payBtn = document.getElementById('payBtn');
@@ -484,7 +493,6 @@
             const encodedData = urlParams.get('data');
             
             if (!encodedData) {
-                // লিংকে ডাটা না থাকলে মূল সাইটে রিডাইরেক্ট
                 window.location.href = 'https://www.easy-premium.com';
                 return;
             }
@@ -493,22 +501,21 @@
             
             const urlData = decryptData(encodedData);
             if (!urlData) {
-                // ডাটা ডিক্রিপ্ট ব্যর্থ
                 window.location.href = 'https://www.easy-premium.com';
                 return;
             }
 
-            // ** অর্ডার বৈধতা যাচাই **
+            // অর্ডার বৈধতা যাচাই
             const validation = await validateOrder(urlData.orderId, urlData.userId);
             if (!validation.valid) {
-                // যেকোনো কারণে অর্ডার বৈধ না হলে সাইলেন্ট রিডাইরেক্ট
                 window.location.href = 'https://www.easy-premium.com';
                 return;
             }
 
-            // ================== এখান থেকে আগের মূল কোড (বৈধ অর্ডারের জন্য) ==================
-            
-            // এডমিন স্ট্যাটাস লিসনার (শুধুমাত্র বৈধ অর্ডারের জন্য কাজ করবে)
+            // এডমিন স্ট্যাটাস চেক (বাটন সবসময় দেখাবে, শুধু সতর্কতা দেবে)
+            let adminOnline = false;
+            let warningDiv = null;
+
             async function setActiveAdminNumber() {
                 try {
                     const snapshot = await database.ref('publicAdminInfo').once('value');
@@ -534,15 +541,27 @@
                     if (formatted) {
                         document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
                         document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
-                        
-                        document.getElementById('payBtn').classList.remove('hidden');
+                        adminOnline = true;
+                        if (warningDiv) warningDiv.remove();
                     } else {
-                        document.getElementById('payBtn').classList.add('hidden');
+                        adminOnline = false;
+                        // সতর্কতা দেখান
+                        if (!warningDiv && document.querySelector('.card')) {
+                            warningDiv = document.createElement('div');
+                            warningDiv.className = 'admin-warning';
+                            warningDiv.innerHTML = '⚠️ কোনো অ্যাডমিন অনলাইন নেই। আপনার টাকা পাঠানোর আগে নিশ্চিত করুন যে অ্যাডমিন সংযুক্ত আছে, নতুবা ডেলিভারি বিলম্বিত হতে পারে।';
+                            const firstCard = document.querySelector('.card');
+                            firstCard.parentNode.insertBefore(warningDiv, firstCard.nextSibling);
+                        }
                     }
+                    
+                    // বাটন সবসময় দেখানো হবে, শুধু সতর্কতা দেব
+                    payBtn.classList.remove('hidden');
                     
                     return formatted;
                 } catch (e) {
                     console.error("Admin number error:", e);
+                    payBtn.classList.remove('hidden'); // error হলে তাও বাটন দেখাও
                     return null;
                 }
             }
@@ -572,10 +591,19 @@
                     if (formatted) {
                         document.querySelectorAll('.account-number-text').forEach(el => el.textContent = formatted);
                         document.querySelectorAll('.copy-btn').forEach(btn => btn.setAttribute('data-number', formatted));
-                        if (payBtn) payBtn.classList.remove('hidden');
+                        if (warningDiv) warningDiv.remove();
+                        adminOnline = true;
                     } else {
-                        if (payBtn) payBtn.classList.add('hidden');
+                        adminOnline = false;
+                        if (!warningDiv && document.querySelector('.card')) {
+                            warningDiv = document.createElement('div');
+                            warningDiv.className = 'admin-warning';
+                            warningDiv.innerHTML = '⚠️ কোনো অ্যাডমিন অনলাইন নেই। আপনার টাকা পাঠানোর আগে নিশ্চিত করুন যে অ্যাডমিন সংযুক্ত আছে, নতুবা ডেলিভারি বিলম্বিত হতে পারে।';
+                            const firstCard = document.querySelector('.card');
+                            firstCard.parentNode.insertBefore(warningDiv, firstCard.nextSibling);
+                        }
                     }
+                    if (payBtn) payBtn.classList.remove('hidden');
                 });
             }
 
@@ -912,6 +940,6 @@
         </div>
     </div>
     
-    <button id="payBtn" class="pay-btn hidden">পেমেন্ট কনফার্ম করুন</button>
+    <button id="payBtn" class="pay-btn">পেমেন্ট কনফার্ম করুন</button>
 </body>
 </html>
