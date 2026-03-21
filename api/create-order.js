@@ -8,108 +8,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // ========================
-  // 🔁 ORDER CONFIRMATION (waiting status)
-  // ========================
-  const { orderId, phone, txid } = req.body;
-  if (orderId && phone && txid) {
-    const dbUrl = process.env.FIREBASE_DATABASE_URL;
-    const secret = process.env.FIREBASE_SECRET;
-    if (!dbUrl || !secret) {
-      console.error('❌ Missing Firebase config');
-      return res.status(500).json({ error: 'Firebase configuration missing' });
-    }
-
-    try {
-      // Step 1: Try direct path (key = orderId)
-      const directUrl = `${dbUrl}/transactions/${orderId}.json?auth=${secret}`;
-      const directRes = await fetch(directUrl);
-      let orderData = null;
-      let transactionKey = orderId; // assume key is orderId
-
-      if (directRes.ok) {
-        orderData = await directRes.json();
-        if (orderData && orderData.orderId === orderId) {
-          console.log(`✅ Found order at direct path: ${orderId}`);
-        } else {
-          // Direct path exists but orderId field doesn't match? Then search.
-          orderData = null;
-        }
-      }
-
-      // If direct path didn't work, search (like webhook does)
-      if (!orderData) {
-        const searchUrl = `${dbUrl}/transactions.json?orderBy="orderId"&equalTo="${orderId}"&auth=${secret}`;
-        const searchRes = await fetch(searchUrl);
-        const searchData = await searchRes.json();
-        if (searchData && typeof searchData === 'object') {
-          const keys = Object.keys(searchData);
-          if (keys.length > 0) {
-            transactionKey = keys[0];
-            orderData = searchData[transactionKey];
-            console.log(`✅ Found order via search with key: ${transactionKey}`);
-          }
-        }
-      }
-
-      if (!orderData) {
-        console.warn(`⚠️ No order found with orderId: ${orderId}`);
-        return res.status(404).json({ error: 'Order not found' });
-      }
-
-      // Update transaction status to waiting
-      const updates = {
-        status: 'waiting',
-        phone: phone,
-        txid: txid,
-        confirmedAt: new Date().toISOString()
-      };
-      const updateUrl = `${dbUrl}/transactions/${transactionKey}.json?auth=${secret}`;
-      const patchRes = await fetch(updateUrl, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      });
-      if (!patchRes.ok) throw new Error(`Update failed: ${patchRes.status}`);
-      console.log(`✅ Transaction ${orderId} updated to waiting`);
-
-      // Update userOrders if userId exists
-      if (orderData.userId) {
-        const userDirectUrl = `${dbUrl}/userOrders/${orderData.userId}/${orderId}.json?auth=${secret}`;
-        const userDirectRes = await fetch(userDirectUrl);
-        if (userDirectRes.ok) {
-          const userOrder = await userDirectRes.json();
-          if (userOrder) {
-            await fetch(userDirectUrl, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ status: 'waiting', phone, txid })
-            });
-            console.log(`✅ User order updated directly for ${orderData.userId}`);
-          } else {
-            // Search within userOrders (like webhook helper)
-            await updateUserOrderViaSearch(orderData.userId, orderId, { status: 'waiting', phone, txid }, dbUrl, secret);
-          }
-        } else {
-          await updateUserOrderViaSearch(orderData.userId, orderId, { status: 'waiting', phone, txid }, dbUrl, secret);
-        }
-      }
-
-      return res.status(200).json({
-        success: true,
-        message: 'Order status updated to waiting',
-        orderId,
-        status: 'waiting'
-      });
-    } catch (err) {
-      console.error('❌ Confirmation error:', err.message);
-      return res.status(500).json({ error: 'Failed to update order', details: err.message });
-    }
-  }
-
-  // ========================
-  // 🛒 ORDER CREATION (original code, unchanged)
-  // ========================
+  // ========== 1. ORDER CREATION (original logic) ==========
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
 
@@ -130,6 +29,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Parse reference to get phone, txid, userId, email
     let paymentMethod = 'UNKNOWN';
     let phone = '', txid = '', userId = '', email = '', admin = '';
 
@@ -207,8 +107,74 @@ export default async function handler(req, res) {
 
     const relogradeData = await response.json();
 
-    const orderData = {
-      OrderId: relogradeData.trx || finalOrderId,
+    // ✅ FIX: Get transaction ID from the correct location (data.trx)
+    let relogradeTrx = null;
+    if (relogradeData.data && relogradeData.data.trx) {
+      relogradeTrx = relogradeData.data.trx;
+    } else if (relogradeData.trx) {
+      relogradeTrx = relogradeData.trx; // fallback for older structure
+    }
+    console.log(`✅ Relograde transaction ID: ${relogradeTrx}`);
+
+    // ========== 2. FIREBASE WRITE (NEW) ==========
+    const dbUrl = process.env.FIREBASE_DATABASE_URL;
+    const secret = process.env.FIREBASE_SECRET;
+
+    // Determine order status: if user provided phone+txid, it's "waiting", else "pending"
+    const orderStatus = (phone && txid) ? 'waiting' : 'pending';
+
+    if (dbUrl && secret) {
+      try {
+        // Prepare order data
+        const firebaseOrder = {
+          orderId: finalOrderId,
+          userId: userId || 'guest',
+          userEmail: email || '',
+          platformId: productSlug,
+          platform: platformName,
+          amount: amountInt,
+          price: amountInt.toString(),
+          serviceCharge: serviceChargeInt,
+          totalAmount: totalAmount,
+          status: orderStatus,
+          phone: phone || null,
+          txid: txid || null,
+          paymentMethod: paymentMethod,
+          orderDate: new Date().toISOString(),
+          timestamp: Date.now(),
+          relogradeTrx: relogradeTrx
+        };
+
+        // Write to transactions node (key = orderId)
+        const transactionUrl = `${dbUrl}/transactions/${finalOrderId}.json?auth=${secret}`;
+        await fetch(transactionUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(firebaseOrder)
+        });
+
+        // Write to userOrders node if userId exists
+        if (userId && userId !== 'guest') {
+          const userOrderUrl = `${dbUrl}/userOrders/${userId}/${finalOrderId}.json?auth=${secret}`;
+          await fetch(userOrderUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(firebaseOrder)
+          });
+        }
+
+        console.log(`✅ Order written to Firebase with status: ${orderStatus}`);
+      } catch (firebaseError) {
+        console.error('⚠️ Failed to write to Firebase:', firebaseError.message);
+        // Continue – order creation still successful
+      }
+    } else {
+      console.warn('⚠️ Firebase config missing, skipping DB write');
+    }
+
+    // ========== 3. EMAIL SENDING (original) ==========
+    const orderLinkData = {
+      OrderId: relogradeTrx || finalOrderId,
       PaymentMethods: paymentMethod,
       PaymentNumber: phone || 'N/A',
       PaymentTrxID: txid || 'N/A',
@@ -219,12 +185,11 @@ export default async function handler(req, res) {
       amount: amountInt,
       currency: 'BDT',
       faceValue: faceValue || null,
-      status: 'pending',
+      status: orderStatus,
       serviceCharge: serviceChargeInt,
       totalAmount: totalAmount
     };
-
-    const jsonString = JSON.stringify(orderData);
+    const jsonString = JSON.stringify(orderLinkData);
     const base64Data = Buffer.from(jsonString).toString('base64');
     const orderLink = `https://www.easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
 
@@ -242,7 +207,7 @@ export default async function handler(req, res) {
         const templateParams = {
           to_email: email,
           to_name: userId || 'Valued Customer',
-          order_id: relogradeData.trx || finalOrderId,
+          order_id: relogradeTrx || finalOrderId,
           platform: platformName,
           order_date: dummyFormattedDate,
           payment_link: orderLink,
@@ -250,7 +215,7 @@ export default async function handler(req, res) {
           payment_number: phone || 'N/A',
           transaction_id: txid || 'N/A',
           user_id: userId || 'guest',
-          status: 'pending',
+          status: orderStatus,
           amount: formattedPrice,
           total_amount: formattedTotalPrice,
           face_value: faceValue ? `$${faceValue}` : 'N/A',
@@ -303,7 +268,8 @@ export default async function handler(req, res) {
         platformId: productSlug,
         faceValue: faceValue || null,
         serviceCharge: serviceChargeInt,
-        totalAmount: totalAmount
+        totalAmount: totalAmount,
+        status: orderStatus
       }
     });
 
@@ -313,30 +279,5 @@ export default async function handler(req, res) {
       error: 'Failed to create order',
       details: error.message
     });
-  }
-}
-
-// Helper function to update userOrders by searching (same as webhook)
-async function updateUserOrderViaSearch(userId, orderId, updates, dbUrl, secret) {
-  const userOrdersUrl = `${dbUrl}/userOrders/${userId}.json?auth=${secret}`;
-  const userOrdersRes = await fetch(userOrdersUrl);
-  const userOrders = await userOrdersRes.json();
-
-  if (userOrders && typeof userOrders === 'object') {
-    for (const key in userOrders) {
-      if (userOrders[key].orderId === orderId) {
-        const updateUrl = `${dbUrl}/userOrders/${userId}/${key}.json?auth=${secret}`;
-        await fetch(updateUrl, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates)
-        });
-        console.log(`✅ User order updated via search (key: ${key}) for ${userId}`);
-        return;
-      }
-    }
-    console.warn(`⚠️ No matching user order found for user ${userId} with orderId ${orderId}`);
-  } else {
-    console.warn(`⚠️ No userOrders found for user ${userId}`);
   }
 }
