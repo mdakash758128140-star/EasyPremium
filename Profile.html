@@ -693,11 +693,23 @@
             else cartBadge.style.display = 'none';
         }
 
+        // Fetch payment link from transactions if not present in userOrder
+        async function ensurePaymentLink(orderId, orderData) {
+            if (orderData.paymentLink) return orderData.paymentLink; // already have it
+            try {
+                const snap = await database.ref(`transactions/${orderId}`).once('value');
+                const trans = snap.val();
+                if (trans && trans.paymentLink) return trans.paymentLink;
+            } catch (e) {
+                console.warn('Could not fetch payment link from transactions', e);
+            }
+            return null;
+        }
+
         // Attach click handlers for both completed (voucher) and pending (payment link)
         function attachClickHandlers() {
-            // Handle completed orders (voucher link)
+            // Completed orders (voucher link)
             document.querySelectorAll('.order-card[data-voucher-link]:not([data-voucher-link=""])').forEach(card => {
-                // Avoid duplicate listeners by replacing with clone (like before)
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
                 newCard.style.cursor = 'pointer';
@@ -707,18 +719,32 @@
                 });
             });
 
-            // Handle pending orders (payment link)
+            // Pending orders (payment link)
             document.querySelectorAll('.order-card.clickable-pending').forEach(card => {
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
-                newCard.addEventListener('click', (e) => {
-                    const link = newCard.dataset.paymentLink;
-                    if (link) window.location.href = link;
+                newCard.addEventListener('click', async (e) => {
+                    // The link might be in data-payment-link, or we need to fetch it
+                    let link = newCard.dataset.paymentLink;
+                    if (!link) {
+                        // Try to get it from transactions using orderId
+                        const orderId = newCard.dataset.orderId;
+                        if (orderId) {
+                            const snap = await database.ref(`transactions/${orderId}`).once('value');
+                            const trans = snap.val();
+                            if (trans && trans.paymentLink) link = trans.paymentLink;
+                        }
+                    }
+                    if (link) {
+                        window.location.href = link;
+                    } else {
+                        alert('পেমেন্ট লিংক পাওয়া যায়নি। অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।');
+                    }
                 });
             });
         }
 
-        function renderProfile(user, orders) {
+        async function renderProfile(user, orders) {
             const avatarHtml = user.photoURL 
                 ? `<img src="${user.photoURL}" alt="avatar">`
                 : `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
@@ -728,20 +754,25 @@
                 ordersHtml = '<div class="no-orders">কোন অর্ডার নেই</div>';
             } else {
                 ordersHtml = '<div class="orders-cards">';
-                orders.forEach(order => {
+                for (const order of orders) {
                     const status = order.status || 'pending';
                     const statusClass = getStatusClass(status);
                     const statusBangla = getStatusBangla(status);
                     const voucherLink = (status === 'completed' && order.voucherData?.voucherLink) ? order.voucherData.voucherLink : '';
-                    const paymentLink = (status === 'pending' && order.paymentLink) ? order.paymentLink : '';
+                    let paymentLink = (status === 'pending' && order.paymentLink) ? order.paymentLink : '';
                     
-                    // For pending orders, add clickable class and data-payment-link
+                    // If it's pending and no paymentLink yet, try to fetch it now (async)
+                    if (status === 'pending' && !paymentLink && order.orderId) {
+                        paymentLink = await ensurePaymentLink(order.orderId, order);
+                    }
+                    
                     const clickablePendingClass = paymentLink ? 'clickable-pending' : '';
                     const voucherAttr = voucherLink ? `data-voucher-link="${voucherLink}"` : '';
                     const paymentAttr = paymentLink ? `data-payment-link="${paymentLink}"` : '';
+                    const orderIdAttr = order.orderId ? `data-order-id="${order.orderId}"` : '';
                     
                     ordersHtml += `
-                        <div class="order-card ${clickablePendingClass}" ${voucherAttr} ${paymentAttr}>
+                        <div class="order-card ${clickablePendingClass}" ${voucherAttr} ${paymentAttr} ${orderIdAttr}>
                             <div class="order-row"><span class="order-label">প্ল্যাটফর্ম</span><span class="order-value">${order.platform || '—'}</span></div>
                             <div class="order-row"><span class="order-label">মূল্য</span><span class="order-value">${order.price || '—'}</span></div>
                             <div class="order-row"><span class="order-label">অর্ডার আইডি</span><span class="order-value">${order.orderId || order.id || '—'}</span></div>
@@ -749,7 +780,7 @@
                             <div class="order-row"><span class="order-label">স্ট্যাটাস</span><span class="order-value"><span class="status-badge ${statusClass}">${statusBangla}</span></span></div>
                         </div>
                     `;
-                });
+                }
                 ordersHtml += '</div>';
             }
 
@@ -772,7 +803,6 @@
 
         auth.onAuthStateChanged(async (user) => {
             if (!user) {
-                // Not logged in – redirect to main page
                 window.location.href = 'https://www.easy-premium.com';
                 return;
             }
@@ -785,7 +815,7 @@
                 });
                 orders.sort((a, b) => (b.orderDate || '').localeCompare(a.orderDate || ''));
                 
-                profileContent.innerHTML = renderProfile(user, orders);
+                profileContent.innerHTML = await renderProfile(user, orders);
                 attachClickHandlers();
                 await updateCartBadge(user.uid);
             } catch (error) {
