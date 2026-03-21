@@ -561,6 +561,29 @@
             .modal-footer { flex-direction: column; }
         }
     </style>
+    
+    <!-- No JavaScript = No Access (ফুল-স্ক্রিন সতর্কতা) -->
+    <noscript>
+        <style>
+            body { display: none !important; }
+            html { background: #000 !important; height: 100% !important; overflow: hidden !important; }
+        </style>
+        <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:#000;color:#ff0000;display:flex;align-items:center;justify-content:center;z-index:999999;font-family:monospace;text-align:center;flex-direction:column;">
+            <div style="animation: pulse 1s infinite;">
+                <h1 style="font-size:120px;margin:0;text-shadow:0 0 20px #ff0000;">🖕</h1>
+                <h1 style="font-size:72px;margin:20px 0;letter-spacing:10px;">FUCK YOU</h1>
+                <p style="font-size:24px;margin:20px 0;color:#fff;">JavaScript is DISABLED</p>
+                <p style="font-size:18px;color:#ff6666;">Nice try, script kiddie</p>
+                <p style="font-size:16px;color:#666;margin-top:30px;">Enable JavaScript to access this site</p>
+            </div>
+        </div>
+        <style>
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.1); opacity: 0.8; }
+            }
+        </style>
+    </noscript>
 </head>
 <body>
     <!-- Header (same as main) -->
@@ -701,7 +724,7 @@
     </div>
 
     <script>
-        // Firebase Config (same as main site)
+        // ================== এনকোডেড ফায়ারবেস কনফিগ (গোপন) ==================
         const encodedFirebaseConfig = "ewogICJhcGlLZXkiOiAiQUl6YVN5QnQ5dDZtY2pVdFh4WDJpZ0FKZHNldUlJYzhwUF9RUEV3IiwKICAiYXV0aERvbWFpbiI6ICJlYXN5LXByZW1pdW0uZmlyZWJhc2VhcHAuY29tIiwKICAiZGF0YWJhc2VVUkwiOiAiaHR0cHM6Ly9lYXN5LXByZW1pdW0tZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcCIsCiAgInByb2plY3RJZCI6ICJlYXN5LXByZW1pdW0iLAogICJzdG9yYWdlQnVja2V0IjogImVhc3ktcHJlbWl1bS5maXJlYmFzZXN0b3JhZ2UuYXBwIiwKICAibWVzc2FnaW5nU2VuZGVySWQiOiAiMTU1ODkxMjUyMjY1IiwKICAiYXBwSWQiOiAiMToxNTU4OTEyNTIyNjU6d2ViOjc3YWI0MWRlMjQyMzFlOGU1ZWYwMzgiLAogICJtZWFzdXJlbWVudElkIjogIkctQ0hMODFLOEhSUFgiCn0=";
 
         function decodeBase64(str) {
@@ -752,11 +775,12 @@
                 currentUser = null;
                 notLoggedInDiv.style.display = 'block';
                 loggedInDiv.style.display = 'none';
-                cartBadge.style.display = 'none';
+                if (cartBadge) cartBadge.style.display = 'none';
             }
         });
 
         async function updateCartBadge(uid) {
+            if (!cartBadge) return;
             const snap = await database.ref(`userOrders/${uid}`).once('value');
             const count = snap.numChildren();
             if (count > 0) { cartBadge.textContent = count; cartBadge.style.display = 'flex'; }
@@ -865,6 +889,124 @@
         modalOverlay.addEventListener('click', (e) => {
             if (e.target === modalOverlay) modalOverlay.style.display = 'none';
         });
+    </script>
+
+    <!-- ================== উন্নত নিরাপত্তা (DevTools detection with redirect, rate limiting, session timeout, etc.) ================== -->
+    <script>
+    (function() {
+        'use strict';
+        
+        const SECURITY_CONFIG = {
+            SESSION_TIMEOUT: 30 * 60 * 1000,
+            MAX_ATTEMPTS: 5,
+            RATE_LIMIT_WINDOW: 15 * 60 * 1000,
+            REDIRECT_URL: 'https://www.easy-premium.com/privacy-refund-policy-terms-of-service.html'
+        };
+        
+        // DevTools detection with immediate redirect (no alert, no notification)
+        let devToolsOpened = false;
+        function detectDevTools() {
+            const start = performance.now();
+            debugger;
+            const end = performance.now();
+            if (end - start > 100 && !devToolsOpened) {
+                devToolsOpened = true;
+                window.location.href = SECURITY_CONFIG.REDIRECT_URL;
+            }
+            return false;
+        }
+        setInterval(detectDevTools, 1000);
+        setTimeout(detectDevTools, 500);
+        
+        // Rate limiting
+        window._rateLimitStore = window._rateLimitStore || { attempts: {}, blockUntil: {} };
+        window.checkRateLimit = function(action, userId = 'anonymous') {
+            const key = `${action}_${userId}`;
+            const now = Date.now();
+            if (window._rateLimitStore.blockUntil[key] && window._rateLimitStore.blockUntil[key] > now) {
+                const remaining = Math.ceil((window._rateLimitStore.blockUntil[key] - now) / 1000 / 60);
+                return { allowed: false, message: `অনেক চেষ্টা করেছেন। ${remaining} মিনিট পরে আবার চেষ্টা করুন。` };
+            }
+            if (!window._rateLimitStore.attempts[key]) window._rateLimitStore.attempts[key] = [];
+            window._rateLimitStore.attempts[key] = window._rateLimitStore.attempts[key].filter(t => t > now - SECURITY_CONFIG.RATE_LIMIT_WINDOW);
+            if (window._rateLimitStore.attempts[key].length >= SECURITY_CONFIG.MAX_ATTEMPTS) {
+                window._rateLimitStore.blockUntil[key] = now + SECURITY_CONFIG.RATE_LIMIT_WINDOW;
+                return { allowed: false, message: 'অনেক চেষ্টা করেছেন। ১৫ মিনিট পরে আবার চেষ্টা করুন。' };
+            }
+            window._rateLimitStore.attempts[key].push(now);
+            return { allowed: true };
+        };
+        
+        // Session timeout
+        let sessionTimer;
+        function resetSessionTimer() {
+            if (sessionTimer) clearTimeout(sessionTimer);
+            sessionTimer = setTimeout(() => {
+                if (firebase && firebase.auth() && firebase.auth().currentUser) {
+                    if (confirm('আপনার সেশন শেষ হয়ে গেছে। আবার লগইন করবেন?')) {
+                        firebase.auth().signOut().then(() => location.reload());
+                    } else {
+                        firebase.auth().signOut();
+                    }
+                }
+            }, SECURITY_CONFIG.SESSION_TIMEOUT);
+        }
+        ['click', 'keypress', 'scroll', 'mousemove', 'touchstart'].forEach(event => document.addEventListener(event, resetSessionTimer, { passive: true }));
+        
+        // XSS protection
+        function sanitizeInput(input) {
+            if (typeof input !== 'string') return input;
+            return input.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/\//g, '&#x2F;').replace(/\\/g, '&#x5C;').replace(/`/g, '&#96;').replace(/=/g, '&#61;');
+        }
+        function setupFormProtection() {
+            document.querySelectorAll('form').forEach(form => {
+                if (form._protected) return;
+                form._protected = true;
+                form.addEventListener('submit', function() {
+                    this.querySelectorAll('input[type="text"], input[type="tel"], input[type="email"], textarea').forEach(input => {
+                        if (input.value && typeof input.value === 'string' && /[<>"'`=]/.test(input.value)) console.warn('সতর্কতা: ইনপুটে বিপজ্জনক ক্যারেক্টার পাওয়া গেছে');
+                    });
+                }, true);
+            });
+        }
+        const mutationObserver = new MutationObserver(() => setupFormProtection());
+        mutationObserver.observe(document.body, { childList: true, subtree: true });
+        
+        // LocalStorage encryption for sensitive keys
+        const originalSetItem = localStorage.setItem, originalGetItem = localStorage.getItem;
+        const sensitiveKeys = ['user', 'session', 'token', 'auth'];
+        localStorage.setItem = function(key, value) {
+            if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
+                try { const encoded = btoa(encodeURIComponent(value)); return originalSetItem.call(this, `_sec_${key}`, encoded); } catch(e) { console.warn('LocalStorage encoding error'); }
+            }
+            return originalSetItem.call(this, key, value);
+        };
+        localStorage.getItem = function(key) {
+            if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
+                try { const encoded = originalGetItem.call(this, `_sec_${key}`); if (encoded) return decodeURIComponent(atob(encoded)); } catch(e) { console.warn('LocalStorage decoding error'); }
+            }
+            return originalGetItem.call(this, key);
+        };
+        
+        // Keyboard shortcuts block
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.keyCode === 85) { e.preventDefault(); return false; } // Ctrl+U
+            if (e.ctrlKey && e.keyCode === 83) { e.preventDefault(); return false; } // Ctrl+S
+            if (e.ctrlKey && e.shiftKey && e.keyCode === 73) { e.preventDefault(); return false; } // Ctrl+Shift+I
+            if (e.keyCode === 123) { e.preventDefault(); return false; } // F12
+        });
+        
+        // Right-click protection
+        document.addEventListener('contextmenu', e => { e.preventDefault(); return false; });
+        document.addEventListener('mousedown', e => { if (e.button === 2) { e.preventDefault(); return false; } });
+        document.addEventListener('touchstart', function(e) {
+            let touchTimer;
+            const handleTouchEnd = () => { clearTimeout(touchTimer); document.removeEventListener('touchend', handleTouchEnd); };
+            if (e.touches.length === 1) { touchTimer = setTimeout(() => e.preventDefault(), 500); document.addEventListener('touchend', handleTouchEnd, { once: true }); }
+        }, { passive: false });
+        
+        console.log('%c🔒 Easy Premium - অ্যাকাউন্ট ডিলিট পৃষ্ঠা সুরক্ষিত মোড সক্রিয়', 'color: #4caf50; font-size: 14px; font-weight: bold;');
+    })();
     </script>
 </body>
 </html>
