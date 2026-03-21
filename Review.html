@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>ভয়েস রিভিউ – Easy Premium</title>
     <meta name="description" content="আমাদের প্রোডাক্ট নিয়ে আপনার মতামত দিন ভয়েস রেকর্ডের মাধ্যমে। সকল রিভিউ পাবলিক, শুনতে কোনো লগইন লাগে না।">
+    <meta name="author" content="Easy Premium">
     <link rel="icon" type="image/x-icon" href="https://cdn-icons-png.flaticon.com/512/8701/8701941.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -519,20 +520,6 @@
             .messenger-float { width: 50px; height: 50px; bottom: 20px; right: 20px; }
             .messenger-float i { font-size: 1.6rem; }
         }
-        /* Extra message style */
-        .info-message {
-            background: rgba(0,0,0,0.5);
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-size: 0.9rem;
-            border-left: 4px solid #ff9800;
-            text-align: left;
-        }
-        .cooldown-message {
-            background: rgba(220,53,69,0.2);
-            border-left-color: #dc3545;
-        }
     </style>
 </head>
 <body>
@@ -584,7 +571,6 @@
                     <button id="cancelBtn" class="btn btn-outline">বাতিল</button>
                 </div>
                 <div id="uploadStatus" class="upload-status"></div>
-                <div id="infoMessage" class="info-message" style="display: none;"></div>
             </div>
         </div>
 
@@ -652,7 +638,6 @@
         const uploadBtn = document.getElementById('uploadBtn');
         const cancelBtn = document.getElementById('cancelBtn');
         const uploadStatus = document.getElementById('uploadStatus');
-        const infoMessageDiv = document.getElementById('infoMessage');
         const reviewsContainer = document.getElementById('reviewsContainer');
         const loginModal = document.getElementById('loginModal');
         const googleLoginBtn = document.getElementById('googleLoginBtn');
@@ -670,86 +655,25 @@
         let recordedBlob = null;
         let isRecording = false;
 
-        // ========== COOLDOWN: 3 ঘন্টা ==========
-        const COOLDOWN_MS = 3 * 60 * 60 * 1000;
-
-        // Check if user can post (last review > 3h ago)
-        async function canUserPost(userId) {
-            try {
-                const snapshot = await database.ref(`userLastReview/${userId}/lastReviewTime`).once('value');
-                const lastTime = snapshot.val();
-                if (!lastTime) return true;
-                const now = Date.now();
-                const diff = now - lastTime;
-                const can = diff >= COOLDOWN_MS;
-                console.log(`Cooldown check for ${userId}: last=${lastTime}, now=${now}, diff=${diff}ms, canPost=${can}`);
-                return can;
-            } catch (err) {
-                console.error("Error checking cooldown:", err);
-                return false;
-            }
-        }
-
-        // Update last review time
-        async function updateLastReviewTime(userId) {
-            await database.ref(`userLastReview/${userId}`).set({
-                lastReviewTime: firebase.database.ServerValue.TIMESTAMP
-            });
-        }
-
-        // Show/hide upload section with clear message
-        async function handleUploadVisibility(user) {
-            if (!user) {
-                uploadSection.style.display = 'none';
-                return;
-            }
-            const canPost = await canUserPost(user.uid);
-            if (canPost) {
+        // No cooldown limit – users can post anytime, any number of times
+        // Show upload section only for logged-in users
+        function handleUploadVisibility(user) {
+            if (user) {
                 uploadSection.style.display = 'block';
-                infoMessageDiv.style.display = 'none';
+                recordBtn.disabled = false;
+                recordBtn.style.opacity = '1';
+                recordBtn.style.cursor = 'pointer';
+                recordingStatus.textContent = 'রেকর্ড করতে ক্লিক করুন';
             } else {
-                uploadSection.style.display = 'block'; // show but with message
-                const lastSnap = await database.ref(`userLastReview/${user.uid}/lastReviewTime`).once('value');
-                const lastTime = lastSnap.val();
-                let waitTime = "কিছুক্ষণ";
-                if (lastTime) {
-                    const remaining = COOLDOWN_MS - (Date.now() - lastTime);
-                    if (remaining > 0) {
-                        const hours = Math.floor(remaining / (60 * 60 * 1000));
-                        const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
-                        waitTime = `${hours} ঘন্টা ${minutes} মিনিট`;
-                    }
-                }
-                infoMessageDiv.innerHTML = `<i class="fas fa-hourglass-half"></i> আপনি ইতিমধ্যে একটি রিভিউ দিয়েছেন। পরবর্তী রিভিউ দিতে পারেন ${waitTime} পরে।`;
-                infoMessageDiv.classList.add('cooldown-message');
-                infoMessageDiv.style.display = 'block';
-                // Disable record button visually but keep functional? We'll disable recording.
-                recordBtn.disabled = true;
-                recordBtn.style.opacity = '0.5';
-                recordBtn.style.cursor = 'not-allowed';
-                recordingStatus.textContent = `কুলডাউন চলছে (${waitTime} বাকি)`;
-                // Also hide preview area if any
-                previewArea.style.display = 'none';
-                return;
+                uploadSection.style.display = 'none';
             }
-            // If canPost, enable button
-            recordBtn.disabled = false;
-            recordBtn.style.opacity = '1';
-            recordBtn.style.cursor = 'pointer';
-            recordingStatus.textContent = 'রেকর্ড করতে ক্লিক করুন';
         }
 
         // Auth state change
         auth.onAuthStateChanged(async user => {
             if (user) {
-                await handleUploadVisibility(user);
+                handleUploadVisibility(user);
                 updateCartBadge(user.uid);
-                // Re-check every minute to refresh cooldown status
-                setInterval(async () => {
-                    if (auth.currentUser && auth.currentUser.uid === user.uid) {
-                        await handleUploadVisibility(auth.currentUser);
-                    }
-                }, 60000);
             } else {
                 uploadSection.style.display = 'none';
                 cartBadge.style.display = 'none';
@@ -765,10 +689,6 @@
 
         // Recording logic
         async function startRecording() {
-            if (recordBtn.disabled) {
-                alert('আপনি এখন রিভিউ দিতে পারবেন না। কিছুক্ষণ পরে চেষ্টা করুন।');
-                return;
-            }
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
@@ -789,7 +709,6 @@
                 recordingStatus.textContent = 'রেকর্ডিং হচ্ছে... থামাতে ক্লিক করুন।';
             } catch(err) {
                 alert('মাইক্রোফোন অ্যাক্সেস প্রয়োজন।');
-                console.error(err);
             }
         }
 
@@ -807,10 +726,6 @@
                 loginModal.style.display = 'flex';
                 return;
             }
-            if (recordBtn.disabled) {
-                alert('আপনি এখন রিভিউ দিতে পারবেন না। কিছুক্ষণ পরে চেষ্টা করুন।');
-                return;
-            }
             if (isRecording) stopRecording();
             else startRecording();
         });
@@ -826,19 +741,11 @@
 
         cancelBtn.addEventListener('click', resetRecordingUI);
 
-        // Upload as Base64
+        // Upload as Base64 (no cooldown)
         uploadBtn.addEventListener('click', async () => {
             const user = auth.currentUser;
             if (!user) { alert('লগইন করুন'); return; }
             if (!recordedBlob) { alert('কোনো রেকর্ডিং নেই'); return; }
-
-            // Double-check cooldown before upload
-            const canPost = await canUserPost(user.uid);
-            if (!canPost) {
-                alert('আপনি ইতিমধ্যে ৩ ঘন্টার মধ্যে একটি রিভিউ দিয়েছেন। পরবর্তী রিভিউ দিতে ৩ ঘন্টা অপেক্ষা করুন।');
-                await handleUploadVisibility(user);
-                return;
-            }
 
             const MAX_SIZE = 1 * 1024 * 1024; // 1 MB
             if (recordedBlob.size > MAX_SIZE) {
@@ -868,16 +775,11 @@
                     createdAt: new Date().toISOString()
                 });
 
-                // Update last review time
-                await updateLastReviewTime(user.uid);
-
                 uploadStatus.innerHTML = '<i class="fas fa-check-circle"></i> রিভিউ সফল!';
                 resetRecordingUI();
                 loadReviews();
-                // Refresh visibility (will now show cooldown message)
-                await handleUploadVisibility(user);
+                // Keep upload section visible for further reviews
             } catch(err) {
-                console.error("Upload error:", err);
                 uploadStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> আপলোড ব্যর্থ: ' + err.message;
             } finally {
                 uploadBtn.disabled = false;
@@ -958,7 +860,7 @@
             try {
                 await auth.signInWithPopup(provider);
                 loginModal.style.display = 'none';
-                if (auth.currentUser) await handleUploadVisibility(auth.currentUser);
+                if (auth.currentUser) handleUploadVisibility(auth.currentUser);
                 loadReviews();
             } catch(err) { alert('লগইন ব্যর্থ: ' + err.message); }
         });
