@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // --------------------------------------------------------------
-  // 1️⃣ অর্ডার কনফার্মেশন (ফোন + ট্রানজেকশন আইডি)
+  // 1️⃣ অর্ডার কনফার্মেশন (ফোন + ট্রানজেকশন আইডি) – status "waiting"
   // --------------------------------------------------------------
   const { orderId, phone, txid } = req.body;
   if (orderId && phone && txid) {
@@ -23,13 +23,14 @@ export default async function handler(req, res) {
     }
 
     try {
-      // ১. অর্ডার ডাটা পাওয়া
-      const orderResp = await fetch(`${dbUrl}/transactions/${orderId}.json?auth=${secret}`);
-      if (!orderResp.ok) throw new Error(`Fetch order failed: ${orderResp.status}`);
+      // ১. অর্ডার ডাটা নিন (transactions টেবিল থেকে)
+      const orderRef = `${dbUrl}/transactions/${orderId}.json?auth=${secret}`;
+      const orderResp = await fetch(orderRef);
+      if (!orderResp.ok) throw new Error(`Failed to fetch order: ${orderResp.status}`);
       const orderData = await orderResp.json();
       if (!orderData) return res.status(404).json({ error: 'Order not found' });
 
-      // ২. ট্রানজেকশন আপডেট
+      // ২. ট্রানজেকশন নোড আপডেট
       const updateData = {
         status: 'waiting',
         phone: phone,
@@ -43,10 +44,10 @@ export default async function handler(req, res) {
       });
       if (!patchResp.ok) {
         const errText = await patchResp.text();
-        throw new Error(`Patch failed: ${patchResp.status} - ${errText}`);
+        throw new Error(`Failed to update transaction: ${patchResp.status} - ${errText}`);
       }
 
-      // ৩. userOrders আপডেট (যদি userId থাকে)
+      // ৩. userOrders নোডও আপডেট (যদি userId থাকে)
       if (orderData.userId) {
         await fetch(`${dbUrl}/userOrders/${orderData.userId}/${orderId}.json?auth=${secret}`, {
           method: 'PATCH',
@@ -69,7 +70,7 @@ export default async function handler(req, res) {
   }
 
   // --------------------------------------------------------------
-  // 2️⃣ অর্ডার তৈরি (পুরনো লজিক – কোনো পরিবর্তন নেই)
+  // 2️⃣ অর্ডার তৈরি (পুরনো লজিক – সম্পূর্ণ অপরিবর্তিত)
   // --------------------------------------------------------------
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
