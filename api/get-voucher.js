@@ -1,27 +1,39 @@
 // --- Voucher Code ---
 let voucherCode = null;
 
-// প্যাটার্ন ১: সবচেয়ে স্পেসিফিক — Your Voucher Code এর পরের button > p টেক্সট
-let match = html.match(/Your Voucher Code[^<]*<\/p>\s*(?:<[^>]+>)*\s*<p[^>]*class="[^"]*truncate[^"]*"[^>]*>([^<]+)</i);
-if (match) {
-  voucherCode = match[1].trim();
-}
+// পুরোনো প্যাটার্ন ১
+match = html.match(/Your Voucher Code\s*<\/?\w+>\s*([^\s<]+)/);
+if (match) voucherCode = match[1];
 
-// প্যাটার্ন ২: যদি উপরেরটা না মেলে — শুধু truncate ক্লাসের p খুঁজে নাও
+// পুরোনো প্যাটার্ন ২
 if (!voucherCode) {
-  match = html.match(/<p[^>]*truncate[^>]*>([A-Z0-9]{10,20})<\/p>/i);
+  match = html.match(/voucher-code["']?>\s*([^<]+)/i);
   if (match) voucherCode = match[1].trim();
 }
 
-// প্যাটার্ন ৩: ফলব্যাক — ১৪–১৮ অক্ষরের বড় হাতের + সংখ্যার কোড (এই HTML-এর ক্ষেত্রে কাজ করবে)
+// নতুন প্যাটার্ন ৩: class/id যেকোনো হতে পারে, শুধু Voucher Code শব্দ খুঁজে তার পরের টেক্সট
 if (!voucherCode) {
-  // সিরিয়াল কোড (UUID) এড়িয়ে যাওয়ার জন্য ফিল্টার করা
-  const codeCandidates = html.matchAll(/([A-Z0-9]{14,18})/g);
-  for (const candidate of codeCandidates) {
-    const code = candidate[1];
-    if (!code.includes('-') && code !== 'TESTSQVR39WT14PM'.substring(0, code.length)) {  // UUID অংশ এড়ানো
-      voucherCode = code;
-      break;
+  match = html.match(/(?:Voucher Code|Voucher|Code|কোড)[^<]*?<\/[^>]+>\s*([^<\s]{8,})[^<]*/i);
+  if (match) voucherCode = match[1].trim();
+}
+
+// নতুন প্যাটার্ন ৪: সবচেয়ে সহজ — ১০-২০ অক্ষরের বড় হাতের/সংখ্যার কম্বিনেশন (অনেক ভাউচার কোড এরকম হয়)
+if (!voucherCode) {
+  match = html.match(/([A-Z0-9]{10,25})/g);   // গ্লোবাল ম্যাচ
+  if (match && match.length > 0) {
+    // সিরিয়াল কোড যদি UUID হয় তাহলে সেটা এড়ানোর চেষ্টা
+    const possibleCodes = match.filter(code => 
+      !code.includes('-') && code.length >= 12 && code.length <= 20
+    );
+    if (possibleCodes.length > 0) {
+      voucherCode = possibleCodes[0];   // প্রথম সম্ভাব্যটা নাও
     }
   }
+}
+
+// নতুন প্যাটার্ন ৫: শেষ চেষ্টা — শুধু alphanumeric ১২+ অক্ষরের স্ট্রিং (সিরিয়াল কোডের পরে আসতে পারে)
+if (!voucherCode && serialCode) {
+  const afterSerial = html.split(serialCode)[1] || '';
+  match = afterSerial.match(/([A-Z0-9]{10,})/);
+  if (match) voucherCode = match[1];
 }
