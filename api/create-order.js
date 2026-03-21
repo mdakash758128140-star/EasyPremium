@@ -9,20 +9,19 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // --------------------------------------------------------------
-  // 1️⃣ অর্ডার কনফার্মেশন (ফোন + ট্রানজেকশন আইডি) – status "waiting"
+  // 1️⃣ ORDER CONFIRMATION – updates status to "waiting"
   // --------------------------------------------------------------
   const { orderId, phone, txid } = req.body;
   if (orderId && phone && txid) {
     const dbUrl = process.env.FIREBASE_DATABASE_URL;
     const secret = process.env.FIREBASE_SECRET;
-
     if (!dbUrl || !secret) {
       console.error('❌ Firebase credentials missing');
       return res.status(500).json({ error: 'Firebase configuration missing' });
     }
 
     try {
-      // ওয়েবহুকের মতো প্রথমে direct path দিয়ে চেষ্টা
+      // ---- Step 1: Try direct path first (exactly like webhook) ----
       const directUrl = `${dbUrl}/transactions/${orderId}.json?auth=${secret}`;
       const directRes = await fetch(directUrl);
       let orderData = null;
@@ -30,7 +29,7 @@ export default async function handler(req, res) {
       if (directRes.ok) {
         orderData = await directRes.json();
         if (orderData && orderData.orderId === orderId) {
-          // ✅ direct path কাজ করছে
+          // Direct path found – update directly
           const updates = {
             status: 'waiting',
             phone: phone,
@@ -42,14 +41,13 @@ export default async function handler(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updates)
           });
-          console.log(`✅ Transaction ${orderId} updated directly with waiting status`);
+          console.log(`✅ Transaction ${orderId} updated directly (waiting)`);
         } else {
-          // direct path পাওয়া গেলেও orderId মিলছে না → search needed
-          orderData = null;
+          orderData = null; // path existed but orderId mismatch -> need search
         }
       }
 
-      // যদি direct path কাজ না করে, তাহলে search দিয়ে ট্রানজেকশন খুঁজুন
+      // ---- Step 2: If direct path fails, search by orderId ----
       if (!orderData) {
         const searchUrl = `${dbUrl}/transactions.json?orderBy="orderId"&equalTo="${orderId}"&auth=${secret}`;
         const searchRes = await fetch(searchUrl);
@@ -71,7 +69,7 @@ export default async function handler(req, res) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(updates)
             });
-            console.log(`✅ Transaction ${orderId} updated via search (key: ${transactionKey}) with waiting status`);
+            console.log(`✅ Transaction ${orderId} updated via search (key: ${transactionKey})`);
           } else {
             console.warn(`⚠️ No transaction found with orderId ${orderId}`);
             return res.status(404).json({ error: 'Order not found' });
@@ -82,7 +80,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // এখন userOrders আপডেট (যদি userId থাকে)
+      // ---- Step 3: Update userOrders if userId exists (same pattern) ----
       if (orderData && orderData.userId) {
         const userDirectUrl = `${dbUrl}/userOrders/${orderData.userId}/${orderId}.json?auth=${secret}`;
         const userDirectRes = await fetch(userDirectUrl);
@@ -94,9 +92,8 @@ export default async function handler(req, res) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ status: 'waiting', phone, txid })
             });
-            console.log(`✅ User order updated for user ${orderData.userId} directly`);
+            console.log(`✅ User order updated directly for ${orderData.userId}`);
           } else {
-            // direct path না থাকলে search দিয়ে userOrders আপডেট
             await updateUserOrderViaSearch(orderData.userId, orderId, { status: 'waiting', phone, txid }, dbUrl, secret);
           }
         } else {
@@ -117,7 +114,7 @@ export default async function handler(req, res) {
   }
 
   // --------------------------------------------------------------
-  // 2️⃣ অর্ডার তৈরি (পুরনো লজিক – সম্পূর্ণ অপরিবর্তিত)
+  // 2️⃣ ORDER CREATION – original code (unchanged)
   // --------------------------------------------------------------
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
@@ -325,7 +322,9 @@ export default async function handler(req, res) {
   }
 }
 
-// Helper function: search and update user order (same as webhook)
+// --------------------------------------------------------------
+// Helper: update userOrders by searching (same as webhook)
+// --------------------------------------------------------------
 async function updateUserOrderViaSearch(userId, orderId, updates, dbUrl, secret) {
   const userOrdersUrl = `${dbUrl}/userOrders/${userId}.json?auth=${secret}`;
   const userOrdersRes = await fetch(userOrdersUrl);
@@ -340,7 +339,7 @@ async function updateUserOrderViaSearch(userId, orderId, updates, dbUrl, secret)
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updates),
         });
-        console.log(`✅ User order updated for user ${userId} via search (key: ${key}) with waiting status`);
+        console.log(`✅ User order updated via search (key: ${key}) for user ${userId}`);
         return;
       }
     }
