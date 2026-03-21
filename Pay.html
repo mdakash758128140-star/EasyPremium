@@ -396,7 +396,7 @@
         });
 
         const database = firebase.database();
-        const MAIN_WEBSITE = "https://easy-premium.com";  // সঠিক মূল সাইট
+        const MAIN_WEBSITE = "https://easy-premium.com";  // মূল সাইটের ঠিকানা
         
         let orderValidationPassed = false;
         let currentOrderData = null;
@@ -530,7 +530,7 @@
             }
         }
 
-        // অর্ডার ভ্যালিডেশন এবং রিয়েলটাইম মনিটরিং
+        // অর্ডার ভ্যালিডেশন + রিয়েলটাইম মনিটরিং
         async function validateOrderAndMonitor(urlData) {
             const orderRef = database.ref(`transactions/${urlData.orderId}`);
             const snapshot = await orderRef.once('value');
@@ -557,7 +557,7 @@
                 return false;
             }
             
-            // সব ঠিক থাকলে রিয়েলটাইম লিসনার যোগ করি
+            // সব ঠিক থাকলে রিয়েলটাইম লিসনার যোগ করি
             orderStatusListener = orderRef.on('value', (snap) => {
                 const updatedOrder = snap.val();
                 if (!updatedOrder) return;
