@@ -1,8 +1,4 @@
-// api/get-voucher.js
-import { load } from 'cheerio';
-
 export default async function handler(req, res) {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -15,39 +11,25 @@ export default async function handler(req, res) {
     const response = await fetch(url);
     const html = await response.text();
 
-    const $ = load(html);
-
-    // Voucher Code বের করার চেষ্টা (পৃষ্ঠার কাঠামো অনুযায়ী)
+    // Voucher Code বের করা (Regex)
     let voucherCode = null;
-    const voucherDiv = $('div:contains("Your Voucher Code")');
-    if (voucherDiv.length) {
-      voucherCode = voucherDiv.next().text().trim();
-    }
-    if (!voucherCode) {
-      // regex fallback
-      const match = html.match(/Your Voucher Code\s*<\/?\w+>\s*([^\s<]+)/);
-      if (match) voucherCode = match[1];
-    }
+    const voucherMatch = html.match(/Your Voucher Code\s*<\/?\w+>\s*([^\s<]+)/);
+    if (voucherMatch) voucherCode = voucherMatch[1];
 
-    // Serial Code বের করার চেষ্টা
+    // Serial Code বের করা
     let serialCode = null;
-    const serialElem = $('div:contains("Serial Code:")');
-    if (serialElem.length) {
-      serialCode = serialElem.text().replace('Serial Code:', '').trim();
-    }
-    if (!serialCode) {
-      const match = html.match(/Serial Code:\s*([^\s<]+)/);
-      if (match) serialCode = match[1];
-    }
+    const serialMatch = html.match(/Serial Code:\s*([^\s<]+)/);
+    if (serialMatch) serialCode = serialMatch[1];
 
-    // প্রোডাক্টের নাম ও মূল্য (ঐচ্ছিক)
+    // প্রোডাক্ট নাম (ঐচ্ছিক)
     let productName = null;
-    const productElem = $('h2, .product-name, .card-name');
-    if (productElem.length) productName = productElem.first().text().trim();
+    const nameMatch = html.match(/<h2[^>]*>([^<]+)<\/h2>|class="[^"]*card-name[^"]*"[^>]*>([^<]+)/);
+    if (nameMatch) productName = nameMatch[1] || nameMatch[2];
 
+    // পরিমাণ (ঐচ্ছিক)
     let amount = null;
-    const amountElem = $('.amount, .price, .face-value');
-    if (amountElem.length) amount = amountElem.first().text().trim();
+    const amountMatch = html.match(/#\s*(\d+(?:\.\d+)?)/);
+    if (amountMatch) amount = amountMatch[1];
 
     res.status(200).json({
       success: true,
@@ -59,7 +41,7 @@ export default async function handler(req, res) {
       url
     });
   } catch (error) {
-    console.error('Error fetching voucher:', error);
+    console.error('Error:', error.message);
     res.status(500).json({ error: error.message });
   }
 }
