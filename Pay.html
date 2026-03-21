@@ -10,7 +10,6 @@
     <meta name="format-detection" content="telephone=no, address=no, email=no">
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
     <style>
-        /* Same CSS as before – kept unchanged */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { background: #0a0a1a; width: 100%; min-height: 100vh; color: #fff; font-family: 'Segoe UI', 'Noto Sans Bengali', sans-serif; }
         body { padding: 15px; padding-bottom: 85px; display: flex; justify-content: center; background: linear-gradient(135deg, #0a0a1a 0%, #121230 50%, #1a1a3a 100%) !important; background-attachment: fixed !important; position: relative; }
@@ -80,7 +79,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script>
-        // Firebase configuration – exactly as provided
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
             authDomain: "easy-premium.firebaseapp.com",
@@ -92,7 +91,6 @@
             measurementId: "G-CHL8K8HRPX"
         };
         firebase.initializeApp(firebaseConfig);
-
         const database = firebase.database();
 
         function decryptData(encrypted) {
@@ -129,16 +127,14 @@
                 const snap = await database.ref(`transactions/${orderId}`).once('value');
                 const order = snap.val();
                 if (!order) return { valid: false, reason: 'not_found' };
-                // Status check
-                if (order.status === 'completed' || order.status === 'finished' || order.status === 'cancelled')
-                    return { valid: false, reason: 'completed' };
-                // Owner check
-                if (order.userId && order.userId !== expectedUserId)
-                    return { valid: false, reason: 'user_mismatch' };
-                // 24‑hour check
+                // Status must be pending
+                if (order.status !== 'pending') return { valid: false, reason: 'status_not_pending' };
+                // User match
+                if (order.userId && order.userId !== expectedUserId) return { valid: false, reason: 'user_mismatch' };
+                // 24 hours check
                 const orderDate = order.orderDate || order.timestamp;
                 if (orderDate) {
-                    const hoursDiff = (Date.now() - new Date(orderDate).getTime()) / (1000 * 60 * 60);
+                    const hoursDiff = (Date.now() - new Date(orderDate).getTime()) / (1000*60*60);
                     if (hoursDiff > 24) return { valid: false, reason: 'expired' };
                 } else {
                     return { valid: false, reason: 'no_date' };
@@ -189,12 +185,11 @@
 
             const validation = await validateOrder(urlData.orderId, urlData.userId);
             if (!validation.valid) {
-                // Invalid order – redirect to main site
                 window.location.href = 'https://www.easy-premium.com';
                 return;
             }
 
-            // Admin status monitor (warning only, does not hide button)
+            // Admin status – warning only, button stays visible
             let warningDiv = null;
             async function updateAdminWarning() {
                 try {
@@ -266,7 +261,7 @@
                 </div>
             `;
 
-            // Show the payment button for valid orders
+            // Show payment button – valid order
             payBtn.classList.remove('hidden');
 
             payBtn.onclick = () => {
