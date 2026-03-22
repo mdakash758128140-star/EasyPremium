@@ -81,6 +81,40 @@ async function confirmRelogradeOrder(trxId) {
   };
 }
 
+// Helper to parse reference JSON and extract order details
+function parseOrderReference(orderData) {
+  if (!orderData || !orderData.reference) return null;
+  try {
+    const ref = JSON.parse(orderData.reference);
+    return {
+      firebaseOrderId: ref.firebaseOrderId,
+      userId: ref.userId
+    };
+  } catch (e) {
+    console.error('Failed to parse reference:', e);
+    return null;
+  }
+}
+
+// Helper to update multiple Firebase paths
+async function updateFirebasePaths(paths, firebaseUrl, secret) {
+  const updates = {};
+  for (const [path, value] of Object.entries(paths)) {
+    updates[path] = value;
+  }
+  const url = `${firebaseUrl}.json?auth=${secret}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates)
+  });
+  if (!res.ok) {
+    const error = await res.text();
+    throw new Error(`Firebase patch failed: ${error}`);
+  }
+  return res.json();
+}
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -132,6 +166,11 @@ export default async function handler(req, res) {
     const timestamp = new Date().toISOString();
     const timestampMs = Date.now();
     
+    // Parse order reference to get user ID and order ID
+    const parsedRef = parseOrderReference(orderData);
+    const firebaseOrderId = parsedRef?.firebaseOrderId;
+    const userId = parsedRef?.userId;
+    
     if (action === 'complete') {
       // ========== STEP 1: 🔥 CONFIRM ORDER IN RELOGRADE ==========
       console.log(`\n🔄 STEP 1: Confirming order ${trxId} in Relograde...`);
@@ -155,8 +194,11 @@ export default async function handler(req, res) {
         console.warn('⚠️ RELOGRADE_API_KEY not configured');
       }
       
-      // ========== STEP 2: Save to Firebase ==========
-      const completedData = {
+      // ========== STEP 2: Prepare Firebase updates ==========
+      const updates = {};
+      
+      // CompletedOrders entry
+      updates[`completedOrders/${trxId}`] = {
         trxId: trxId,
         status: 'completed',
         completedBy: adminEmail,
@@ -169,36 +211,45 @@ export default async function handler(req, res) {
         voucherLinks: voucherLinks
       };
       
-      const url = `${FIREBASE_DATABASE_URL}/completedOrders/${trxId}.json?auth=${FIREBASE_SECRET}`;
-      console.log('📤 Saving to Firebase...');
+      // Update transaction under trxId (Relograde key)
+      updates[`transactions/${trxId}`] = {
+        status: 'completed',
+        completedAt: timestamp,
+        relogradeConfirmStatus: relogradeStatus,
+        voucherCodes: voucherCodes,
+        voucherLinks: voucherLinks
+      };
       
-      const saveRes = await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(completedData)
-      });
-      
-      if (!saveRes.ok) {
-        throw new Error(`Failed to save to Firebase: ${saveRes.status}`);
+      // If we have firebaseOrderId and userId, update those nodes too
+      if (firebaseOrderId && userId) {
+        // Update user's order record
+        updates[`userOrders/${userId}/${firebaseOrderId}/status`] = 'completed';
+        updates[`userOrders/${userId}/${firebaseOrderId}/completedAt`] = timestamp;
+        if (voucherLinks.length > 0) {
+          updates[`userOrders/${userId}/${firebaseOrderId}/voucherData`] = {
+            voucherLinks: voucherLinks,
+            voucherCodes: voucherCodes
+          };
+        }
+        // Update transaction under firebaseOrderId
+        updates[`transactions/${firebaseOrderId}/status`] = 'completed';
+        updates[`transactions/${firebaseOrderId}/completedAt`] = timestamp;
+        if (voucherLinks.length > 0) {
+          updates[`transactions/${firebaseOrderId}/voucherData`] = {
+            voucherLinks: voucherLinks,
+            voucherCodes: voucherCodes
+          };
+        }
       }
       
-      // Update transactions
-      try {
-        const transactionUrl = `${FIREBASE_DATABASE_URL}/transactions/${trxId}.json?auth=${FIREBASE_SECRET}`;
-        await fetch(transactionUrl, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            status: 'completed', 
-            completedAt: timestamp,
-            relogradeConfirmStatus: relogradeStatus,
-            voucherCodes: voucherCodes,
-            voucherLinks: voucherLinks
-          })
-        });
-      } catch (err) {
-        console.log('Transaction update skipped:', err.message);
-      }
+      // Also update the top-level userOrders/${trxId} for consistency
+      updates[`userOrders/${trxId}`] = {
+        status: 'completed',
+        orderStatus: 'completed'
+      };
+      
+      // Apply all updates
+      await updateFirebasePaths(updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
       
       console.log(`✅ Order ${trxId} completed by ${adminEmail}`);
       
@@ -216,10 +267,13 @@ export default async function handler(req, res) {
       });
       
     } else if (action === 'fail') {
-      // ========== FAIL ORDER - Save to FailOrders ==========
+      // ========== FAIL ORDER ==========
       console.log(`\n❌ Failing order ${trxId}...`);
       
-      const failData = {
+      const updates = {};
+      
+      // Save to FailOrders
+      updates[`FailOrders/${trxId}`] = {
         trxId: trxId,
         status: 'failed',
         failedBy: adminEmail,
@@ -228,37 +282,33 @@ export default async function handler(req, res) {
         orderData: orderData || null
       };
       
-      const failUrl = `${FIREBASE_DATABASE_URL}/FailOrders/${trxId}.json?auth=${FIREBASE_SECRET}`;
-      console.log('📤 Saving to FailOrders...');
+      // Update transaction under trxId
+      updates[`transactions/${trxId}`] = {
+        status: 'fail',
+        orderStatus: 'fail',
+        failedAt: timestamp
+      };
       
-      const saveRes = await fetch(failUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(failData)
-      });
+      // Update top-level userOrders entry for this trxId
+      updates[`userOrders/${trxId}`] = {
+        status: 'fail',
+        orderStatus: 'fail'
+      };
       
-      if (!saveRes.ok) {
-        throw new Error(`Failed to save to FailOrders: ${saveRes.status}`);
+      // If we have firebaseOrderId and userId, update those nodes too
+      if (firebaseOrderId && userId) {
+        // Update user's order record
+        updates[`userOrders/${userId}/${firebaseOrderId}/status`] = 'fail';
+        updates[`userOrders/${userId}/${firebaseOrderId}/orderStatus`] = 'fail';
+        updates[`userOrders/${userId}/${firebaseOrderId}/failedAt`] = timestamp;
+        // Update transaction under firebaseOrderId
+        updates[`transactions/${firebaseOrderId}/status`] = 'fail';
+        updates[`transactions/${firebaseOrderId}/orderStatus`] = 'fail';
+        updates[`transactions/${firebaseOrderId}/failedAt`] = timestamp;
       }
       
-      // Update userOrders and transactions status to 'fail'
-      try {
-        const userOrderUrl = `${FIREBASE_DATABASE_URL}/userOrders/${trxId}.json?auth=${FIREBASE_SECRET}`;
-        await fetch(userOrderUrl, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'fail', orderStatus: 'fail' })
-        });
-        
-        const transactionUrl = `${FIREBASE_DATABASE_URL}/transactions/${trxId}.json?auth=${FIREBASE_SECRET}`;
-        await fetch(transactionUrl, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'fail', orderStatus: 'fail', failedAt: timestamp })
-        });
-      } catch (err) {
-        console.log('Transaction update failed:', err.message);
-      }
+      // Apply all updates
+      await updateFirebasePaths(updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
       
       console.log(`✅ Order ${trxId} marked as failed by ${adminEmail}`);
       
