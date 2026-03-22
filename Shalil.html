@@ -304,13 +304,13 @@
             cursor: not-allowed;
         }
         
-        .action-delete {
-            background: #dc3545;
+        .action-cancel {
+            background: #ff9800;
             color: white;
         }
         
-        .action-delete:hover {
-            background: #c82333;
+        .action-cancel:hover:not(:disabled) {
+            background: #fb8c00;
             transform: translateY(-1px);
         }
         
@@ -603,7 +603,7 @@
                     <div class="stats-card"><div class="stat-value" id="totalOrders">0</div><div class="stat-label">মোট অর্ডার</div></div>
                     <div class="stats-card"><div class="stat-value" id="pendingOrders">0</div><div class="stat-label">পেন্ডিং</div></div>
                     <div class="stats-card"><div class="stat-value" id="completedOrders">0</div><div class="stat-label">সম্পূর্ণ</div></div>
-                    <div class="stats-card"><div class="stat-value" id="cancelledOrders">0</div><div class="stat-label">ক্যানসেল</div></div>
+                    <div class="stats-card"><div class="stat-value" id="cancelledOrders">0</div><div class="stat-label">ক্যানসেল / ফেল</div></div>
                 </div>
                 <div class="system-info" id="systemInfo"></div>
             </div>
@@ -611,7 +611,7 @@
             <div class="section">
                 <h2 class="section-title">Relograde অর্ডার তালিকা <span id="orderCount"></span></h2>
                 <div class="filter-section">
-                    <div class="filter-item"><label class="form-label">স্ট্যাটাস</label><select id="orderFilter" class="form-select"><option value="all">সব</option><option value="created">পেন্ডিং</option><option value="finished">সম্পূর্ণ</option><option value="cancelled">ক্যানসেল</option></select></div>
+                    <div class="filter-item"><label class="form-label">স্ট্যাটাস</label><select id="orderFilter" class="form-select"><option value="all">সব</option><option value="created">পেন্ডিং</option><option value="finished">সম্পূর্ণ</option><option value="cancelled">ক্যানসেল</option><option value="fail">ফেল</option></select></div>
                     <div class="filter-item"><label class="form-label">সার্চ</label><input type="text" id="orderSearch" class="form-input" placeholder="TRX ID / রেফারেন্স"></div>
                     <div class="filter-item"><label class="form-label">তারিখ</label><select id="dateFilter" class="form-select"><option value="all">সব</option><option value="today">আজ</option><option value="yesterday">গতকাল</option><option value="week">এই সপ্তাহ</option><option value="month">এই মাস</option></select></div>
                 </div>
@@ -647,7 +647,7 @@
         const database = firebase.database();
 
         let orders = [], currentAdminEmail = null;
-        let onlineStatusInterval = null; // ✅ 在线状态定时器
+        let onlineStatusInterval = null;
         
         const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
 
@@ -674,14 +674,13 @@
             copyLinkBtn.onclick = copyLink;
         }
         
-        // ✅ 管理员在线状态更新函数 (从旧代码整合)
+        // ✅ 管理员在线状态更新
         async function updateOnlineStatus(user) {
             if (!user) return;
             const uid = user.uid;
             try {
                 const adminSnapshot = await database.ref(`adminUsers/${uid}`).once('value');
                 const adminData = adminSnapshot.val();
-                // 需要手机号才能公开显示在线状态（若数据库无手机号则跳过，避免错误）
                 if (adminData && adminData.number) {
                     const publicInfo = {
                         name: adminData.name || user.displayName || 'Admin',
@@ -690,8 +689,6 @@
                     };
                     await database.ref(`publicAdminInfo/${uid}`).set(publicInfo);
                 } else {
-                    // 没有手机号则只更新最后活跃时间到私有节点，不公开
-                    console.warn(`管理员 ${uid} 尚未设置手机号，未公开在线状态`);
                     await database.ref(`adminUsers/${uid}`).update({
                         lastActive: firebase.database.ServerValue.TIMESTAMP
                     });
@@ -703,9 +700,7 @@
         
         function startOnlineStatusUpdates(user) {
             if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-            // 立即执行一次
             updateOnlineStatus(user);
-            // 每60秒更新一次
             onlineStatusInterval = setInterval(() => {
                 updateOnlineStatus(user);
             }, 60000);
@@ -715,8 +710,6 @@
             adminName.textContent = user.displayName || user.email;
             adminEmail.textContent = user.email;
             adminAvatar.innerHTML = user.photoURL ? `<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">` : `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
-            
-            // ✅ 保存管理员基本信息到数据库 (在线状态依赖)
             try {
                 await database.ref(`adminUsers/${user.uid}`).update({
                     email: user.email,
@@ -725,9 +718,7 @@
                     lastLogin: firebase.database.ServerValue.TIMESTAMP,
                     status: 'active'
                 });
-            } catch (err) {
-                console.warn("保存管理员信息失败:", err);
-            }
+            } catch (err) { console.warn("保存管理员信息失败:", err); }
         }
         
         function checkAdminAuth() {
@@ -736,7 +727,6 @@
                     currentAdminEmail = user.email;
                     await loadAdminData(user);
                     showAdminPanel();
-                    // ✅ 启动在线状态更新 (核心整合)
                     startOnlineStatusUpdates(user);
                     loadOrders();
                 } else if (user) {
@@ -744,11 +734,7 @@
                     showLoginScreen();
                     showToast('এক্সেস নেই', 'error');
                 } else {
-                    // 未登录时清除在线状态定时器
-                    if (onlineStatusInterval) {
-                        clearInterval(onlineStatusInterval);
-                        onlineStatusInterval = null;
-                    }
+                    if (onlineStatusInterval) clearInterval(onlineStatusInterval);
                     showLoginScreen();
                 }
             });
@@ -765,11 +751,7 @@
         }
         
         async function handleLogout() {
-            // 登出时清除在线状态定时器
-            if (onlineStatusInterval) {
-                clearInterval(onlineStatusInterval);
-                onlineStatusInterval = null;
-            }
+            if (onlineStatusInterval) clearInterval(onlineStatusInterval);
             await auth.signOut();
             showLoginScreen();
             showToast('লগ আউট', 'success');
@@ -846,30 +828,41 @@
             }
         }
         
-        async function deleteOrder(trxId, event) {
+        // ✅ 新的取消订单函数：更新 Firebase 中的 userOrders 和 transactions 状态为 "fail"
+        async function cancelOrder(trxId, event) {
             event.stopPropagation();
-            if (!confirm('সতর্কতা: এই অর্ডারটি মুছে ফেলা হবে। আপনি কি নিশ্চিত?')) return;
+            if (!confirm('এই অর্ডারটি কি বাতিল (ফেল) করতে চান? স্ট্যাটাস "fail" এ সেট হবে।')) return;
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>...';
             btn.disabled = true;
             try {
-                showToast('অর্ডার ডিলিট করা হচ্ছে...', 'info');
-                const orderData = orders.find(o => o.trx === trxId);
-                const response = await fetch('/api/order_completed', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ trxId: trxId, action: 'delete', adminEmail: currentAdminEmail, orderData: orderData })
-                });
-                const result = await response.json();
-                if (response.ok && result.success) {
-                    orders = orders.filter(o => o.trx !== trxId);
-                    filterOrders();
-                    showToast('🗑️ অর্ডার ডিলিট হয়েছে', 'success');
-                } else throw new Error(result.error || 'Delete failed');
+                showToast('অর্ডার ফেল হিসেবে আপডেট করা হচ্ছে...', 'info');
+                const order = orders.find(o => o.trx === trxId);
+                if (!order) throw new Error('অর্ডার খুঁজে পাওয়া যায়নি');
+                
+                // Firebase-এ userOrders এবং transactions নোড আপডেট করুন
+                // ধরে নিচ্ছি টেবিলের primary key হলো trxId
+                const updates = {};
+                // userOrders পাথে trxId দিয়ে status fail সেট করা
+                updates[`userOrders/${trxId}/status`] = 'fail';
+                updates[`transactions/${trxId}/status`] = 'fail';
+                // এছাড়াও optionally orderStatus ফিল্ড আপডেট করা যায়
+                updates[`userOrders/${trxId}/orderStatus`] = 'fail';
+                updates[`transactions/${trxId}/orderStatus`] = 'fail';
+                
+                await database.ref().update(updates);
+                
+                // লোকাল অর্ডার অ্যারেতেও স্ট্যাটাস আপডেট করুন (UI তে দেখানোর জন্য)
+                const idx = orders.findIndex(o => o.trx === trxId);
+                if (idx !== -1) {
+                    orders[idx].orderStatus = 'fail';
+                }
+                filterOrders(); // রিফ্রেশ UI
+                showToast('✅ অর্ডার স্ট্যাটাস "fail" এ আপডেট করা হয়েছে', 'success');
             } catch(e) {
-                console.error('Delete error:', e);
-                showToast('ডিলিট করতে ব্যর্থ: ' + e.message, 'error');
+                console.error('Cancel error:', e);
+                showToast('অর্ডার ফেল করতে ব্যর্থ: ' + e.message, 'error');
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
@@ -887,14 +880,16 @@
                 let statusClass = 'status-pending', statusText = o.orderStatus || 'unknown';
                 if (statusText === 'finished') { statusClass = 'status-completed'; statusText = 'সম্পূর্ণ'; }
                 else if (statusText === 'cancelled') { statusClass = 'status-cancelled'; statusText = 'ক্যানসেল'; }
+                else if (statusText === 'fail') { statusClass = 'status-cancelled'; statusText = 'ফেল'; }
                 else if (statusText === 'created') { statusClass = 'status-pending'; statusText = 'পেন্ডিং'; }
                 const items = (o.items || []).map(i => `${i.product?.name || i.productSlug} x${i.amount}`).join('<br>') || '—';
                 const total = o.priceInclVat || o.priceAmount || 0;
                 const currency = o.priceCurrency || 'USD';
                 const ref = o.reference || '—';
                 const isPending = o.orderStatus === 'created';
+                // ক্যানসেল বাটন সবসময় সক্রিয়, শুধু পেন্ডিং অর্ডারের জন্য দেখানো হচ্ছে (প্রয়োজনে বদলানো যেতে পারে)
                 html += `<tr onclick="showOrderModal('${o.trx}')" style="cursor:pointer;">
-                    <td style="font-family:monospace;">${o.trx || 'N/A'}</td>
+                    <td style="font-family:monospace;">${o.trx || 'N/A'}${o.trx ? '' : ''}</td>
                     <td>${date}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
@@ -903,7 +898,7 @@
                     <td>${o.paymentCurrency || currency}</td>
                     <td class="action-buttons" onclick="event.stopPropagation()">
                         ${isPending ? `<button class="action-btn action-complete" onclick="completeOrder('${o.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button>` : `<button class="action-btn action-complete" disabled><i class="fas fa-check-circle"></i> সম্পন্ন</button>`}
-                        <button class="action-btn action-delete" onclick="deleteOrder('${o.trx}', event)"><i class="fas fa-trash-alt"></i> ডিলিট</button>
+                        <button class="action-btn action-cancel" onclick="cancelOrder('${o.trx}', event)"><i class="fas fa-ban"></i> ক্যানসেল</button>
                     </td>
                 </tr>`;
             });
@@ -915,7 +910,7 @@
             if (!order) { showToast('অর্ডার পাওয়া যায়নি', 'error'); return; }
             modalOrderInfo.innerHTML = `
                 <div class="modal-info-item"><span class="modal-info-label">TRX ID:</span><span class="modal-info-value">${order.trx || 'N/A'}</span></div>
-                <div class="modal-info-item"><span class="modal-info-label">স্ট্যাটাস:</span><span class="modal-info-value">${order.orderStatus === 'finished' ? 'সম্পূর্ণ' : order.orderStatus === 'cancelled' ? 'ক্যানসেল' : 'পেন্ডিং'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">স্ট্যাটাস:</span><span class="modal-info-value">${order.orderStatus === 'finished' ? 'সম্পূর্ণ' : order.orderStatus === 'cancelled' ? 'ক্যানসেল' : order.orderStatus === 'fail' ? 'ফেল' : 'পেন্ডিং'}</span></div>
                 <div class="modal-info-item"><span class="modal-info-label">আইটেম:</span><span class="modal-info-value">${(order.items||[]).map(i=>`${i.product?.name||i.productSlug} x${i.amount}`).join(', ') || '—'}</span></div>
                 <div class="modal-info-item"><span class="modal-info-label">মোট দাম:</span><span class="modal-info-value">${(order.priceInclVat||order.priceAmount||0)} ${order.priceCurrency||'USD'}</span></div>
                 <div class="modal-info-item"><span class="modal-info-label">রেফারেন্স:</span><span class="modal-info-value">${order.reference||'—'}</span></div>
@@ -948,7 +943,7 @@
             totalOrdersEl.textContent = list.length;
             pendingOrdersEl.textContent = list.filter(o => o.orderStatus === 'created').length;
             completedOrdersEl.textContent = list.filter(o => o.orderStatus === 'finished').length;
-            cancelledOrdersEl.textContent = list.filter(o => o.orderStatus === 'cancelled').length;
+            cancelledOrdersEl.textContent = list.filter(o => o.orderStatus === 'cancelled' || o.orderStatus === 'fail').length;
         }
         
         function updateSystemInfo() {
@@ -968,9 +963,9 @@
         }
         
         window.completeOrder = completeOrder;
-        window.deleteOrder = deleteOrder;
+        window.cancelOrder = cancelOrder;
         window.showOrderModal = showOrderModal;
         window.loadOrders = loadOrders;
     </script>
 </body>
-</html> 
+</html>
