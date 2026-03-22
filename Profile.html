@@ -681,9 +681,11 @@
         drawerClose.addEventListener('click', closeDrawer);
         drawer.addEventListener('click', e => e.stopPropagation());
         
-        // Cart icon redirect to profile (itself) or main? keep as is
+        // ✅ কার্ট আইকন: একই উইন্ডোতে প্রোফাইল পৃষ্ঠা খুলবে (নতুন ট্যাব নয়)
         const cartIcon = document.getElementById('cartIcon');
-        cartIcon.addEventListener('click', () => window.location.href = 'https://www.easy-premium.com/Profile.html');
+        cartIcon.addEventListener('click', () => {
+            window.location.href = 'https://www.easy-premium.com/Profile.html';
+        });
         
         // Helper functions
         function formatDate(iso) {
@@ -731,14 +733,8 @@
 
         // Reorder function for failed orders
         async function reorderOrder(orderId, platformId, price, platformName) {
-            // Build a new order link to the main site with the same product details
-            // We'll redirect to the main site with a pre-filled product selection
-            // Since we don't have exact purchase page URL, we go to home page with a parameter
-            // Alternatively, we can generate a new payment link using the admin's method, but that would require backend.
-            // For simplicity, we open the main site and alert the user to select the same product.
             const mainUrl = `https://www.easy-premium.com?reorder=true&product=${encodeURIComponent(platformId)}&price=${encodeURIComponent(price)}&name=${encodeURIComponent(platformName)}`;
             window.open(mainUrl, '_blank');
-            // Optional: show a toast message
             alert('পুনরায় অর্ডার করতে পৃষ্ঠাটি খুলেছে। অনুগ্রহ করে একই পণ্য নির্বাচন করুন।');
         }
 
@@ -751,7 +747,6 @@
                 card.parentNode.replaceChild(newCard, card);
                 newCard.style.cursor = 'pointer';
                 newCard.addEventListener('click', (e) => {
-                    // avoid triggering when clicking on reorder button inside
                     if (e.target.closest('.reorder-btn')) return;
                     const link = newCard.dataset.voucherLink;
                     if (link) window.open(link, '_blank');
