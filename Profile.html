@@ -322,6 +322,27 @@
             border: 1px solid #dc3545;
         }
         
+        /* Reorder button */
+        .reorder-btn {
+            background: linear-gradient(45deg, #ff9800, #ff5722);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: white;
+            margin-top: 8px;
+        }
+        .reorder-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 10px rgba(255,152,0,0.4);
+        }
+        
         /* Loading & error */
         .loading {
             text-align: center;
@@ -676,16 +697,16 @@
         function getStatusClass(status) {
             if (status === 'completed') return 'status-completed';
             if (status === 'cancelled') return 'status-cancelled';
-            if (status === 'fail') return 'status-cancelled'; // fail orders use same red style
+            if (status === 'fail' || status === 'failed') return 'status-cancelled';
             return 'status-pending';
         }
 
         function getStatusBangla(status) {
             if (status === 'completed') return 'সম্পন্ন';
             if (status === 'cancelled') return 'বাতিল';
-            if (status === 'fail') return 'ফেল'; // নতুন স্ট্যাটাস
+            if (status === 'fail' || status === 'failed') return 'ফেল';
             if (status === 'waiting') return 'অপেক্ষমান';
-            return 'পেমেন্ট করুন'; // pending
+            return 'পেমেন্ট করুন';
         }
 
         async function updateCartBadge(uid) {
@@ -708,8 +729,21 @@
             return null;
         }
 
+        // Reorder function for failed orders
+        async function reorderOrder(orderId, platformId, price, platformName) {
+            // Build a new order link to the main site with the same product details
+            // We'll redirect to the main site with a pre-filled product selection
+            // Since we don't have exact purchase page URL, we go to home page with a parameter
+            // Alternatively, we can generate a new payment link using the admin's method, but that would require backend.
+            // For simplicity, we open the main site and alert the user to select the same product.
+            const mainUrl = `https://www.easy-premium.com?reorder=true&product=${encodeURIComponent(platformId)}&price=${encodeURIComponent(price)}&name=${encodeURIComponent(platformName)}`;
+            window.open(mainUrl, '_blank');
+            // Optional: show a toast message
+            alert('পুনরায় অর্ডার করতে পৃষ্ঠাটি খুলেছে। অনুগ্রহ করে একই পণ্য নির্বাচন করুন।');
+        }
+
         // Attach click handlers for both completed (voucher) and pending (payment link)
-        // Failed orders are NOT clickable.
+        // Failed orders get a separate reorder button (already in HTML)
         function attachClickHandlers() {
             // Completed orders (voucher link)
             document.querySelectorAll('.order-card[data-voucher-link]:not([data-voucher-link=""])').forEach(card => {
@@ -717,6 +751,8 @@
                 card.parentNode.replaceChild(newCard, card);
                 newCard.style.cursor = 'pointer';
                 newCard.addEventListener('click', (e) => {
+                    // avoid triggering when clicking on reorder button inside
+                    if (e.target.closest('.reorder-btn')) return;
                     const link = newCard.dataset.voucherLink;
                     if (link) window.open(link, '_blank');
                 });
@@ -727,6 +763,7 @@
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
                 newCard.addEventListener('click', async (e) => {
+                    if (e.target.closest('.reorder-btn')) return;
                     let link = newCard.dataset.paymentLink;
                     if (!link) {
                         const orderId = newCard.dataset.orderId;
@@ -743,8 +780,22 @@
                     }
                 });
             });
-        }
 
+            // Reorder buttons for failed orders
+            document.querySelectorAll('.reorder-btn').forEach(btn => {
+                btn.removeEventListener('click', btn._reorderHandler);
+                btn._reorderHandler = (e) => {
+                    e.stopPropagation();
+                    const orderId = btn.dataset.orderId;
+                    const platformId = btn.dataset.platformId;
+                    const price = btn.dataset.price;
+                    const platformName = btn.dataset.platformName;
+                    reorderOrder(orderId, platformId, price, platformName);
+                };
+                btn.addEventListener('click', btn._reorderHandler);
+            });
+        }
+        
         async function renderProfile(user, orders) {
             const avatarHtml = user.photoURL 
                 ? `<img src="${user.photoURL}" alt="avatar">`
@@ -768,7 +819,7 @@
                     }
                     
                     // Only mark as clickable if status is pending and we have a payment link, or if completed with voucher link
-                    // Fail orders should NOT be clickable.
+                    // Fail orders are NOT clickable (but have a separate reorder button)
                     const isClickablePending = (status === 'pending' && paymentLink);
                     const isClickableCompleted = (status === 'completed' && voucherLink);
                     
@@ -777,6 +828,21 @@
                     const paymentAttr = (isClickablePending && paymentLink) ? `data-payment-link="${paymentLink}"` : '';
                     const orderIdAttr = order.orderId ? `data-order-id="${order.orderId}"` : '';
                     
+                    // Reorder button only for failed orders
+                    let reorderButton = '';
+                    if (status === 'fail' || status === 'failed') {
+                        const platformId = order.platformId || '';
+                        const price = order.price || '';
+                        const platformName = order.platform || '';
+                        reorderButton = `
+                            <div class="order-row" style="justify-content: flex-end;">
+                                <button class="reorder-btn" data-order-id="${order.orderId || ''}" data-platform-id="${platformId}" data-price="${price}" data-platform-name="${platformName}">
+                                    <i class="fas fa-redo-alt"></i> পুনরায় অর্ডার করুন
+                                </button>
+                            </div>
+                        `;
+                    }
+                    
                     ordersHtml += `
                         <div class="order-card ${clickablePendingClass}" ${voucherAttr} ${paymentAttr} ${orderIdAttr}>
                             <div class="order-row"><span class="order-label">প্ল্যাটফর্ম</span><span class="order-value">${order.platform || '—'}</span></div>
@@ -784,6 +850,7 @@
                             <div class="order-row"><span class="order-label">অর্ডার আইডি</span><span class="order-value">${order.orderId || order.id || '—'}</span></div>
                             <div class="order-row"><span class="order-label">তারিখ</span><span class="order-value">${formatDate(order.orderDate)}</span></div>
                             <div class="order-row"><span class="order-label">স্ট্যাটাস</span><span class="order-value"><span class="status-badge ${statusClass}">${statusBangla}</span></span></div>
+                            ${reorderButton}
                         </div>
                     `;
                 }
@@ -1044,7 +1111,7 @@
             };
         }
 
-        console.log('%c🔒 Easy Premium - প্রোফাইল পৃষ্ঠা সুরক্ষিত মোড সক্রিয় (fail status added)', 'color: #4caf50; font-size: 14px; font-weight: bold;');
+        console.log('%c🔒 Easy Premium - প্রোফাইল পৃষ্ঠা সুরক্ষিত মোড সক্রিয় (reorder button added for failed orders)', 'color: #4caf50; font-size: 14px; font-weight: bold;');
     })();
     </script>
 </body>
