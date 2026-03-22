@@ -14,61 +14,91 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { trx } = req.query; // URL থেকে trx প্যারামিটার নেওয়া
+    const { trx } = req.query;
 
-    let url = 'https://connect.relograde.com/api/1.02/order';
+    // If a specific transaction ID is requested, fetch only that one
     if (trx) {
-      // নির্দিষ্ট অর্ডার খুঁজতে trx ফিল্টার ব্যবহার
-      url += `?trx=${encodeURIComponent(trx)}`;
-    } else {
-      // কোনো trx না দিলে সর্বশেষ ৫০টি অর্ডার দেখানো (প্রশাসনিক কাজে)
-      url += '?limit=50';
-    }
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Relograde API error response:', errorText);
-      return res.status(response.status).json({ 
-        error: `Relograde API responded with status ${response.status}`,
-        details: errorText.substring(0, 200)
+      const url = `https://connect.relograde.com/api/1.02/order?trx=${encodeURIComponent(trx)}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }
       });
-    }
 
-    const result = await response.json();
-    console.log('Relograde API response structure:', Object.keys(result));
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Relograde API error response:', errorText);
+        return res.status(response.status).json({ 
+          error: `Relograde API responded with status ${response.status}`,
+          details: errorText.substring(0, 200)
+        });
+      }
 
-    // রেসপন্স ফরম্যাট চেক
-    let orders = [];
-    if (Array.isArray(result)) {
-      orders = result;
-    } else if (result.data && Array.isArray(result.data)) {
-      orders = result.data;
-    } else if (result.orders && Array.isArray(result.orders)) {
-      orders = result.orders;
-    } else {
-      orders = [result];
-    }
+      const result = await response.json();
+      let order = null;
+      if (Array.isArray(result)) order = result[0];
+      else if (result.data && Array.isArray(result.data)) order = result.data[0];
+      else if (result.orders && Array.isArray(result.orders)) order = result.orders[0];
+      else order = result;
 
-    // যদি trx দেওয়া থাকে, তবে একটি অর্ডার আশা করছি, তাই প্রথম আইটেম পাঠানো যেতে পারে
-    if (trx) {
-      if (orders.length === 0) {
+      if (!order) {
         return res.status(404).json({ success: false, error: 'Order not found' });
       }
-      // একক অর্ডারের ক্ষেত্রেও Firebase চেক করা
-      const enrichedOrder = await enrichOrderWithFirebaseStatus(orders[0]);
+
+      const enrichedOrder = await enrichOrderWithFirebaseStatus(order);
       return res.status(200).json({ success: true, data: enrichedOrder });
     }
 
-    // trx না থাকলে পুরো তালিকা – প্রতিটি অর্ডারের জন্য Firebase স্ট্যাটাস চেক করুন
-    const enrichedOrders = await Promise.all(orders.map(order => enrichOrderWithFirebaseStatus(order)));
+    // ---------- Fetch ALL orders from Relograde (pagination) ----------
+    const limit = 100;        // Number of orders per page
+    let offset = 0;
+    let allOrders = [];
+    let hasMore = true;
+
+    while (hasMore) {
+      const url = `https://connect.relograde.com/api/1.02/order?limit=${limit}&offset=${offset}`;
+      console.log(`Fetching orders: offset=${offset}, limit=${limit}`);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Relograde API error response:', errorText);
+        return res.status(response.status).json({ 
+          error: `Relograde API responded with status ${response.status}`,
+          details: errorText.substring(0, 200)
+        });
+      }
+
+      const result = await response.json();
+
+      // Extract orders from response (handle different possible structures)
+      let pageOrders = [];
+      if (Array.isArray(result)) pageOrders = result;
+      else if (result.data && Array.isArray(result.data)) pageOrders = result.data;
+      else if (result.orders && Array.isArray(result.orders)) pageOrders = result.orders;
+      else pageOrders = [result];
+
+      if (pageOrders.length === 0) {
+        hasMore = false;  // No more orders
+      } else {
+        allOrders = allOrders.concat(pageOrders);
+        offset += limit;
+        // If we received less than the limit, assume it's the last page
+        if (pageOrders.length < limit) hasMore = false;
+      }
+
+      // Safety: prevent infinite loop in case of API bug
+      if (offset > 10000) hasMore = false;
+    }
+
+    console.log(`Total orders fetched from Relograde: ${allOrders.length}`);
+
+    // ---------- Enrich each order with Firebase status ----------
+    const enrichedOrders = await Promise.all(allOrders.map(order => enrichOrderWithFirebaseStatus(order)));
+
     res.status(200).json({ success: true, count: enrichedOrders.length, data: enrichedOrders });
 
   } catch (error) {
@@ -81,9 +111,10 @@ export default async function handler(req, res) {
 }
 
 /**
- * Firebase থেকে অর্ডারের স্ট্যাটাস চেক করে ওভাররাইড করে
- * @param {Object} order - Relograde থেকে প্রাপ্ত অর্ডার অবজেক্ট
- * @returns {Promise<Object>} আপডেটেড অর্ডার অবজেক্ট
+ * Checks Firebase CompletedOrders and FailOrders for the given order
+ * and overrides orderStatus accordingly.
+ * @param {Object} order - Relograde order object
+ * @returns {Promise<Object>} Enriched order
  */
 async function enrichOrderWithFirebaseStatus(order) {
   if (!order || !order.trx) return order;
@@ -91,43 +122,41 @@ async function enrichOrderWithFirebaseStatus(order) {
   const firebaseUrl = process.env.FIREBASE_DATABASE_URL;
   const firebaseSecret = process.env.FIREBASE_SECRET;
 
-  // যদি Firebase কনফিগার না থাকে, তাহলে অপরিবর্তিত অর্ডার ফেরত দিন
+  // If Firebase is not configured, return original order
   if (!firebaseUrl || !firebaseSecret) {
     console.warn('Firebase configuration missing, skipping status enrichment');
     return order;
   }
 
   try {
-    // CompletedOrders চেক করুন
+    // Check CompletedOrders
     const completedUrl = `${firebaseUrl}/CompletedOrders/${order.trx}.json?auth=${firebaseSecret}`;
     const completedRes = await fetch(completedUrl);
     if (completedRes.ok) {
       const completedData = await completedRes.json();
       if (completedData && completedData !== null) {
-        // অর্ডারটি CompletedOrders-এ আছে → status finished
         order.orderStatus = 'finished';
-        console.log(`✅ Order ${order.trx} found in CompletedOrders, status set to finished`);
+        console.log(`✅ Order ${order.trx} found in CompletedOrders → status: finished`);
         return order;
       }
     }
 
-    // FailOrders চেক করুন
+    // Check FailOrders
     const failUrl = `${firebaseUrl}/FailOrders/${order.trx}.json?auth=${firebaseSecret}`;
     const failRes = await fetch(failUrl);
     if (failRes.ok) {
       const failData = await failRes.json();
       if (failData && failData !== null) {
-        // অর্ডারটি FailOrders-এ আছে → status fail
         order.orderStatus = 'fail';
-        console.log(`❌ Order ${order.trx} found in FailOrders, status set to fail`);
+        console.log(`❌ Order ${order.trx} found in FailOrders → status: fail`);
         return order;
       }
     }
 
-    // Firebase-এ না থাকলে Relograde-এর মূল স্ট্যাটাস রাখা হবে
+    // No override, keep original status
     return order;
   } catch (err) {
-    console.error(`Error checking Firebase status for order ${order.trx}:`, err.message);
-    return order; // ত্রুটি হলে মূল অর্ডার ফেরত
+    console.error(`Error checking Firebase for order ${order.trx}:`, err.message);
+    return order; // fallback
   }
 }
