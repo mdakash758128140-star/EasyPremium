@@ -251,6 +251,46 @@
             background: rgba(255, 152, 0, 0.2);
         }
         
+        /* নতুন অ্যাকশন বাটন কলাম স্টাইল */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .action-complete {
+            background: rgba(76, 175, 80, 0.8);
+            color: white;
+        }
+        
+        .action-complete:hover {
+            background: #4caf50;
+            transform: translateY(-1px);
+        }
+        
+        .action-delete {
+            background: rgba(220, 53, 69, 0.8);
+            color: white;
+        }
+        
+        .action-delete:hover {
+            background: #dc3545;
+            transform: translateY(-1px);
+        }
+        
         .status-badge {
             padding: 5px 10px;
             border-radius: 20px;
@@ -570,6 +610,11 @@
             .orders-table th, .orders-table td {
                 padding: 10px;
             }
+            
+            .action-buttons {
+                flex-direction: column;
+                gap: 5px;
+            }
         }
         
         @media (max-width: 480px) {
@@ -732,11 +777,12 @@
                                 <th>মোট দাম</th>
                                 <th>রেফারেন্স</th>
                                 <th>কারেন্সি</th>
+                                <th>অ্যাকশন</th>
                             </tr>
                         </thead>
                         <tbody id="ordersTable">
                             <tr>
-                                <td colspan="7" class="loading-spinner">
+                                <td colspan="8" class="loading-spinner">
                                     <div class="spinner"></div>
                                     <p>Relograde API থেকে অর্ডার লোড হচ্ছে...</p>
                                 </td>
@@ -748,69 +794,19 @@
         </div>
     </div>
 
-    <!-- 🔥 অর্ডার ডিটেইলস মোডাল - নতুন যোগ করা হয়েছে -->
+    <!-- অর্ডার ডিটেইলস মোডাল -->
     <div class="modal" id="orderModal">
         <div class="modal-content">
             <button class="modal-close" id="closeModalBtn">&times;</button>
-            
-            <h2 class="modal-title">
-                <i class="fas fa-link" style="margin-right: 10px;"></i>
-                অর্ডার লিংক জেনারেট
-            </h2>
-            
-            <div class="modal-info" id="modalOrderInfo">
-                <div class="modal-info-item">
-                    <span class="modal-info-label">TRX ID:</span>
-                    <span class="modal-info-value" id="modalTrx">-</span>
-                </div>
-                <div class="modal-info-item">
-                    <span class="modal-info-label">স্ট্যাটাস:</span>
-                    <span class="modal-info-value" id="modalStatus">-</span>
-                </div>
-                <div class="modal-info-item">
-                    <span class="modal-info-label">আইটেম:</span>
-                    <span class="modal-info-value" id="modalItems">-</span>
-                </div>
-                <div class="modal-info-item">
-                    <span class="modal-info-label">মোট দাম:</span>
-                    <span class="modal-info-value" id="modalPrice">-</span>
-                </div>
-                <div class="modal-info-item">
-                    <span class="modal-info-label">রেফারেন্স:</span>
-                    <span class="modal-info-value" id="modalReference">-</span>
-                </div>
-                <div class="modal-info-item">
-                    <span class="modal-info-label">তারিখ:</span>
-                    <span class="modal-info-value" id="modalDate">-</span>
-                </div>
-                <div class="modal-info-item">
-                    <span class="modal-info-label">কারেন্সি:</span>
-                    <span class="modal-info-value" id="modalCurrency">-</span>
-                </div>
-            </div>
-            
-            <!-- 🔥 জেনারেটেড লিংক -->
-            <div id="linkContainer">
-                <div class="link-box" id="generatedLinkBox">
-                    <a href="#" id="generatedLink" target="_blank">লিংক জেনারেট হচ্ছে...</a>
-                </div>
-                
-                <button class="copy-link-btn" id="copyLinkBtn">
-                    <i class="fas fa-copy" style="margin-right: 8px;"></i>
-                    লিংক কপি করুন
-                </button>
-            </div>
-            
-            <!-- 🔥 টাইমস্ট্যাম্প নোট -->
-            <div class="timestamp-note" id="timestampNote">
-                <strong><i class="far fa-clock" style="margin-right: 5px;"></i>লিংক ওপেন করার সময়:</strong> 
-                <span id="accessTime">-</span>
-            </div>
+            <h2 class="modal-title"><i class="fas fa-link" style="margin-right: 10px;"></i>অর্ডার লিংক জেনারেট</h2>
+            <div class="modal-info" id="modalOrderInfo">...</div>
+            <div id="linkContainer"><div class="link-box" id="generatedLinkBox"><a href="#" id="generatedLink" target="_blank">লিংক জেনারেট হচ্ছে...</a></div><button class="copy-link-btn" id="copyLinkBtn"><i class="fas fa-copy"></i> লিংক কপি করুন</button></div>
+            <div class="timestamp-note" id="timestampNote"><strong><i class="far fa-clock"></i>লিংক ওপেন করার সময়:</strong> <span id="accessTime">-</span></div>
         </div>
     </div>
 
     <script>
-        // Firebase Configuration
+        // Firebase Configuration (অপরিবর্তিত)
         const firebaseConfig = {
             apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
             authDomain: "easy-premium.firebaseapp.com",
@@ -820,15 +816,7 @@
             messagingSenderId: "155891252265",
             appId: "1:155891252265:web:77ab41de24231e8e5ef038"
         };
-
-        // Initialize Firebase
-        try {
-            firebase.initializeApp(firebaseConfig);
-            console.log("Firebase initialized successfully");
-        } catch (error) {
-            console.log("Firebase already initialized");
-        }
-        
+        firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const auth = firebase.auth();
 
@@ -836,579 +824,229 @@
         const loginScreen = document.getElementById('loginScreen');
         const adminPanel = document.getElementById('adminPanel');
         const googleLoginBtn = document.getElementById('googleLoginBtn');
-        const loginError = document.getElementById('loginError');
         const refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
-        
         const adminName = document.getElementById('adminName');
         const adminEmail = document.getElementById('adminEmail');
         const adminAvatar = document.getElementById('adminAvatar');
         const logoutBtn = document.getElementById('logoutBtn');
-        
-        // Stats Elements
         const totalOrdersEl = document.getElementById('totalOrders');
         const pendingOrdersEl = document.getElementById('pendingOrders');
         const cancelledOrdersEl = document.getElementById('cancelledOrders');
         const completedOrdersEl = document.getElementById('completedOrders');
         const orderCountEl = document.getElementById('orderCount');
         const systemInfo = document.getElementById('systemInfo');
-        
-        // Order Management Elements
         const ordersTable = document.getElementById('ordersTable');
         const orderFilter = document.getElementById('orderFilter');
         const orderSearch = document.getElementById('orderSearch');
         const dateFilter = document.getElementById('dateFilter');
-        
-        // Modal Elements
         const orderModal = document.getElementById('orderModal');
         const closeModalBtn = document.getElementById('closeModalBtn');
-        const modalTrx = document.getElementById('modalTrx');
-        const modalStatus = document.getElementById('modalStatus');
-        const modalItems = document.getElementById('modalItems');
-        const modalPrice = document.getElementById('modalPrice');
-        const modalReference = document.getElementById('modalReference');
-        const modalDate = document.getElementById('modalDate');
-        const modalCurrency = document.getElementById('modalCurrency');
         const generatedLink = document.getElementById('generatedLink');
         const copyLinkBtn = document.getElementById('copyLinkBtn');
         const accessTime = document.getElementById('accessTime');
 
-        // Variables
         let orders = [];
         let currentAdminEmail = null;
         let onlineStatusInterval = null;
-        let currentOrder = null;
 
-        // Allowed Admin Emails
-        const ALLOWED_ADMIN_EMAILS = [
-            'mdashikislam017705@gmail.com',
-            'mdsojib1388888@gmail.com',
-            'admin@easy-premium.com',
-            'shahsultanshakil204571@gmail.com',
-            'allwork204571@gmail.com'
-        ];
+        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeApp();
-        });
-        
-        function initializeApp() {
-            checkAdminAuth();
-            setupEventListeners();
-        }
+        document.addEventListener('DOMContentLoaded', () => { checkAdminAuth(); setupEventListeners(); });
         
         function setupEventListeners() {
             googleLoginBtn.addEventListener('click', handleGoogleLogin);
             logoutBtn.addEventListener('click', handleLogout);
-            refreshOrdersBtn.addEventListener('click', () => {
-                showToast('অর্ডার রিফ্রেশ করা হচ্ছে...', 'info');
-                loadOrdersFromRelograde();
-            });
-            
+            refreshOrdersBtn.addEventListener('click', () => { showToast('অর্ডার রিফ্রেশ করা হচ্ছে...', 'info'); loadOrdersFromRelograde(); });
             orderFilter.addEventListener('change', filterAndDisplayOrders);
             orderSearch.addEventListener('input', filterAndDisplayOrders);
             dateFilter.addEventListener('change', filterAndDisplayOrders);
-            
-            closeModalBtn.addEventListener('click', () => {
-                orderModal.classList.remove('active');
-            });
-            
-            window.addEventListener('click', (e) => {
-                if (e.target === orderModal) {
-                    orderModal.classList.remove('active');
-                }
-            });
-            
+            closeModalBtn.addEventListener('click', () => orderModal.classList.remove('active'));
+            window.addEventListener('click', (e) => { if (e.target === orderModal) orderModal.classList.remove('active'); });
             copyLinkBtn.addEventListener('click', copyLinkToClipboard);
         }
-        
+
         function checkAdminAuth() {
             auth.onAuthStateChanged(async (user) => {
-                if (user) {
-                    console.log("User logged in:", user.email);
-                    
-                    if (ALLOWED_ADMIN_EMAILS.includes(user.email)) {
-                        currentAdminEmail = user.email;
-                        await loadAdminData(user);
-                        showAdminPanel();
-                        
-                        startOnlineStatusUpdates(user);
-                        loadOrdersFromRelograde();
-                        
-                    } else {
-                        console.log("Email not allowed:", user.email);
-                        await auth.signOut();
-                        showLoginScreen();
-                        showToast('এই Gmail এড্রেস এডমিন এক্সেস নেই', 'error');
-                    }
+                if (user && ALLOWED_ADMIN_EMAILS.includes(user.email)) {
+                    currentAdminEmail = user.email;
+                    await loadAdminData(user);
+                    showAdminPanel();
+                    startOnlineStatusUpdates(user);
+                    loadOrdersFromRelograde();
+                } else if (user) {
+                    await auth.signOut();
+                    showLoginScreen();
+                    showToast('এই Gmail এড্রেস এডমিন এক্সেস নেই', 'error');
                 } else {
-                    if (onlineStatusInterval) {
-                        clearInterval(onlineStatusInterval);
-                        onlineStatusInterval = null;
-                    }
+                    if (onlineStatusInterval) clearInterval(onlineStatusInterval);
                     showLoginScreen();
                 }
             });
         }
 
-        function startOnlineStatusUpdates(user) {
-            updateOnlineStatus(user);
-            if (onlineStatusInterval) {
-                clearInterval(onlineStatusInterval);
-            }
-            onlineStatusInterval = setInterval(() => {
-                updateOnlineStatus(user);
-            }, 60000);
-        }
-
-        async function updateOnlineStatus(user) {
-            if (!user) return;
-            const uid = user.uid;
-            try {
-                const adminSnapshot = await database.ref(`adminUsers/${uid}`).once('value');
-                const adminData = adminSnapshot.val();
-                let name = user.displayName || 'Admin';
-                let number = null;
-                if (adminData && adminData.name) {
-                    name = adminData.name;
-                }
-                if (adminData && adminData.number) {
-                    number = adminData.number;
-                } else {
-                    console.warn(`No phone number found for admin ${uid}`);
-                    return;
-                }
-                const publicInfo = {
-                    name: name,
-                    number: number,
-                    lastActive: new Date().toISOString()
-                };
-                await database.ref(`publicAdminInfo/${uid}`).set(publicInfo);
-            } catch (error) {
-                console.error("Error updating online status:", error);
-            }
-        }
-        
-        async function handleGoogleLogin() {
-            try {
-                const provider = new firebase.auth.GoogleAuthProvider();
-                const result = await auth.signInWithPopup(provider);
-                const user = result.user;
-                
-                if (!ALLOWED_ADMIN_EMAILS.includes(user.email)) {
-                    await auth.signOut();
-                    showToast('এই Gmail এড্রেস এডমিন এক্সেস নেই', 'error');
-                    return;
-                }
-                
-                currentAdminEmail = user.email;
-                await saveAdminLogin(user);
-                showToast('সফলভাবে লগইন হয়েছে!', 'success');
-                
-            } catch (error) {
-                console.error("Google login error:", error);
-                showToast('লগইন ব্যর্থ হয়েছে: ' + error.message, 'error');
-            }
-        }
-        
-        async function handleLogout() {
-            try {
-                if (onlineStatusInterval) {
-                    clearInterval(onlineStatusInterval);
-                    onlineStatusInterval = null;
-                }
-                await auth.signOut();
-                showLoginScreen();
-                showToast('সফলভাবে লগ আউট হয়েছে', 'success');
-            } catch (error) {
-                console.error("Logout error:", error);
-            }
-        }
-        
         async function loadAdminData(user) {
             adminName.textContent = user.displayName || user.email;
             adminEmail.textContent = user.email;
-            
-            if (user.photoURL) {
-                adminAvatar.innerHTML = `<img src="${user.photoURL}" alt="${user.displayName}" style="width: 100%; height: 100%; border-radius: 50%;">`;
-            } else {
-                const initial = user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase();
-                adminAvatar.innerHTML = `<span style="font-size: 1.2rem;">${initial}</span>`;
-            }
-            
-            try {
-                const adminRef = database.ref(`adminUsers/${user.uid}`);
-                await adminRef.update({
-                    email: user.email,
-                    name: user.displayName || '',
-                    photoURL: user.photoURL || '',
-                    lastLogin: firebase.database.ServerValue.TIMESTAMP,
-                    status: 'active'
-                });
-            } catch (error) {
-                console.error("Error saving admin data:", error);
-            }
+            if (user.photoURL) adminAvatar.innerHTML = `<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">`;
+            else adminAvatar.innerHTML = `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
+            await database.ref(`adminUsers/${user.uid}`).update({ email: user.email, name: user.displayName, lastLogin: firebase.database.ServerValue.TIMESTAMP, status: 'active' });
         }
-        
-        async function saveAdminLogin(user) {
-            try {
-                await database.ref('adminLogs').push({
-                    action: 'admin_login',
-                    email: user.email,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP,
-                    ip: 'web'
-                });
-            } catch (error) {
-                console.error("Error saving admin login:", error);
-            }
-        }
-        
-        function showLoginScreen() {
-            loginScreen.style.display = 'flex';
-            adminPanel.style.display = 'none';
-            currentAdminEmail = null;
-        }
-        
-        function showAdminPanel() {
-            loginScreen.style.display = 'none';
-            adminPanel.style.display = 'block';
-            updateSystemInfo();
-        }
-        
+
+        function startOnlineStatusUpdates(user) { updateOnlineStatus(user); if(onlineStatusInterval) clearInterval(onlineStatusInterval); onlineStatusInterval = setInterval(() => updateOnlineStatus(user), 60000); }
+        async function updateOnlineStatus(user) { if(!user) return; try { await database.ref(`publicAdminInfo/${user.uid}`).set({ name: user.displayName || 'Admin', number: 'N/A', lastActive: new Date().toISOString() }); } catch(e) { console.error(e); } }
+        async function handleGoogleLogin() { try { const result = await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); if(!ALLOWED_ADMIN_EMAILS.includes(result.user.email)) { await auth.signOut(); showToast('এক্সেস নেই', 'error'); } else { await saveAdminLogin(result.user); showToast('লগইন সফল', 'success'); } } catch(e) { showToast('লগইন ব্যর্থ', 'error'); } }
+        async function saveAdminLogin(user) { await database.ref('adminLogs').push({ action: 'admin_login', email: user.email, timestamp: firebase.database.ServerValue.TIMESTAMP }); }
+        async function handleLogout() { if(onlineStatusInterval) clearInterval(onlineStatusInterval); await auth.signOut(); showLoginScreen(); showToast('লগ আউট হয়েছে', 'success'); }
+        function showLoginScreen() { loginScreen.style.display = 'flex'; adminPanel.style.display = 'none'; }
+        function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
+
         async function loadOrdersFromRelograde() {
-            ordersTable.innerHTML = `
-                <tr>
-                    <td colspan="7" class="loading-spinner">
-                        <div class="spinner"></div>
-                        <p>Relograde API থেকে অর্ডার লোড হচ্ছে...</p>
-                    </td>
-                </tr>
-            `;
-            
+            ordersTable.innerHTML = `<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>Relograde API থেকে অর্ডার লোড হচ্ছে...</p></td></tr>`;
             try {
-                console.log('Fetching orders from /api/relograde-orders...');
                 const response = await fetch('/api/relograde-orders');
                 const result = await response.json();
-                
-                console.log('API Response:', result);
-                
-                if (!response.ok) {
-                    throw new Error(result.error || `HTTP error ${response.status}`);
-                }
-                
-                if (!result.success) {
-                    throw new Error(result.error || 'Unknown error');
-                }
-                
+                if(!response.ok || !result.success) throw new Error(result.error || 'API error');
                 orders = result.data || [];
-                console.log(`Loaded ${orders.length} orders from Relograde`);
-                
-                if (orderCountEl) {
-                    orderCountEl.textContent = `(${orders.length}টি অর্ডার)`;
-                }
-                
+                if(orderCountEl) orderCountEl.textContent = `(${orders.length}টি অর্ডার)`;
                 filterAndDisplayOrders();
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
-                
-            } catch (error) {
-                console.error('Error loading orders:', error);
-                ordersTable.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="no-data">
-                            <div style="text-align: center; padding: 40px;">
-                                <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #ff9800; margin-bottom: 15px;"></i>
-                                <p style="color: #ff6b6b; margin-bottom: 15px;">অর্ডার লোড করতে সমস্যা হয়েছে:</p>
-                                <p style="color: #fff; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 5px; margin-bottom: 20px;">
-                                    ${error.message}
-                                </p>
-                                <button onclick="loadOrdersFromRelograde()" class="refresh-btn" style="margin-top: 15px;">
-                                    <i class="fas fa-sync-alt"></i> আবার চেষ্টা করুন
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+            } catch(error) {
+                ordersTable.innerHTML = `<tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${error.message}</p><button onclick="loadOrdersFromRelograde()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
             }
         }
-        
+
         function filterAndDisplayOrders() {
             let filtered = [...orders];
-            
-            // Status filter
             const statusValue = orderFilter.value;
-            if (statusValue !== 'all') {
-                filtered = filtered.filter(order => 
-                    order.orderStatus?.toLowerCase() === statusValue.toLowerCase()
-                );
-            }
-            
-            // Search filter
+            if(statusValue !== 'all') filtered = filtered.filter(o => o.orderStatus?.toLowerCase() === statusValue.toLowerCase());
             const searchValue = orderSearch.value.toLowerCase();
-            if (searchValue) {
-                filtered = filtered.filter(order => 
-                    (order.trx && order.trx.toLowerCase().includes(searchValue)) ||
-                    (order.reference && order.reference.toLowerCase().includes(searchValue))
-                );
-            }
-            
-            // Date filter
+            if(searchValue) filtered = filtered.filter(o => (o.trx?.toLowerCase().includes(searchValue) || o.reference?.toLowerCase().includes(searchValue)));
             const dateValue = dateFilter.value;
-            if (dateValue !== 'all') {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                
-                filtered = filtered.filter(order => {
-                    const orderDate = new Date(order.dateCreated || 0);
-                    orderDate.setHours(0, 0, 0, 0);
-                    
-                    if (dateValue === 'today') {
-                        return orderDate.getTime() === today.getTime();
-                    } else if (dateValue === 'yesterday') {
-                        const yesterday = new Date(today);
-                        yesterday.setDate(yesterday.getDate() - 1);
-                        return orderDate.getTime() === yesterday.getTime();
-                    } else if (dateValue === 'week') {
-                        const weekAgo = new Date(today);
-                        weekAgo.setDate(weekAgo.getDate() - 7);
-                        return orderDate >= weekAgo;
-                    } else if (dateValue === 'month') {
-                        const monthAgo = new Date(today);
-                        monthAgo.setMonth(monthAgo.getMonth() - 1);
-                        return orderDate >= monthAgo;
-                    }
+            if(dateValue !== 'all') {
+                const today = new Date(); today.setHours(0,0,0,0);
+                filtered = filtered.filter(o => {
+                    const d = new Date(o.dateCreated || 0); d.setHours(0,0,0,0);
+                    if(dateValue === 'today') return d.getTime() === today.getTime();
+                    if(dateValue === 'yesterday') { const y = new Date(today); y.setDate(y.getDate()-1); return d.getTime() === y.getTime(); }
+                    if(dateValue === 'week') { const week = new Date(today); week.setDate(week.getDate()-7); return d >= week; }
+                    if(dateValue === 'month') { const month = new Date(today); month.setMonth(month.getMonth()-1); return d >= month; }
                     return true;
                 });
             }
-            
             displayOrders(filtered);
             updateStats(filtered);
         }
-        
+
+        // সম্পন্ন এবং ডিলিট ফাংশন (API কল করে Relograde-এ পরিবর্তন)
+        async function markOrderCompleted(trxId, event) {
+            event.stopPropagation();
+            if(!confirm('এই অর্ডারটি কি সম্পন্ন (finished) করতে চান?')) return;
+            try {
+                const response = await fetch('/api/order_completed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trxId, action: 'complete' })
+                });
+                const result = await response.json();
+                if(result.success) {
+                    showToast('অর্ডার সম্পন্ন করা হয়েছে', 'success');
+                    loadOrdersFromRelograde(); // রিলোড
+                } else throw new Error(result.error || 'Failed');
+            } catch(e) { showToast('সম্পন্ন করতে ব্যর্থ: '+e.message, 'error'); }
+        }
+
+        async function deleteOrder(trxId, event) {
+            event.stopPropagation();
+            if(!confirm('সতর্কতা: এই অর্ডারটি স্থায়ীভাবে মুছে ফেলা হবে। আপনি কি নিশ্চিত?')) return;
+            try {
+                const response = await fetch('/api/order_completed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trxId, action: 'delete' })
+                });
+                const result = await response.json();
+                if(result.success) {
+                    showToast('অর্ডার ডিলিট করা হয়েছে', 'success');
+                    loadOrdersFromRelograde();
+                } else throw new Error(result.error || 'Failed');
+            } catch(e) { showToast('ডিলিট ব্যর্থ: '+e.message, 'error'); }
+        }
+
         function displayOrders(ordersList) {
-            if (ordersList.length === 0) {
-                ordersTable.innerHTML = '<tr><td colspan="7" class="no-data">কোন অর্ডার পাওয়া যায়নি</td></tr>';
-                return;
-            }
-            
+            if(ordersList.length === 0) { ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার পাওয়া যায়নি</td></tr>'; return; }
             let html = '';
-            
             ordersList.slice(0, 50).forEach(order => {
-                const orderDate = order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                }) : 'তারিখ নেই';
-                
-                let statusClass = 'status-pending';
-                let statusText = order.orderStatus || 'unknown';
-                
-                if (statusText === 'finished') {
-                    statusClass = 'status-completed';
-                    statusText = 'সম্পূর্ণ';
-                } else if (statusText === 'cancelled') {
-                    statusClass = 'status-cancelled';
-                    statusText = 'ক্যানসেল';
-                } else if (statusText === 'created') {
-                    statusClass = 'status-pending';
-                    statusText = 'পেন্ডিং';
-                }
-                
-                const items = order.items || [];
-                const itemsList = items.map(item => 
-                    `${item.product?.name || item.productSlug} x${item.amount}`
-                ).join('<br>') || '—';
-                
+                const orderDate = order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD') : 'তারিখ নেই';
+                let statusClass = 'status-pending', statusText = order.orderStatus || 'unknown';
+                if(statusText === 'finished') { statusClass = 'status-completed'; statusText = 'সম্পূর্ণ'; }
+                else if(statusText === 'cancelled') { statusClass = 'status-cancelled'; statusText = 'ক্যানসেল'; }
+                else if(statusText === 'created') { statusClass = 'status-pending'; statusText = 'পেন্ডিং'; }
+                const items = (order.items || []).map(i => `${i.product?.name || i.productSlug} x${i.amount}`).join('<br>') || '—';
                 const totalPrice = order.priceInclVat || order.priceAmount || 0;
                 const currency = order.priceCurrency || 'USD';
                 const reference = order.reference || '—';
-                
-                html += `
-                    <tr onclick="showOrderModal('${order.trx || ''}')" style="cursor: pointer;">
-                        <td style="font-family: monospace; font-size: 0.9rem;">${order.trx || 'N/A'}</td>
-                        <td style="font-size: 0.85rem;">${orderDate}</td>
-                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                        <td><div style="max-width: 200px; font-size: 0.85rem;">${itemsList}</div></td>
-                        <td style="color: #00bcd4; font-weight: 600;">${totalPrice} ${currency}</td>
-                        <td><div style="max-width: 150px; font-size: 0.8rem; word-break: break-word;" title="${reference}">${reference.substring(0, 30)}${reference.length > 30 ? '...' : ''}</div></td>
-                        <td>${order.paymentCurrency || currency}</td>
-                    </tr>
-                `;
+                const isPending = order.orderStatus === 'created';
+                html += `<tr onclick="showOrderModal('${order.trx || ''}')">
+                            <td style="font-family: monospace;">${order.trx || 'N/A'}</td>
+                            <td>${orderDate}</td>
+                            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                            <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
+                            <td style="color:#00bcd4;">${totalPrice} ${currency}</td>
+                            <td><div style="max-width:150px;font-size:0.8rem;" title="${reference}">${reference.substring(0,30)}${reference.length>30?'...':''}</div></td>
+                            <td>${order.paymentCurrency || currency}</td>
+                            <td class="action-buttons" onclick="event.stopPropagation()">
+                                ${isPending ? `<button class="action-btn action-complete" onclick="markOrderCompleted('${order.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button>` : `<button class="action-btn action-complete" disabled style="opacity:0.5;cursor:not-allowed;" title="শুধু পেন্ডিং অর্ডার সম্পন্ন করা যায়"><i class="fas fa-check-circle"></i> সম্পন্ন</button>`}
+                                <button class="action-btn action-delete" onclick="deleteOrder('${order.trx}', event)"><i class="fas fa-trash-alt"></i> ডিলিট</button>
+                            </td>
+                         </tr>`;
             });
-            
             ordersTable.innerHTML = html;
         }
-        
-        // 🔥 অর্ডার মোডাল দেখানোর ফাংশন
+
         window.showOrderModal = function(trxId) {
             const order = orders.find(o => o.trx === trxId);
-            if (!order) {
-                showToast('অর্ডার পাওয়া যায়নি', 'error');
-                return;
-            }
-            
-            currentOrder = order;
-            
-            // মোডালে তথ্য দেখান
-            modalTrx.textContent = order.trx || 'N/A';
-            
-            let statusText = order.orderStatus || 'unknown';
-            if (statusText === 'finished') {
-                statusText = 'সম্পূর্ণ';
-            } else if (statusText === 'cancelled') {
-                statusText = 'ক্যানসেল';
-            } else if (statusText === 'created') {
-                statusText = 'পেন্ডিং';
-            }
-            modalStatus.textContent = statusText;
-            
-            const items = order.items || [];
-            const itemsList = items.map(item => 
-                `${item.product?.name || item.productSlug} x${item.amount}`
-            ).join(', ') || '—';
-            modalItems.textContent = itemsList;
-            
-            const totalPrice = order.priceInclVat || order.priceAmount || 0;
-            const currency = order.priceCurrency || 'USD';
-            modalPrice.textContent = `${totalPrice} ${currency}`;
-            modalCurrency.textContent = order.paymentCurrency || currency;
-            
-            const reference = order.reference || '—';
-            modalReference.textContent = reference;
-            
-            const orderDate = order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            }) : 'তারিখ নেই';
-            modalDate.textContent = orderDate;
-            
-            // 🔥 Base64 লিংক জেনারেট
+            if(!order) { showToast('অর্ডার পাওয়া যায়নি', 'error'); return; }
+            document.getElementById('modalTrx')?.remove(); // cleanup dynamic
+            const modalInfo = document.getElementById('modalOrderInfo');
+            modalInfo.innerHTML = `
+                <div class="modal-info-item"><span class="modal-info-label">TRX ID:</span><span class="modal-info-value">${order.trx || 'N/A'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">স্ট্যাটাস:</span><span class="modal-info-value">${order.orderStatus === 'finished' ? 'সম্পূর্ণ' : order.orderStatus === 'cancelled' ? 'ক্যানসেল' : 'পেন্ডিং'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">আইটেম:</span><span class="modal-info-value">${(order.items||[]).map(i=>`${i.product?.name||i.productSlug} x${i.amount}`).join(', ') || '—'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">মোট দাম:</span><span class="modal-info-value">${(order.priceInclVat||order.priceAmount||0)} ${order.priceCurrency||'USD'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">রেফারেন্স:</span><span class="modal-info-value">${order.reference||'—'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">তারিখ:</span><span class="modal-info-value">${order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD') : '—'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">কারেন্সি:</span><span class="modal-info-value">${order.paymentCurrency||order.priceCurrency||'USD'}</span></div>
+            `;
             generateOrderLink(order);
-            
-            // মোডাল দেখান
             orderModal.classList.add('active');
         };
-        
-        // 🔥 Base64 লিংক জেনারেট করার ফাংশন
+
         function generateOrderLink(order) {
             const now = new Date();
-            
-            // অর্ডার ডাটা প্রস্তুত
             const orderData = {
-                OrderId: order.trx || 'N/A',
-                PaymentMethods: 'Relograde',
-                PaymentNumber: 'N/A',
-                PaymentTrxID: order.trx || 'N/A',
-                Time: now.toISOString(),
-                email: 'admin@easy-premium.com',
-                platformId: order.items?.[0]?.productSlug || 'unknown',
-                platformName: order.items?.[0]?.product?.name || order.items?.[0]?.productSlug || 'Unknown',
-                uid: 'admin',
-                amount: order.priceAmount || 0,
-                currency: order.priceCurrency || 'USD',
-                serviceCharge: 0,
-                totalAmount: order.priceInclVat || order.priceAmount || 0,
-                faceValue: null,
-                status: order.orderStatus || 'pending',
-                reference: order.reference || '',
-                adminAccess: true,
-                accessedBy: currentAdminEmail,
-                accessedAt: now.toISOString()
+                OrderId: order.trx || 'N/A', PaymentMethods: 'Relograde', PaymentNumber: 'N/A', PaymentTrxID: order.trx || 'N/A',
+                Time: now.toISOString(), email: 'admin@easy-premium.com', platformId: order.items?.[0]?.productSlug || 'unknown',
+                platformName: order.items?.[0]?.product?.name || 'Unknown', uid: 'admin', amount: order.priceAmount || 0,
+                currency: order.priceCurrency || 'USD', serviceCharge: 0, totalAmount: order.priceInclVat || order.priceAmount || 0,
+                faceValue: null, status: order.orderStatus || 'pending', reference: order.reference || '',
+                adminAccess: true, accessedBy: currentAdminEmail, accessedAt: now.toISOString()
             };
-            
-            // Base64 এ এনকোড
-            const jsonString = JSON.stringify(orderData);
-            const base64Data = btoa(unescape(encodeURIComponent(jsonString)));
-            
-            // লিংক তৈরি
+            const base64Data = btoa(unescape(encodeURIComponent(JSON.stringify(orderData))));
             const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
-            
             generatedLink.href = orderLink;
             generatedLink.textContent = orderLink;
-            
-            // টাইমস্ট্যাম্প নোট আপডেট
-            const banglaTime = now.toLocaleString('bn-BD', {
-                timeZone: 'Asia/Dhaka',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-            
-            accessTime.textContent = `${banglaTime} (এডমিন: ${currentAdminEmail || 'Unknown'})`;
+            accessTime.textContent = `${now.toLocaleString('bn-BD', {timeZone:'Asia/Dhaka'})} (এডমিন: ${currentAdminEmail})`;
         }
-        
-        // 🔥 লিংক কপি করার ফাংশন
-        function copyLinkToClipboard() {
-            const link = generatedLink.href;
-            if (!link || link === '#') {
-                showToast('কোন লিংক জেনারেট হয়নি', 'error');
-                return;
-            }
-            
-            navigator.clipboard.writeText(link).then(() => {
-                showToast('লিংক কপি করা হয়েছে!', 'success');
-            }).catch(() => {
-                showToast('কপি করতে সমস্যা হয়েছে', 'error');
-            });
-        }
-        
-        function updateStats(ordersList) {
-            const total = ordersList.length;
-            const pending = ordersList.filter(order => order.orderStatus === 'created').length;
-            const completed = ordersList.filter(order => order.orderStatus === 'finished').length;
-            const cancelled = ordersList.filter(order => order.orderStatus === 'cancelled').length;
-            
-            totalOrdersEl.textContent = total;
-            pendingOrdersEl.textContent = pending;
-            completedOrdersEl.textContent = completed;
-            cancelledOrdersEl.textContent = cancelled;
-        }
-        
-        function updateSystemInfo() {
-            const now = new Date();
-            const info = `
-                <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
-                    <div><strong>বর্তমান সময়:</strong> ${now.toLocaleString('bn-BD')}</div>
-                    <div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div>
-                    <div><strong>ডাটা সোর্স:</strong> <span style="color: #4caf50;">Relograde API</span></div>
-                    <div><strong>স্ট্যাটাস:</strong> <span style="color: #4caf50;">অনলাইন</span></div>
-                </div>
-            `;
-            systemInfo.innerHTML = info;
-        }
-        
-        function showToast(message, type = 'info') {
-            const existingToast = document.querySelector('.toast');
-            if (existingToast) {
-                existingToast.remove();
-            }
-            
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.textContent = message;
-            toast.style.background = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#ff9800';
-            
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.style.animation = 'slideIn 0.3s ease reverse';
-                    setTimeout(() => {
-                        if (toast.parentNode) {
-                            toast.remove();
-                        }
-                    }, 300);
-                }
-            }, 3000);
-        }
+
+        function copyLinkToClipboard() { const link = generatedLink.href; if(link && link !== '#') { navigator.clipboard.writeText(link).then(()=>showToast('লিংক কপি!','success')).catch(()=>showToast('কপি ব্যর্থ','error')); } else showToast('লিংক নেই','error'); }
+        function updateStats(ordersList) { totalOrdersEl.textContent = ordersList.length; pendingOrdersEl.textContent = ordersList.filter(o=>o.orderStatus==='created').length; completedOrdersEl.textContent = ordersList.filter(o=>o.orderStatus==='finished').length; cancelledOrdersEl.textContent = ordersList.filter(o=>o.orderStatus==='cancelled').length; }
+        function updateSystemInfo() { systemInfo.innerHTML = `<div style="display:flex;gap:20px;"><div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail}</div><div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div><div><strong>স্ট্যাটাস:</strong> অনলাইন</div></div>`; }
+        function showToast(msg, type) { const t=document.createElement('div'); t.className='toast'; t.textContent=msg; t.style.background=type==='error'?'#dc3545':type==='success'?'#28a745':'#ff9800'; document.body.appendChild(t); setTimeout(()=>{t.style.animation='slideIn 0.3s ease reverse'; setTimeout(()=>t.remove(),300);},3000); }
+
+        window.markOrderCompleted = markOrderCompleted;
+        window.deleteOrder = deleteOrder;
+        window.showOrderModal = showOrderModal;
+        window.loadOrdersFromRelograde = loadOrdersFromRelograde;
     </script>
 </body>
 </html>
