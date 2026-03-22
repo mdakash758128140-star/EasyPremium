@@ -1,5 +1,5 @@
 // api/order_completed.js
-// Admin Order Management API - Complete & Delete Orders with Relograde Confirm
+// Admin Order Management API - Complete, Fail & Delete Orders with Relograde Confirm
 
 const RELOGRADE_API_URL = 'https://connect.relograde.com/api/1.02';
 const RELOGRADE_API_KEY = process.env.RELOGRADE_API_KEY;
@@ -110,10 +110,10 @@ export default async function handler(req, res) {
       });
     }
     
-    if (!action || !['complete', 'delete'].includes(action)) {
+    if (!action || !['complete', 'fail', 'delete'].includes(action)) {
       return res.status(400).json({ 
         success: false, 
-        error: 'action must be complete or delete' 
+        error: 'action must be complete, fail or delete' 
       });
     }
     
@@ -128,6 +128,9 @@ export default async function handler(req, res) {
         error: 'Firebase configuration missing' 
       });
     }
+    
+    const timestamp = new Date().toISOString();
+    const timestampMs = Date.now();
     
     if (action === 'complete') {
       // ========== STEP 1: 🔥 CONFIRM ORDER IN RELOGRADE ==========
@@ -153,9 +156,6 @@ export default async function handler(req, res) {
       }
       
       // ========== STEP 2: Save to Firebase ==========
-      const timestamp = new Date().toISOString();
-      const timestampMs = Date.now();
-      
       const completedData = {
         trxId: trxId,
         status: 'completed',
@@ -215,11 +215,61 @@ export default async function handler(req, res) {
         }
       });
       
+    } else if (action === 'fail') {
+      // ========== FAIL ORDER - Save to FailOrders ==========
+      console.log(`\n❌ Failing order ${trxId}...`);
+      
+      const failData = {
+        trxId: trxId,
+        status: 'failed',
+        failedBy: adminEmail,
+        failedAt: timestampMs,
+        failedAtISO: timestamp,
+        orderData: orderData || null
+      };
+      
+      const failUrl = `${FIREBASE_DATABASE_URL}/FailOrders/${trxId}.json?auth=${FIREBASE_SECRET}`;
+      console.log('📤 Saving to FailOrders...');
+      
+      const saveRes = await fetch(failUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(failData)
+      });
+      
+      if (!saveRes.ok) {
+        throw new Error(`Failed to save to FailOrders: ${saveRes.status}`);
+      }
+      
+      // Update userOrders and transactions status to 'fail'
+      try {
+        const userOrderUrl = `${FIREBASE_DATABASE_URL}/userOrders/${trxId}.json?auth=${FIREBASE_SECRET}`;
+        await fetch(userOrderUrl, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'fail', orderStatus: 'fail' })
+        });
+        
+        const transactionUrl = `${FIREBASE_DATABASE_URL}/transactions/${trxId}.json?auth=${FIREBASE_SECRET}`;
+        await fetch(transactionUrl, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'fail', orderStatus: 'fail', failedAt: timestamp })
+        });
+      } catch (err) {
+        console.log('Transaction update failed:', err.message);
+      }
+      
+      console.log(`✅ Order ${trxId} marked as failed by ${adminEmail}`);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Order marked as failed',
+        data: { trxId, status: 'fail' }
+      });
+      
     } else if (action === 'delete') {
       // Delete order - backup and remove
-      const timestamp = new Date().toISOString();
-      const timestampMs = Date.now();
-      
       const backupData = {
         trxId: trxId,
         deletedBy: adminEmail,
