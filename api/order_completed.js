@@ -1,14 +1,17 @@
 // api/order_completed.js
-// Relograde Order Management API - Complete & Delete Orders
-// Using Firebase REST API (No Admin SDK required)
+// Admin Order Management API - Complete & Delete Orders
+// Using Firebase REST API with Database Secret (No Admin SDK)
 
-// Firebase Database REST API configuration
-const FIREBASE_DB_URL = 'https://easy-premium-default-rtdb.asia-southeast1.firebasedatabase.app';
-const FIREBASE_SECRET = process.env.FIREBASE_DATABASE_SECRET; // Firebase Database Secret
-
-// Helper function for Firebase REST API calls
+// Firebase Database REST API helper
 async function firebaseRestAPI(path, method = 'GET', data = null) {
-  const url = `${FIREBASE_DB_URL}/${path}.json?auth=${FIREBASE_SECRET}`;
+  const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL;
+  const FIREBASE_SECRET = process.env.FIREBASE_SECRET;
+  
+  if (!FIREBASE_DATABASE_URL || !FIREBASE_SECRET) {
+    throw new Error('Firebase configuration missing');
+  }
+  
+  const url = `${FIREBASE_DATABASE_URL}/${path}.json?auth=${FIREBASE_SECRET}`;
   
   const options = {
     method: method,
@@ -21,49 +24,37 @@ async function firebaseRestAPI(path, method = 'GET', data = null) {
     options.body = JSON.stringify(data);
   }
   
-  try {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const result = await response.json();
-    return { success: true, data: result };
-  } catch (error) {
-    console.error('Firebase REST API error:', error);
-    return { success: false, error: error.message };
+  const response = await fetch(url, options);
+  const result = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(result.error || `HTTP error: ${response.status}`);
   }
+  
+  return result;
 }
 
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Credentials': 'true'
-};
-
-module.exports = async (req, res) => {
-  // Set CORS headers
+// Main handler
+export default async function handler(req, res) {
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
-
-  // Allow only POST method
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ 
       success: false, 
       error: 'Method not allowed. Only POST is accepted.' 
     });
   }
-
+  
   try {
-    const { trxId, action, adminEmail } = req.body;
-
+    const { trxId, action, adminEmail, orderData } = req.body;
+    
     // Validation
     if (!trxId) {
       return res.status(400).json({ 
@@ -71,92 +62,116 @@ module.exports = async (req, res) => {
         error: 'trxId is required' 
       });
     }
-
+    
     if (!action || !['complete', 'delete'].includes(action)) {
       return res.status(400).json({ 
         success: false, 
         error: 'action must be either "complete" or "delete"' 
       });
     }
-
+    
     if (!adminEmail) {
       return res.status(400).json({ 
         success: false, 
-        error: 'adminEmail is required for authentication' 
+        error: 'adminEmail is required' 
       });
     }
-
-    console.log(`Processing ${action} for order: ${trxId} by admin: ${adminEmail}`);
-
+    
+    console.log(`📝 Processing ${action} for order: ${trxId} by admin: ${adminEmail}`);
+    
     let result;
     
     if (action === 'complete') {
-      result = await completeOrderInFirebase(trxId, adminEmail);
+      result = await completeOrder(trxId, adminEmail, orderData);
     } else if (action === 'delete') {
-      result = await deleteOrderFromFirebase(trxId, adminEmail);
+      result = await deleteOrder(trxId, adminEmail, orderData);
     }
-
-    // Success response
+    
     return res.status(200).json({
       success: true,
       message: action === 'complete' ? 'Order completed successfully' : 'Order deleted successfully',
       data: result
     });
-
-  } catch (error) {
-    console.error('API Error:', error);
     
+  } catch (error) {
+    console.error('❌ API Error:', error);
     return res.status(500).json({
       success: false,
       error: error.message || 'Internal server error'
     });
   }
-};
+}
 
-/**
- * Complete order in Firebase Database using REST API
- */
-async function completeOrderInFirebase(trxId, adminEmail) {
+// Complete order function
+async function completeOrder(trxId, adminEmail, orderData) {
   try {
-    const timestamp = Date.now();
-    const timestampISO = new Date().toISOString();
+    const timestamp = new Date().toISOString();
+    const timestampMs = Date.now();
     
-    // Save completed order info to completedOrders node
+    // Prepare completed order data
     const completedOrderData = {
       trxId: trxId,
-      status: 'finished',
+      status: 'completed',
       completedBy: adminEmail,
-      completedAt: timestamp,
-      completedAtISO: timestampISO,
-      action: 'complete'
+      completedAt: timestampMs,
+      completedAtISO: timestamp,
+      orderData: orderData || null
     };
     
-    const completeResult = await firebaseRestAPI(`completedOrders/${trxId}`, 'PUT', completedOrderData);
+    // Save to completedOrders
+    await firebaseRestAPI(`completedOrders/${trxId}`, 'PUT', completedOrderData);
+    console.log(`✅ Order ${trxId} saved to completedOrders`);
     
-    if (!completeResult.success) {
-      throw new Error(completeResult.error);
+    // Update transactions table
+    try {
+      // Try direct path first
+      const transactionData = await firebaseRestAPI(`transactions/${trxId}`, 'GET');
+      if (transactionData) {
+        const transactionUpdates = {
+          status: 'completed',
+          completedAt: timestamp,
+          completedBy: adminEmail
+        };
+        await firebaseRestAPI(`transactions/${trxId}`, 'PATCH', transactionUpdates);
+        console.log(`✅ Transaction ${trxId} updated`);
+      } else {
+        // Search for transaction by orderId
+        const allTransactions = await firebaseRestAPI('transactions', 'GET');
+        if (allTransactions && typeof allTransactions === 'object') {
+          for (const key in allTransactions) {
+            if (allTransactions[key].orderId === trxId || allTransactions[key].trxId === trxId) {
+              const transactionUpdates = {
+                status: 'completed',
+                completedAt: timestamp,
+                completedBy: adminEmail
+              };
+              await firebaseRestAPI(`transactions/${key}`, 'PATCH', transactionUpdates);
+              console.log(`✅ Transaction found and updated with key: ${key}`);
+              break;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ Could not update transaction:', err.message);
     }
     
-    // Log the action to orderActionLogs node
+    // Log the action
     const logData = {
       trxId: trxId,
       action: 'complete',
       adminEmail: adminEmail,
-      timestamp: timestamp,
-      timestampISO: timestampISO,
-      status: 'success'
+      timestamp: timestampMs,
+      timestampISO: timestamp
     };
     
-    // Push to logs (auto-generated ID)
-    await firebaseRestAPI('orderActionLogs', 'POST', logData);
-    
-    console.log(`Order ${trxId} completed successfully by ${adminEmail}`);
+    await firebaseRestAPI('adminActionLogs', 'POST', logData);
+    console.log(`✅ Action logged`);
     
     return {
       trxId: trxId,
-      status: 'finished',
+      status: 'completed',
       completedAt: timestamp,
-      completedAtISO: timestampISO,
       message: 'Order marked as completed'
     };
     
@@ -166,46 +181,81 @@ async function completeOrderInFirebase(trxId, adminEmail) {
   }
 }
 
-/**
- * Delete order from Firebase Database with backup using REST API
- */
-async function deleteOrderFromFirebase(trxId, adminEmail) {
+// Delete order function
+async function deleteOrder(trxId, adminEmail, orderData) {
   try {
-    const timestamp = Date.now();
-    const timestampISO = new Date().toISOString();
+    const timestamp = new Date().toISOString();
+    const timestampMs = Date.now();
     
-    // First, check if order exists in completedOrders
-    const checkResult = await firebaseRestAPI(`completedOrders/${trxId}`, 'GET');
-    
-    let orderData = null;
-    if (checkResult.success && checkResult.data) {
-      orderData = checkResult.data;
+    // First, fetch existing order data if not provided
+    let existingOrderData = orderData;
+    if (!existingOrderData) {
+      try {
+        // Try to get from transactions
+        const transactionData = await firebaseRestAPI(`transactions/${trxId}`, 'GET');
+        if (transactionData) {
+          existingOrderData = transactionData;
+        }
+      } catch (err) {
+        console.log('No existing order data found');
+      }
     }
     
     // Create backup data
     const backupData = {
       trxId: trxId,
       deletedBy: adminEmail,
-      deletedAt: timestamp,
-      deletedAtISO: timestampISO,
-      originalStatus: orderData ? orderData.status : 'unknown',
-      originalData: orderData || null,
+      deletedAt: timestampMs,
+      deletedAtISO: timestamp,
+      originalData: existingOrderData || null,
       action: 'delete'
     };
     
     // Save to deletedOrders backup
-    const backupResult = await firebaseRestAPI(`deletedOrders/${trxId}`, 'PUT', backupData);
+    await firebaseRestAPI(`deletedOrders/${trxId}`, 'PUT', backupData);
+    console.log(`✅ Order ${trxId} backed up to deletedOrders`);
     
-    if (!backupResult.success) {
-      throw new Error(backupResult.error);
+    // Delete from transactions if exists
+    try {
+      const transactionData = await firebaseRestAPI(`transactions/${trxId}`, 'GET');
+      if (transactionData) {
+        await firebaseRestAPI(`transactions/${trxId}`, 'DELETE');
+        console.log(`✅ Transaction ${trxId} deleted`);
+      }
+    } catch (err) {
+      console.log('Transaction not found or already deleted');
     }
     
     // Delete from completedOrders if exists
-    if (orderData) {
-      const deleteResult = await firebaseRestAPI(`completedOrders/${trxId}`, 'DELETE');
-      if (!deleteResult.success) {
-        console.warn(`Failed to delete from completedOrders: ${trxId}`);
+    try {
+      const completedData = await firebaseRestAPI(`completedOrders/${trxId}`, 'GET');
+      if (completedData) {
+        await firebaseRestAPI(`completedOrders/${trxId}`, 'DELETE');
+        console.log(`✅ Completed order ${trxId} deleted`);
       }
+    } catch (err) {
+      console.log('Completed order not found');
+    }
+    
+    // Search and delete from userOrders if exists
+    try {
+      const allUsers = await firebaseRestAPI('userOrders', 'GET');
+      if (allUsers && typeof allUsers === 'object') {
+        for (const userId in allUsers) {
+          const userOrders = allUsers[userId];
+          if (userOrders && typeof userOrders === 'object') {
+            for (const orderKey in userOrders) {
+              if (userOrders[orderKey].orderId === trxId || userOrders[orderKey].trxId === trxId || orderKey === trxId) {
+                await firebaseRestAPI(`userOrders/${userId}/${orderKey}`, 'DELETE');
+                console.log(`✅ User order deleted for user ${userId}`);
+                break;
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.log('Could not delete from userOrders:', err.message);
     }
     
     // Log the action
@@ -213,20 +263,17 @@ async function deleteOrderFromFirebase(trxId, adminEmail) {
       trxId: trxId,
       action: 'delete',
       adminEmail: adminEmail,
-      timestamp: timestamp,
-      timestampISO: timestampISO,
-      backedUp: true,
-      status: 'success'
+      timestamp: timestampMs,
+      timestampISO: timestamp,
+      backedUp: true
     };
     
-    await firebaseRestAPI('orderActionLogs', 'POST', logData);
-    
-    console.log(`Order ${trxId} deleted successfully by ${adminEmail}`);
+    await firebaseRestAPI('adminActionLogs', 'POST', logData);
+    console.log(`✅ Delete action logged`);
     
     return {
       trxId: trxId,
       deletedAt: timestamp,
-      deletedAtISO: timestampISO,
       backedUp: true,
       message: 'Order deleted and backed up successfully'
     };
@@ -236,75 +283,3 @@ async function deleteOrderFromFirebase(trxId, adminEmail) {
     throw new Error(`Failed to delete order: ${error.message}`);
   }
 }
-
-// Export for Vercel serverless function
-module.exports = async (req, res) => {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  // Allow only POST method
-  if (req.method !== 'POST') {
-    return res.status(405).json({ 
-      success: false, 
-      error: 'Method not allowed. Only POST is accepted.' 
-    });
-  }
-
-  try {
-    const { trxId, action, adminEmail } = req.body;
-
-    // Validation
-    if (!trxId) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'trxId is required' 
-      });
-    }
-
-    if (!action || !['complete', 'delete'].includes(action)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'action must be either "complete" or "delete"' 
-      });
-    }
-
-    if (!adminEmail) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'adminEmail is required for authentication' 
-      });
-    }
-
-    console.log(`Processing ${action} for order: ${trxId} by admin: ${adminEmail}`);
-
-    let result;
-    
-    if (action === 'complete') {
-      result = await completeOrderInFirebase(trxId, adminEmail);
-    } else if (action === 'delete') {
-      result = await deleteOrderFromFirebase(trxId, adminEmail);
-    }
-
-    // Success response
-    return res.status(200).json({
-      success: true,
-      message: action === 'complete' ? 'Order completed successfully' : 'Order deleted successfully',
-      data: result
-    });
-
-  } catch (error) {
-    console.error('API Error:', error);
-    
-    return res.status(500).json({
-      success: false,
-      error: error.message || 'Internal server error'
-    });
-  }
-};
