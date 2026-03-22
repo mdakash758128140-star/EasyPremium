@@ -223,6 +223,34 @@
             color: #b0bec5;
         }
         
+        .admin-info-card {
+            background: rgba(0, 188, 212, 0.1);
+            border-left: 4px solid #00bcd4;
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .admin-info-item {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .admin-info-label {
+            font-size: 0.85rem;
+            color: #b0bec5;
+            margin-bottom: 5px;
+        }
+        
+        .admin-info-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #ffb74d;
+        }
+        
         .orders-table {
             width: 100%;
             background: rgba(255, 255, 255, 0.05);
@@ -592,6 +620,7 @@
         </header>
         
         <div class="main-content">
+            <!-- ড্যাশবোর্ড সেকশন -->
             <div class="section">
                 <h2 class="section-title">Relograde অর্ডার ড্যাশবোর্ড</h2>
                 <div class="form-row">
@@ -602,7 +631,27 @@
                 </div>
                 <div class="system-info" id="systemInfo"></div>
             </div>
+
+            <!-- ✅ নতুন সেকশন: এডমিনের নম্বর তথ্য -->
+            <div class="section">
+                <h2 class="section-title"><i class="fas fa-user-circle"></i> এডমিন তথ্য</h2>
+                <div class="admin-info-card">
+                    <div class="admin-info-item">
+                        <div class="admin-info-label"><i class="fas fa-phone-alt"></i> মোবাইল নম্বর</div>
+                        <div class="admin-info-value" id="adminNumberDisplay">লোড হচ্ছে...</div>
+                    </div>
+                    <div class="admin-info-item">
+                        <div class="admin-info-label"><i class="fas fa-envelope"></i> ইমেইল</div>
+                        <div class="admin-info-value" id="adminEmailDisplay">-</div>
+                    </div>
+                    <div class="admin-info-item">
+                        <div class="admin-info-label"><i class="fas fa-user-tag"></i> নাম</div>
+                        <div class="admin-info-value" id="adminNameDisplay">-</div>
+                    </div>
+                </div>
+            </div>
             
+            <!-- অর্ডার তালিকা সেকশন -->
             <div class="section">
                 <h2 class="section-title">Relograde অর্ডার তালিকা <span id="orderCount"></span></h2>
                 <div class="filter-section">
@@ -641,7 +690,7 @@
         const auth = firebase.auth();
         const database = firebase.database();
 
-        let orders = [], currentAdminEmail = null;
+        let orders = [], currentAdminEmail = null, currentAdminUid = null;
         let onlineStatusInterval = null;
         
         const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
@@ -654,6 +703,10 @@
         const orderCountEl = document.getElementById('orderCount'), systemInfo = document.getElementById('systemInfo'), ordersTable = document.getElementById('ordersTable');
         const orderFilter = document.getElementById('orderFilter'), orderSearch = document.getElementById('orderSearch'), dateFilter = document.getElementById('dateFilter');
         const orderModal = document.getElementById('orderModal'), closeModalBtn = document.getElementById('closeModalBtn'), generatedLink = document.getElementById('generatedLink'), copyLinkBtn = document.getElementById('copyLinkBtn'), accessTime = document.getElementById('accessTime'), modalOrderInfo = document.getElementById('modalOrderInfo');
+        // নতুন এলিমেন্ট
+        const adminNumberDisplay = document.getElementById('adminNumberDisplay');
+        const adminEmailDisplay = document.getElementById('adminEmailDisplay');
+        const adminNameDisplay = document.getElementById('adminNameDisplay');
 
         document.addEventListener('DOMContentLoaded', () => { setupEventListeners(); checkAdminAuth(); });
         
@@ -701,6 +754,25 @@
             }, 60000);
         }
         
+        // ✅ 加载管理员的手机号码及其他信息
+        async function loadAdminNumber(uid) {
+            try {
+                const snapshot = await database.ref(`adminUsers/${uid}`).once('value');
+                const adminData = snapshot.val();
+                if (adminData && adminData.number) {
+                    adminNumberDisplay.textContent = adminData.number;
+                } else {
+                    adminNumberDisplay.textContent = 'সেট করা নেই';
+                }
+                // 同时显示姓名和邮箱
+                adminNameDisplay.textContent = adminData?.name || currentAdminEmail?.split('@')[0] || 'Admin';
+                adminEmailDisplay.textContent = currentAdminEmail || '-';
+            } catch (error) {
+                console.error("加载管理员号码失败:", error);
+                adminNumberDisplay.textContent = 'লোড করতে ব্যর্থ';
+            }
+        }
+        
         async function loadAdminData(user) {
             adminName.textContent = user.displayName || user.email;
             adminEmail.textContent = user.email;
@@ -713,6 +785,8 @@
                     lastLogin: firebase.database.ServerValue.TIMESTAMP,
                     status: 'active'
                 });
+                // 加载号码
+                await loadAdminNumber(user.uid);
             } catch (err) { console.warn("保存管理员信息失败:", err); }
         }
         
@@ -720,6 +794,7 @@
             auth.onAuthStateChanged(async (user) => {
                 if (user && ALLOWED_ADMIN_EMAILS.includes(user.email)) {
                     currentAdminEmail = user.email;
+                    currentAdminUid = user.uid;
                     await loadAdminData(user);
                     showAdminPanel();
                     startOnlineStatusUpdates(user);
@@ -756,7 +831,7 @@
         function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
         
         async function loadOrders() {
-            ordersTable.innerHTML = '<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></td></tr>';
+            ordersTable.innerHTML = ' clothed<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p> </td> </tr>';
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -823,7 +898,6 @@
             }
         }
         
-        // ✅ 取消订单：更新 Firebase 中的 userOrders 和 transactions 状态为 "fail"
         async function cancelOrder(trxId, event) {
             event.stopPropagation();
             if (!confirm('এই অর্ডারটি কি বাতিল (ফেল) করতে চান? স্ট্যাটাস "fail" এ সেট হবে।')) return;
@@ -836,16 +910,13 @@
                 const order = orders.find(o => o.trx === trxId);
                 if (!order) throw new Error('অর্ডার খুঁজে পাওয়া যায়নি');
                 
-                // Firebase-এ userOrders এবং transactions নোড আপডেট করুন
                 const updates = {};
                 updates[`userOrders/${trxId}/status`] = 'fail';
                 updates[`transactions/${trxId}/status`] = 'fail';
                 updates[`userOrders/${trxId}/orderStatus`] = 'fail';
                 updates[`transactions/${trxId}/orderStatus`] = 'fail';
-                
                 await database.ref().update(updates);
                 
-                // লোকাল অর্ডার অ্যারেতেও স্ট্যাটাস আপডেট করুন
                 const idx = orders.findIndex(o => o.trx === trxId);
                 if (idx !== -1) orders[idx].orderStatus = 'fail';
                 filterOrders();
@@ -879,7 +950,6 @@
                 const ref = o.reference || '—';
                 const isPending = (o.orderStatus === 'created');
                 
-                // ✅ 关键修改：仅当订单状态为 pending ('created') 时才显示操作按钮，否则显示 "—"
                 let actionButtonsHtml = '';
                 if (isPending) {
                     actionButtonsHtml = `
