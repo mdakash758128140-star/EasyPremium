@@ -1,22 +1,18 @@
-// api/order_completed.js
-// Admin Order Management API - Complete & Delete Orders
-// Using Firebase REST API with Database Secret (No Admin SDK)
+// api/create-order.js
+// Relograde Order Creation API - With Confirm Order
 
-// Firebase Database REST API helper
-async function firebaseRestAPI(path, method = 'GET', data = null) {
-  const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL;
-  const FIREBASE_SECRET = process.env.FIREBASE_SECRET;
-  
-  if (!FIREBASE_DATABASE_URL || !FIREBASE_SECRET) {
-    throw new Error('Firebase configuration missing');
-  }
-  
-  const url = `${FIREBASE_DATABASE_URL}/${path}.json?auth=${FIREBASE_SECRET}`;
-  
+const RELOGRADE_API_URL = 'https://connect.relograde.com/api/1.02';
+const RELOGRADE_API_KEY = process.env.RELOGRADE_API_KEY;
+
+// Helper function for Relograde API calls
+async function callRelogradeAPI(endpoint, method, data = null) {
+  const url = `${RELOGRADE_API_URL}/${endpoint}`;
   const options = {
     method: method,
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${RELOGRADE_API_KEY}`,
+      'Accept': 'application/json'
     }
   };
   
@@ -24,21 +20,161 @@ async function firebaseRestAPI(path, method = 'GET', data = null) {
     options.body = JSON.stringify(data);
   }
   
-  const response = await fetch(url, options);
-  const result = await response.json();
+  console.log(`📤 Calling Relograde API: ${method} ${url}`);
   
-  if (!response.ok) {
-    throw new Error(result.error || `HTTP error: ${response.status}`);
+  try {
+    const response = await fetch(url, options);
+    const result = await response.json();
+    
+    console.log(`📥 Relograde Response Status: ${response.status}`);
+    console.log(`📥 Relograde Response Data:`, JSON.stringify(result, null, 2));
+    
+    if (!response.ok) {
+      throw new Error(result.message || `API error: ${response.status}`);
+    }
+    
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('❌ Relograde API error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// 🔥 Confirm Order Function - এটা সবচেয়ে গুরুত্বপূর্ণ
+async function confirmOrder(trx) {
+  console.log(`🔔 Confirming order: ${trx}`);
+  
+  // Relograde Confirm Order API Call
+  const confirmResult = await callRelogradeAPI(`order/confirm/${trx}`, 'PATCH');
+  
+  if (!confirmResult.success) {
+    console.error('❌ Confirm order failed:', confirmResult.error);
+    return { success: false, error: confirmResult.error };
   }
   
-  return result;
+  const orderData = confirmResult.data;
+  console.log(`✅ Order confirmed! Status: ${orderData.orderStatus}`);
+  
+  return { 
+    success: true, 
+    data: orderData,
+    isFinished: orderData.orderStatus === 'finished',
+    isPending: orderData.orderStatus === 'pending'
+  };
+}
+
+// Firebase Database helper
+async function saveToFirebase(firebaseOrderId, orderData, userId, confirmResult) {
+  const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL;
+  const FIREBASE_SECRET = process.env.FIREBASE_SECRET;
+  
+  if (!FIREBASE_DATABASE_URL || !FIREBASE_SECRET) {
+    console.warn('Firebase not configured, skipping save');
+    return { success: false, error: 'Firebase not configured' };
+  }
+  
+  try {
+    const timestamp = new Date().toISOString();
+    
+    // Extract voucher data from confirmed order
+    let voucherData = null;
+    let voucherCode = null;
+    let voucherLink = null;
+    
+    if (confirmResult && confirmResult.data && confirmResult.data.items) {
+      const items = confirmResult.data.items;
+      if (items.length > 0 && items[0].orderLines) {
+        const orderLines = items[0].orderLines;
+        const vouchers = [];
+        
+        for (const line of orderLines) {
+          if (line.voucherCode) {
+            vouchers.push({
+              code: line.voucherCode,
+              serial: line.voucherSerial,
+              status: line.status,
+              expiredDate: line.voucherDateExpired
+            });
+          }
+        }
+        
+        if (vouchers.length > 0) {
+          voucherData = vouchers;
+          voucherCode = vouchers[0].code;
+          voucherLink = `https://reward.relograde.com/${vouchers[0].code}`;
+        }
+      }
+    }
+    
+    // Save to transactions
+    const transactionData = {
+      orderId: firebaseOrderId,
+      userId: userId,
+      status: confirmResult?.data?.orderStatus || 'pending',
+      createdAt: timestamp,
+      relogradeTrx: orderData.trx,
+      relogradeData: orderData,
+      amount: orderData.priceAmount || 0,
+      currency: orderData.priceCurrency || 'USD',
+      items: orderData.items || [],
+      voucherData: voucherData,
+      voucherCode: voucherCode,
+      voucherLink: voucherLink,
+      confirmStatus: confirmResult?.isFinished ? 'finished' : 'pending'
+    };
+    
+    const transactionUrl = `${FIREBASE_DATABASE_URL}/transactions/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
+    const transactionRes = await fetch(transactionUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(transactionData)
+    });
+    
+    if (!transactionRes.ok) {
+      throw new Error('Failed to save transaction');
+    }
+    
+    // Save to userOrders
+    if (userId) {
+      const userOrderData = {
+        orderId: firebaseOrderId,
+        status: confirmResult?.data?.orderStatus || 'pending',
+        createdAt: timestamp,
+        amount: orderData.priceAmount || 0,
+        currency: orderData.priceCurrency || 'USD',
+        items: orderData.items || [],
+        voucherData: voucherData,
+        voucherCode: voucherCode,
+        voucherLink: voucherLink,
+        relogradeTrx: orderData.trx
+      };
+      
+      const userOrderUrl = `${FIREBASE_DATABASE_URL}/userOrders/${userId}/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
+      const userOrderRes = await fetch(userOrderUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userOrderData)
+      });
+      
+      if (!userOrderRes.ok) {
+        console.warn('Failed to save user order');
+      }
+    }
+    
+    console.log(`✅ Order saved to Firebase: ${firebaseOrderId}`);
+    return { success: true };
+    
+  } catch (error) {
+    console.error('Firebase save error:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 // Main handler
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
   if (req.method === 'OPTIONS') {
@@ -48,238 +184,126 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ 
       success: false, 
-      error: 'Method not allowed. Only POST is accepted.' 
+      message: 'Method not allowed' 
     });
   }
   
   try {
-    const { trxId, action, adminEmail, orderData } = req.body;
+    const { userId, productSlug, amount, price, reference, customerInfo } = req.body;
     
-    // Validation
-    if (!trxId) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'trxId is required' 
+    // Validate required fields
+    if (!userId || !productSlug || !amount || !price) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: userId, productSlug, amount, price are required'
       });
     }
     
-    if (!action || !['complete', 'delete'].includes(action)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'action must be either "complete" or "delete"' 
-      });
+    // Generate unique order ID
+    const orderId = `ORD_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+    const firebaseOrderId = orderId;
+    
+    // Prepare Relograde order data
+    const relogradeOrderData = {
+      items: [
+        {
+          productSlug: productSlug,
+          amount: parseInt(amount),
+          priceAmount: parseFloat(price),
+          priceCurrency: 'USD'
+        }
+      ],
+      reference: JSON.stringify({
+        firebaseOrderId: firebaseOrderId,
+        userId: userId,
+        timestamp: new Date().toISOString()
+      }),
+      successUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://easy-premium.com'}/success?orderId=${firebaseOrderId}`,
+      cancelUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://easy-premium.com'}/cancel?orderId=${firebaseOrderId}`,
+      webhookUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://easy-premium.com'}/api/webhook`,
+      customerEmail: customerInfo?.email || null,
+      customerName: customerInfo?.name || null
+    };
+    
+    console.log('📦 Creating Relograde order:', JSON.stringify(relogradeOrderData, null, 2));
+    
+    // Step 1: Create Order in Relograde
+    const createResult = await callRelogradeAPI('order', 'POST', relogradeOrderData);
+    
+    if (!createResult.success) {
+      throw new Error(createResult.error || 'Failed to create order in Relograde');
     }
     
-    if (!adminEmail) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'adminEmail is required' 
-      });
+    const createdOrder = createResult.data;
+    const relogradeTrx = createdOrder.trx;
+    console.log(`✅ Order created with TRX: ${relogradeTrx}`);
+    
+    // Step 2: 🔥 IMPORTANT - Confirm the Order 🔥
+    console.log(`🔄 Confirming order ${relogradeTrx}...`);
+    const confirmResult = await confirmOrder(relogradeTrx);
+    
+    if (!confirmResult.success) {
+      console.warn('⚠️ Order confirmation failed, but order was created. Webhook will handle later.');
     }
     
-    console.log(`📝 Processing ${action} for order: ${trxId} by admin: ${adminEmail}`);
+    // Get final order data after confirmation
+    let finalOrderData = confirmResult.success ? confirmResult.data : createdOrder;
+    let orderStatus = confirmResult.success ? confirmResult.data.orderStatus : 'created';
+    let isFinished = confirmResult.success && confirmResult.isFinished;
     
-    let result;
+    console.log(`📊 Final order status: ${orderStatus}, isFinished: ${isFinished}`);
     
-    if (action === 'complete') {
-      result = await completeOrder(trxId, adminEmail, orderData);
-    } else if (action === 'delete') {
-      result = await deleteOrder(trxId, adminEmail, orderData);
+    // Step 3: Save to Firebase
+    const firebaseResult = await saveToFirebase(firebaseOrderId, finalOrderData, userId, confirmResult);
+    
+    if (!firebaseResult.success) {
+      console.warn('Firebase save failed but order created:', firebaseResult.error);
     }
     
+    // Extract voucher data for response
+    let voucherData = null;
+    let voucherCode = null;
+    let voucherLink = null;
+    
+    if (confirmResult.success && confirmResult.data.items) {
+      const items = confirmResult.data.items;
+      if (items.length > 0 && items[0].orderLines) {
+        const orderLines = items[0].orderLines;
+        if (orderLines.length > 0) {
+          voucherCode = orderLines[0].voucherCode;
+          voucherLink = `https://reward.relograde.com/${voucherCode}`;
+          voucherData = orderLines.map(line => ({
+            code: line.voucherCode,
+            serial: line.voucherSerial,
+            status: line.status
+          }));
+        }
+      }
+    }
+    
+    // Return success response
     return res.status(200).json({
       success: true,
-      message: action === 'complete' ? 'Order completed successfully' : 'Order deleted successfully',
-      data: result
+      data: {
+        orderId: firebaseOrderId,
+        relogradeTrx: relogradeTrx,
+        paymentUrl: createdOrder.paymentUrl || createdOrder.url,
+        status: orderStatus,
+        isFinished: isFinished,
+        amount: parseFloat(price),
+        currency: 'USD',
+        voucherData: voucherData,
+        voucherCode: voucherCode,
+        voucherLink: voucherLink,
+        message: isFinished ? 'Order completed instantly!' : 'Order created and pending confirmation. Webhook will update when finished.'
+      }
     });
     
   } catch (error) {
-    console.error('❌ API Error:', error);
+    console.error('❌ Create order error:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error'
+      message: error.message || 'Internal server error'
     });
-  }
-}
-
-// Complete order function
-async function completeOrder(trxId, adminEmail, orderData) {
-  try {
-    const timestamp = new Date().toISOString();
-    const timestampMs = Date.now();
-    
-    // Prepare completed order data
-    const completedOrderData = {
-      trxId: trxId,
-      status: 'completed',
-      completedBy: adminEmail,
-      completedAt: timestampMs,
-      completedAtISO: timestamp,
-      orderData: orderData || null
-    };
-    
-    // Save to completedOrders
-    await firebaseRestAPI(`completedOrders/${trxId}`, 'PUT', completedOrderData);
-    console.log(`✅ Order ${trxId} saved to completedOrders`);
-    
-    // Update transactions table
-    try {
-      // Try direct path first
-      const transactionData = await firebaseRestAPI(`transactions/${trxId}`, 'GET');
-      if (transactionData) {
-        const transactionUpdates = {
-          status: 'completed',
-          completedAt: timestamp,
-          completedBy: adminEmail
-        };
-        await firebaseRestAPI(`transactions/${trxId}`, 'PATCH', transactionUpdates);
-        console.log(`✅ Transaction ${trxId} updated`);
-      } else {
-        // Search for transaction by orderId
-        const allTransactions = await firebaseRestAPI('transactions', 'GET');
-        if (allTransactions && typeof allTransactions === 'object') {
-          for (const key in allTransactions) {
-            if (allTransactions[key].orderId === trxId || allTransactions[key].trxId === trxId) {
-              const transactionUpdates = {
-                status: 'completed',
-                completedAt: timestamp,
-                completedBy: adminEmail
-              };
-              await firebaseRestAPI(`transactions/${key}`, 'PATCH', transactionUpdates);
-              console.log(`✅ Transaction found and updated with key: ${key}`);
-              break;
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('⚠️ Could not update transaction:', err.message);
-    }
-    
-    // Log the action
-    const logData = {
-      trxId: trxId,
-      action: 'complete',
-      adminEmail: adminEmail,
-      timestamp: timestampMs,
-      timestampISO: timestamp
-    };
-    
-    await firebaseRestAPI('adminActionLogs', 'POST', logData);
-    console.log(`✅ Action logged`);
-    
-    return {
-      trxId: trxId,
-      status: 'completed',
-      completedAt: timestamp,
-      message: 'Order marked as completed'
-    };
-    
-  } catch (error) {
-    console.error('Complete order error:', error);
-    throw new Error(`Failed to complete order: ${error.message}`);
-  }
-}
-
-// Delete order function
-async function deleteOrder(trxId, adminEmail, orderData) {
-  try {
-    const timestamp = new Date().toISOString();
-    const timestampMs = Date.now();
-    
-    // First, fetch existing order data if not provided
-    let existingOrderData = orderData;
-    if (!existingOrderData) {
-      try {
-        // Try to get from transactions
-        const transactionData = await firebaseRestAPI(`transactions/${trxId}`, 'GET');
-        if (transactionData) {
-          existingOrderData = transactionData;
-        }
-      } catch (err) {
-        console.log('No existing order data found');
-      }
-    }
-    
-    // Create backup data
-    const backupData = {
-      trxId: trxId,
-      deletedBy: adminEmail,
-      deletedAt: timestampMs,
-      deletedAtISO: timestamp,
-      originalData: existingOrderData || null,
-      action: 'delete'
-    };
-    
-    // Save to deletedOrders backup
-    await firebaseRestAPI(`deletedOrders/${trxId}`, 'PUT', backupData);
-    console.log(`✅ Order ${trxId} backed up to deletedOrders`);
-    
-    // Delete from transactions if exists
-    try {
-      const transactionData = await firebaseRestAPI(`transactions/${trxId}`, 'GET');
-      if (transactionData) {
-        await firebaseRestAPI(`transactions/${trxId}`, 'DELETE');
-        console.log(`✅ Transaction ${trxId} deleted`);
-      }
-    } catch (err) {
-      console.log('Transaction not found or already deleted');
-    }
-    
-    // Delete from completedOrders if exists
-    try {
-      const completedData = await firebaseRestAPI(`completedOrders/${trxId}`, 'GET');
-      if (completedData) {
-        await firebaseRestAPI(`completedOrders/${trxId}`, 'DELETE');
-        console.log(`✅ Completed order ${trxId} deleted`);
-      }
-    } catch (err) {
-      console.log('Completed order not found');
-    }
-    
-    // Search and delete from userOrders if exists
-    try {
-      const allUsers = await firebaseRestAPI('userOrders', 'GET');
-      if (allUsers && typeof allUsers === 'object') {
-        for (const userId in allUsers) {
-          const userOrders = allUsers[userId];
-          if (userOrders && typeof userOrders === 'object') {
-            for (const orderKey in userOrders) {
-              if (userOrders[orderKey].orderId === trxId || userOrders[orderKey].trxId === trxId || orderKey === trxId) {
-                await firebaseRestAPI(`userOrders/${userId}/${orderKey}`, 'DELETE');
-                console.log(`✅ User order deleted for user ${userId}`);
-                break;
-              }
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.log('Could not delete from userOrders:', err.message);
-    }
-    
-    // Log the action
-    const logData = {
-      trxId: trxId,
-      action: 'delete',
-      adminEmail: adminEmail,
-      timestamp: timestampMs,
-      timestampISO: timestamp,
-      backedUp: true
-    };
-    
-    await firebaseRestAPI('adminActionLogs', 'POST', logData);
-    console.log(`✅ Delete action logged`);
-    
-    return {
-      trxId: trxId,
-      deletedAt: timestamp,
-      backedUp: true,
-      message: 'Order deleted and backed up successfully'
-    };
-    
-  } catch (error) {
-    console.error('Delete order error:', error);
-    throw new Error(`Failed to delete order: ${error.message}`);
   }
 }
