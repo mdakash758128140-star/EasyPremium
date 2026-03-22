@@ -448,9 +448,9 @@
             border: 2px solid #ff9800;
             border-radius: 15px;
             padding: 30px;
-            max-width: 600px;
+            max-width: 700px;
             width: 90%;
-            max-height: 80vh;
+            max-height: 85vh;
             overflow-y: auto;
             position: relative;
         }
@@ -478,77 +478,97 @@
             border-bottom: 2px solid rgba(255, 152, 0, 0.3);
         }
         
-        .modal-info {
+        .modal-section {
+            margin-bottom: 25px;
+        }
+        
+        .modal-section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #00bcd4;
+            margin-bottom: 12px;
+            border-left: 3px solid #ff9800;
+            padding-left: 10px;
+        }
+        
+        .order-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
+            padding: 15px;
         }
         
-        .modal-info-item {
+        .info-item {
             display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 152, 0, 0.2);
+            flex-direction: column;
+            gap: 5px;
         }
         
-        .modal-info-item:last-child {
-            border-bottom: none;
-        }
-        
-        .modal-info-label {
+        .info-label {
+            font-size: 0.8rem;
             color: #b0bec5;
-            font-weight: 600;
         }
         
-        .modal-info-value {
+        .info-value {
+            font-size: 1rem;
+            font-weight: 600;
             color: #ffb74d;
-            font-weight: 700;
-            text-align: right;
-            max-width: 60%;
             word-break: break-word;
         }
         
-        .link-box {
-            background: rgba(0, 188, 212, 0.1);
-            border: 2px solid #00bcd4;
+        .reference-list {
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
             padding: 15px;
-            margin: 20px 0;
-            word-break: break-all;
+            list-style: none;
+            margin: 0;
         }
         
-        .link-box a {
-            color: #00bcd4;
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-        
-        .copy-link-btn {
-            background: linear-gradient(45deg, #4caf50, #45a049);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 5px;
-            font-weight: 600;
+        .reference-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
             cursor: pointer;
-            width: 100%;
-            font-size: 1rem;
-            margin-top: 10px;
+            transition: all 0.2s;
+            border-left: 3px solid #ff9800;
         }
         
-        .copy-link-btn:hover {
-            background: linear-gradient(45deg, #45a049, #4caf50);
+        .reference-item:hover {
+            background: rgba(255, 152, 0, 0.2);
+            transform: translateX(5px);
         }
         
-        .timestamp-note {
-            background: rgba(255, 152, 0, 0.1);
-            border-left: 4px solid #ff9800;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 20px;
+        .reference-text {
+            font-size: 0.95rem;
+            color: #fff;
+            word-break: break-all;
+            flex: 1;
+        }
+        
+        .copy-icon {
+            color: #00bcd4;
             font-size: 0.9rem;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        
+        .reference-item:hover .copy-icon {
+            opacity: 1;
+        }
+        
+        .empty-reference {
+            text-align: center;
+            padding: 20px;
             color: #b0bec5;
+            font-style: italic;
         }
         
         @media (max-width: 768px) {
@@ -557,6 +577,8 @@
             .action-buttons { flex-direction: column; gap: 5px; }
             .orders-table { font-size: 0.8rem; }
             .orders-table th, .orders-table td { padding: 8px; }
+            .order-info-grid { grid-template-columns: 1fr; }
+            .reference-item { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
@@ -615,20 +637,27 @@
                         <thead>
                             <tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>এডমিন নম্বর</th><th>কারেন্সি</th><th>অ্যাকশন</th> </thead>
                         <tbody id="ordersTable"></tbody>
-                     </table>
+                    寸
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal" id="orderModal">
+    <!-- New Modal for Order Details (No Link Generation) -->
+    <div class="modal" id="orderDetailsModal">
         <div class="modal-content">
-            <button class="modal-close" id="closeModalBtn">&times;</button>
-            <h2 class="modal-title">অর্ডার লিংক জেনারেট</h2>
-            <div class="modal-info" id="modalOrderInfo"></div>
-            <div class="link-box"><a href="#" id="generatedLink" target="_blank">লিংক জেনারেট হচ্ছে...</a></div>
-            <button class="copy-link-btn" id="copyLinkBtn"><i class="fas fa-copy"></i> লিংক কপি করুন</button>
-            <div class="timestamp-note"><strong>লিংক ওপেন করার সময়:</strong> <span id="accessTime">-</span></div>
+            <button class="modal-close" id="closeDetailsModalBtn">&times;</button>
+            <h2 class="modal-title">অর্ডার বিস্তারিত</h2>
+            
+            <div class="modal-section">
+                <div class="modal-section-title">অর্ডার তথ্য</div>
+                <div class="order-info-grid" id="orderInfoGrid"></div>
+            </div>
+            
+            <div class="modal-section">
+                <div class="modal-section-title">রেফারেন্স তথ্য <i class="fas fa-copy" style="font-size:0.8rem; margin-left:5px;"></i> <span style="font-size:0.75rem;">(ক্লিক করে কপি করুন)</span></div>
+                <div id="referenceContainer"></div>
+            </div>
         </div>
     </div>
 
@@ -659,7 +688,12 @@
         const totalOrdersEl = document.getElementById('totalOrders'), pendingOrdersEl = document.getElementById('pendingOrders'), completedOrdersEl = document.getElementById('completedOrders'), cancelledOrdersEl = document.getElementById('cancelledOrders');
         const orderCountEl = document.getElementById('orderCount'), systemInfo = document.getElementById('systemInfo'), ordersTable = document.getElementById('ordersTable');
         const orderFilter = document.getElementById('orderFilter'), orderSearch = document.getElementById('orderSearch'), dateFilter = document.getElementById('dateFilter');
-        const orderModal = document.getElementById('orderModal'), closeModalBtn = document.getElementById('closeModalBtn'), generatedLink = document.getElementById('generatedLink'), copyLinkBtn = document.getElementById('copyLinkBtn'), accessTime = document.getElementById('accessTime'), modalOrderInfo = document.getElementById('modalOrderInfo');
+        
+        // New modal elements
+        const orderDetailsModal = document.getElementById('orderDetailsModal');
+        const closeDetailsModalBtn = document.getElementById('closeDetailsModalBtn');
+        const orderInfoGrid = document.getElementById('orderInfoGrid');
+        const referenceContainer = document.getElementById('referenceContainer');
 
         document.addEventListener('DOMContentLoaded', () => { setupEventListeners(); checkAdminAuth(); });
         
@@ -670,9 +704,8 @@
             orderFilter.onchange = filterOrders;
             orderSearch.oninput = filterOrders;
             dateFilter.onchange = filterOrders;
-            closeModalBtn.onclick = () => orderModal.classList.remove('active');
-            window.onclick = (e) => { if (e.target === orderModal) orderModal.classList.remove('active'); };
-            copyLinkBtn.onclick = copyLink;
+            closeDetailsModalBtn.onclick = () => orderDetailsModal.classList.remove('active');
+            window.onclick = (e) => { if (e.target === orderDetailsModal) orderDetailsModal.classList.remove('active'); };
         }
         
         // Admin online status update
@@ -763,7 +796,7 @@
         function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
         
         async function loadOrders() {
-            ordersTable.innerHTML = ' clothed<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>   </td> </tr>';
+            ordersTable.innerHTML = ' clothed<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>    </tr>';
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -773,7 +806,7 @@
                 filterOrders();
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
             } catch(e) {
-                ordersTable.innerHTML = `<tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
+                ordersTable.innerHTML = ` <tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
             }
         }
         
@@ -819,7 +852,7 @@
                     const idx = orders.findIndex(o => o.trx === trxId);
                     if (idx !== -1) orders[idx].orderStatus = 'finished';
                     filterOrders();
-                    showToast('✅ অর্ডার সম্পন্ন হয়েছে এবং CompletedOrders এ সংরক্ষিত', 'success');
+                    showToast('✅ অর্ডার সম্পন্ন হয়েছে', 'success');
                 } else throw new Error(result.error || 'API failed');
             } catch(e) {
                 console.error('Complete error:', e);
@@ -850,7 +883,7 @@
                     const idx = orders.findIndex(o => o.trx === trxId);
                     if (idx !== -1) orders[idx].orderStatus = 'fail';
                     filterOrders();
-                    showToast('✅ অর্ডার ফেল করা হয়েছে এবং FailOrders এ সংরক্ষিত', 'success');
+                    showToast('✅ অর্ডার ফেল করা হয়েছে', 'success');
                 } else throw new Error(result.error || 'API failed');
             } catch(e) {
                 console.error('Cancel error:', e);
@@ -863,7 +896,7 @@
         
         function displayOrders(list) {
             if (!list.length) {
-                ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার নেই</td></tr>';
+                ordersTable.innerHTML = ' <tr><td colspan="8" class="no-data">কোন অর্ডার নেই</td></tr>';
                 return;
             }
             let html = '';
@@ -893,7 +926,7 @@
                     actionButtonsHtml = '<span style="color:#888;">—</span>';
                 }
                 
-                html += `<tr onclick="showOrderModal('${o.trx}')" style="cursor:pointer;">
+                html += `<tr onclick="showOrderDetails('${o.trx}')" style="cursor:pointer;">
                     <td style="font-family:monospace;">${o.trx || 'N/A'}</td>
                     <td>${date}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
@@ -907,39 +940,80 @@
             ordersTable.innerHTML = html;
         }
         
-        window.showOrderModal = function(trxId) {
+        // New function: show order details without any link generation
+        window.showOrderDetails = function(trxId) {
             const order = orders.find(o => o.trx === trxId);
             if (!order) { showToast('অর্ডার পাওয়া যায়নি', 'error'); return; }
-            modalOrderInfo.innerHTML = `
-                <div class="modal-info-item"><span class="modal-info-label">TRX ID:</span><span class="modal-info-value">${order.trx || 'N/A'}</span></div>
-                <div class="modal-info-item"><span class="modal-info-label">স্ট্যাটাস:</span><span class="modal-info-value">${order.orderStatus === 'finished' ? 'সম্পূর্ণ' : order.orderStatus === 'cancelled' ? 'ক্যানসেল' : order.orderStatus === 'fail' ? 'ফেল' : 'পেন্ডিং'}</span></div>
-                <div class="modal-info-item"><span class="modal-info-label">আইটেম:</span><span class="modal-info-value">${(order.items||[]).map(i=>`${i.product?.name||i.productSlug} x${i.amount}`).join(', ') || '—'}</span></div>
-                <div class="modal-info-item"><span class="modal-info-label">মোট দাম:</span><span class="modal-info-value">${(order.priceInclVat||order.priceAmount||0)} ${order.priceCurrency||'USD'}</span></div>
-                <div class="modal-info-item"><span class="modal-info-label">এডমিন নম্বর:</span><span class="modal-info-value">${order.reference||'—'}</span></div>
-                <div class="modal-info-item"><span class="modal-info-label">তারিখ:</span><span class="modal-info-value">${order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD') : '—'}</span></div>
-                <div class="modal-info-item"><span class="modal-info-label">কারেন্সি:</span><span class="modal-info-value">${order.paymentCurrency||order.priceCurrency||'USD'}</span></div>
+            
+            // Populate order info grid
+            orderInfoGrid.innerHTML = `
+                <div class="info-item"><div class="info-label">TRX ID</div><div class="info-value">${order.trx || 'N/A'}</div></div>
+                <div class="info-item"><div class="info-label">স্ট্যাটাস</div><div class="info-value">${order.orderStatus === 'finished' ? 'সম্পূর্ণ' : order.orderStatus === 'cancelled' ? 'ক্যানসেল' : order.orderStatus === 'fail' ? 'ফেল' : 'পেন্ডিং'}</div></div>
+                <div class="info-item"><div class="info-label">আইটেম</div><div class="info-value">${(order.items||[]).map(i=>`${i.product?.name||i.productSlug} x${i.amount}`).join(', ') || '—'}</div></div>
+                <div class="info-item"><div class="info-label">মোট দাম</div><div class="info-value">${(order.priceInclVat||order.priceAmount||0)} ${order.priceCurrency||'USD'}</div></div>
+                <div class="info-item"><div class="info-label">কারেন্সি</div><div class="info-value">${order.paymentCurrency||order.priceCurrency||'USD'}</div></div>
+                <div class="info-item"><div class="info-label">তারিখ</div><div class="info-value">${order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD') : '—'}</div></div>
             `;
-            const now = new Date();
-            const orderData = {
-                OrderId: order.trx, PaymentMethods: 'Relograde', PaymentTrxID: order.trx,
-                Time: now.toISOString(), email: currentAdminEmail, platformName: order.items?.[0]?.product?.name || 'Unknown',
-                amount: order.priceAmount || 0, currency: order.priceCurrency || 'USD',
-                totalAmount: order.priceInclVat || order.priceAmount || 0, reference: order.reference || ''
-            };
-            const base64Data = btoa(unescape(encodeURIComponent(JSON.stringify(orderData))));
-            const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
-            generatedLink.href = orderLink;
-            generatedLink.textContent = orderLink;
-            accessTime.textContent = `${now.toLocaleString('bn-BD')} (এডমিন: ${currentAdminEmail})`;
-            orderModal.classList.add('active');
+            
+            // Process reference field and display as copyable items
+            const referenceRaw = order.reference || '';
+            let referenceItems = [];
+            
+            // Try to parse as JSON first
+            try {
+                const parsed = JSON.parse(referenceRaw);
+                if (typeof parsed === 'object') {
+                    // Convert object to array of strings
+                    for (const [key, val] of Object.entries(parsed)) {
+                        referenceItems.push(`${key}: ${val}`);
+                    }
+                } else {
+                    referenceItems.push(String(parsed));
+                }
+            } catch(e) {
+                // Not JSON, split by common delimiters
+                let candidates = referenceRaw.split(/[,\n\r]+/);
+                if (candidates.length === 1 && candidates[0].trim() === referenceRaw.trim()) {
+                    // Single line, no delimiters - keep as one item
+                    referenceItems = [referenceRaw.trim()];
+                } else {
+                    referenceItems = candidates.map(s => s.trim()).filter(s => s !== '');
+                }
+            }
+            
+            // If still no items, show a placeholder
+            if (referenceItems.length === 0) {
+                referenceContainer.innerHTML = '<div class="empty-reference"><i class="fas fa-info-circle"></i> কোনো রেফারেন্স তথ্য নেই</div>';
+            } else {
+                let refHtml = '<ul class="reference-list">';
+                referenceItems.forEach(item => {
+                    const escapedItem = item.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    refHtml += `
+                        <li class="reference-item" onclick="copyToClipboard('${escapeHtmlForOnClick(item)}')">
+                            <span class="reference-text">${escapedItem}</span>
+                            <span class="copy-icon"><i class="fas fa-copy"></i></span>
+                        </li>
+                    `;
+                });
+                refHtml += '</ul>';
+                referenceContainer.innerHTML = refHtml;
+            }
+            
+            orderDetailsModal.classList.add('active');
         };
         
-        function copyLink() {
-            const link = generatedLink.href;
-            if (link && link !== '#') {
-                navigator.clipboard.writeText(link).then(() => showToast('লিংক কপি!', 'success')).catch(() => showToast('কপি ব্যর্থ', 'error'));
-            } else showToast('লিংক নেই', 'error');
+        // Helper to escape for onclick attribute
+        function escapeHtmlForOnClick(str) {
+            return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         }
+        
+        window.copyToClipboard = function(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('কপি করা হয়েছে!', 'success');
+            }).catch(() => {
+                showToast('কপি ব্যর্থ', 'error');
+            });
+        };
         
         function updateStats(list) {
             totalOrdersEl.textContent = list.length;
@@ -966,8 +1040,9 @@
         
         window.completeOrder = completeOrder;
         window.cancelOrder = cancelOrder;
-        window.showOrderModal = showOrderModal;
+        window.showOrderDetails = showOrderDetails;
         window.loadOrders = loadOrders;
+        window.copyToClipboard = copyToClipboard;
     </script>
 </body>
 </html>
