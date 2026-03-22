@@ -10,7 +10,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <style>
-        /* পুরনো CSS (আপনার দেওয়া) */
         * {
             margin: 0;
             padding: 0;
@@ -125,6 +124,8 @@
             position: sticky;
             top: 0;
             z-index: 1000;
+            flex-wrap: wrap;
+            gap: 15px;
         }
         
         .admin-info {
@@ -148,6 +149,7 @@
         .admin-details h3 {
             color: #ff9800;
             margin-bottom: 3px;
+            font-size: 1rem;
         }
         
         .admin-details p {
@@ -170,7 +172,6 @@
         .logout-btn:hover {
             background: linear-gradient(45deg, #c82333, #dc3545);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
         }
         
         .main-content {
@@ -226,7 +227,8 @@
             width: 100%;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
-            overflow: hidden;
+            overflow-x: auto;
+            display: block;
         }
         
         .orders-table th {
@@ -239,56 +241,10 @@
         .orders-table td {
             padding: 15px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            cursor: pointer;
-            transition: all 0.2s;
         }
         
         .orders-table tr:hover td {
             background: rgba(255, 152, 0, 0.1);
-        }
-        
-        .orders-table tr:active td {
-            background: rgba(255, 152, 0, 0.2);
-        }
-        
-        /* নতুন অ্যাকশন বাটন কলাম স্টাইল */
-        .action-buttons {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .action-btn {
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .action-complete {
-            background: rgba(76, 175, 80, 0.8);
-            color: white;
-        }
-        
-        .action-complete:hover {
-            background: #4caf50;
-            transform: translateY(-1px);
-        }
-        
-        .action-delete {
-            background: rgba(220, 53, 69, 0.8);
-            color: white;
-        }
-        
-        .action-delete:hover {
-            background: #dc3545;
-            transform: translateY(-1px);
         }
         
         .status-badge {
@@ -357,7 +313,6 @@
         .form-input:focus, .form-select:focus {
             border-color: #ff5722;
             background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 0 10px rgba(255, 87, 34, 0.3);
         }
         
         .system-info {
@@ -425,7 +380,6 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            margin-left: 15px;
         }
         
         .refresh-btn:hover {
@@ -433,18 +387,50 @@
             transform: translateY(-2px);
         }
         
-        .error-container {
-            text-align: center;
-            padding: 40px;
-            color: #ff6b6b;
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
         }
         
-        .error-container i {
-            font-size: 3rem;
-            margin-bottom: 15px;
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
         
-        /* Modal Styles */
+        .action-complete {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .action-complete:hover:not(:disabled) {
+            background: #45a049;
+            transform: translateY(-1px);
+        }
+        
+        .action-complete:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .action-delete {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .action-delete:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+        
         .modal {
             display: none;
             position: fixed;
@@ -472,7 +458,6 @@
             max-height: 80vh;
             overflow-y: auto;
             position: relative;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
         
         .modal-close {
@@ -484,12 +469,10 @@
             color: #ff9800;
             font-size: 1.5rem;
             cursor: pointer;
-            transition: all 0.3s;
         }
         
         .modal-close:hover {
             color: #ff5722;
-            transform: scale(1.1);
         }
         
         .modal-title {
@@ -546,10 +529,6 @@
             font-size: 0.9rem;
         }
         
-        .link-box a:hover {
-            text-decoration: underline;
-        }
-        
         .copy-link-btn {
             background: linear-gradient(45deg, #4caf50, #45a049);
             color: white;
@@ -558,7 +537,6 @@
             border-radius: 5px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
             width: 100%;
             font-size: 1rem;
             margin-top: 10px;
@@ -566,8 +544,6 @@
         
         .copy-link-btn:hover {
             background: linear-gradient(45deg, #45a049, #4caf50);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
         }
         
         .timestamp-note {
@@ -580,163 +556,62 @@
             color: #b0bec5;
         }
         
-        .timestamp-note strong {
-            color: #ff9800;
-        }
-        
         @media (max-width: 768px) {
-            .admin-header {
-                flex-direction: column;
-                gap: 15px;
-                padding: 15px;
-            }
-            
-            .main-content {
-                padding: 15px;
-            }
-            
-            .filter-section {
-                flex-direction: column;
-            }
-            
-            .filter-item {
-                min-width: 100%;
-            }
-            
-            .orders-table {
-                font-size: 0.85rem;
-            }
-            
-            .orders-table th, .orders-table td {
-                padding: 10px;
-            }
-            
-            .action-buttons {
-                flex-direction: column;
-                gap: 5px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .login-box {
-                padding: 30px 20px;
-            }
-            
-            .logo-icon {
-                width: 60px;
-                height: 60px;
-                font-size: 2rem;
-            }
-            
-            .logo-text h1 {
-                font-size: 1.5rem;
-            }
-            
-            .orders-table {
-                display: block;
-                overflow-x: auto;
-            }
+            .main-content { padding: 15px; }
+            .filter-section { flex-direction: column; }
+            .action-buttons { flex-direction: column; }
+            .orders-table { font-size: 0.8rem; }
+            .orders-table th, .orders-table td { padding: 8px; }
         }
     </style>
 </head>
 <body>
-    <!-- Login Screen -->
     <div class="login-screen" id="loginScreen">
         <div class="login-box">
             <div class="logo">
-                <div class="logo-icon">
-                    <i class="fas fa-crown"></i>
-                </div>
+                <div class="logo-icon"><i class="fas fa-crown"></i></div>
                 <div class="logo-text">
                     <h1>Easy Premium</h1>
                     <p>Relograde Order Management</p>
                 </div>
             </div>
-            
             <h2 class="login-title">এডমিন লগইন</h2>
-            <p style="text-align: center; color: #b0bec5; margin-bottom: 30px; font-size: 0.9rem;">
-                শুধুমাত্র অনুমোদিত Gmail এড্রেস দিয়ে লগইন করুন
-            </p>
-            
-            <button id="googleLoginBtn" class="google-login-btn">
-                <i class="fab fa-google"></i>
-                Sign in with Google
-            </button>
-            
+            <p style="text-align: center; color: #b0bec5; margin-bottom: 30px;">শুধুমাত্র অনুমোদিত Gmail এড্রেস দিয়ে লগইন করুন</p>
+            <button id="googleLoginBtn" class="google-login-btn"><i class="fab fa-google"></i> Sign in with Google</button>
             <div id="loginError" class="error-message"></div>
         </div>
     </div>
     
-    <!-- Admin Panel -->
     <div class="admin-panel" id="adminPanel">
-        <!-- Header -->
         <header class="admin-header">
             <div class="admin-info">
-                <div class="admin-avatar" id="adminAvatar">
-                    <i class="fas fa-user-shield"></i>
-                </div>
+                <div class="admin-avatar" id="adminAvatar"><i class="fas fa-user-shield"></i></div>
                 <div class="admin-details">
                     <h3 id="adminName">Loading...</h3>
                     <p id="adminEmail">Loading...</p>
                 </div>
             </div>
-            
             <div style="display: flex; gap: 10px;">
-                <button id="refreshOrdersBtn" class="refresh-btn">
-                    <i class="fas fa-sync-alt"></i> রিফ্রেশ
-                </button>
-                <button id="logoutBtn" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> লগ আউট
-                </button>
+                <button id="refreshOrdersBtn" class="refresh-btn"><i class="fas fa-sync-alt"></i> রিফ্রেশ</button>
+                <button id="logoutBtn" class="logout-btn"><i class="fas fa-sign-out-alt"></i> লগ আউট</button>
             </div>
         </header>
         
-        <!-- Main Content -->
         <div class="main-content">
-            <!-- Dashboard Stats Section -->
             <div class="section">
-                <h2 class="section-title">
-                    Relograde অর্ডার ড্যাশবোর্ড
-                    <span style="font-size: 0.9rem; color: #00bcd4; margin-left: 15px;">
-                        <i class="fas fa-database"></i> সরাসরি Relograde API থেকে
-                    </span>
-                </h2>
-                
+                <h2 class="section-title">Relograde অর্ডার ড্যাশবোর্ড</h2>
                 <div class="form-row">
-                    <div class="stats-card">
-                        <div class="stat-value" id="totalOrders">0</div>
-                        <div class="stat-label">মোট অর্ডার</div>
-                    </div>
-                    
-                    <div class="stats-card">
-                        <div class="stat-value" id="pendingOrders">0</div>
-                        <div class="stat-label">পেন্ডিং অর্ডার</div>
-                    </div>
-                    
-                    <div class="stats-card">
-                        <div class="stat-value" id="completedOrders">0</div>
-                        <div class="stat-label">সম্পূর্ণ অর্ডার</div>
-                    </div>
-                    
-                    <div class="stats-card">
-                        <div class="stat-value" id="cancelledOrders">0</div>
-                        <div class="stat-label">ক্যানসেল অর্ডার</div>
-                    </div>
+                    <div class="stats-card"><div class="stat-value" id="totalOrders">0</div><div class="stat-label">মোট অর্ডার</div></div>
+                    <div class="stats-card"><div class="stat-value" id="pendingOrders">0</div><div class="stat-label">পেন্ডিং অর্ডার</div></div>
+                    <div class="stats-card"><div class="stat-value" id="completedOrders">0</div><div class="stat-label">সম্পূর্ণ অর্ডার</div></div>
+                    <div class="stats-card"><div class="stat-value" id="cancelledOrders">0</div><div class="stat-label">ক্যানসেল অর্ডার</div></div>
                 </div>
-                
-                <div class="system-info" id="systemInfo">
-                    <p>সিস্টেম তথ্য লোড হচ্ছে...</p>
-                </div>
+                <div class="system-info" id="systemInfo"><p>সিস্টেম তথ্য লোড হচ্ছে...</p></div>
             </div>
             
-            <!-- Relograde Orders Section -->
             <div class="section">
-                <h2 class="section-title">
-                    Relograde অর্ডার তালিকা
-                    <span id="orderCount" style="font-size: 0.9rem; color: #00bcd4; margin-left: 15px;"></span>
-                </h2>
+                <h2 class="section-title">Relograde অর্ডার তালিকা <span id="orderCount" style="font-size: 0.9rem; color: #00bcd4;"></span></h2>
                 
-                <!-- Filter Section -->
                 <div class="filter-section">
                     <div class="filter-item">
                         <label class="form-label">স্ট্যাটাস ফিল্টার</label>
@@ -747,12 +622,10 @@
                             <option value="cancelled">ক্যানসেল</option>
                         </select>
                     </div>
-                    
                     <div class="filter-item">
                         <label class="form-label">সার্চ করুন</label>
                         <input type="text" id="orderSearch" class="form-input" placeholder="TRX ID / রেফারেন্স">
                     </div>
-                    
                     <div class="filter-item">
                         <label class="form-label">তারিখ অনুযায়ী</label>
                         <select id="dateFilter" class="form-select">
@@ -765,48 +638,30 @@
                     </div>
                 </div>
                 
-                <!-- Orders Table -->
                 <div style="overflow-x: auto;">
                     <table class="orders-table">
                         <thead>
-                            <tr>
-                                <th>TRX ID</th>
-                                <th>তারিখ</th>
-                                <th>স্ট্যাটাস</th>
-                                <th>আইটেম</th>
-                                <th>মোট দাম</th>
-                                <th>রেফারেন্স</th>
-                                <th>কারেন্সি</th>
-                                <th>অ্যাকশন</th>
-                            </tr>
+                            <tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>রেফারেন্স</th><th>কারেন্সি</th><th>অ্যাকশন</th></tr>
                         </thead>
-                        <tbody id="ordersTable">
-                            <tr>
-                                <td colspan="8" class="loading-spinner">
-                                    <div class="spinner"></div>
-                                    <p>Relograde API থেকে অর্ডার লোড হচ্ছে...</p>
-                                </td>
-                            </tr>
-                        </tbody>
+                        <tbody id="ordersTable">...</tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- অর্ডার ডিটেইলস মোডাল -->
     <div class="modal" id="orderModal">
         <div class="modal-content">
             <button class="modal-close" id="closeModalBtn">&times;</button>
-            <h2 class="modal-title"><i class="fas fa-link" style="margin-right: 10px;"></i>অর্ডার লিংক জেনারেট</h2>
-            <div class="modal-info" id="modalOrderInfo">...</div>
-            <div id="linkContainer"><div class="link-box" id="generatedLinkBox"><a href="#" id="generatedLink" target="_blank">লিংক জেনারেট হচ্ছে...</a></div><button class="copy-link-btn" id="copyLinkBtn"><i class="fas fa-copy"></i> লিংক কপি করুন</button></div>
-            <div class="timestamp-note" id="timestampNote"><strong><i class="far fa-clock"></i>লিংক ওপেন করার সময়:</strong> <span id="accessTime">-</span></div>
+            <h2 class="modal-title"><i class="fas fa-link"></i> অর্ডার লিংক জেনারেট</h2>
+            <div class="modal-info" id="modalOrderInfo"></div>
+            <div class="link-box"><a href="#" id="generatedLink" target="_blank">লিংক জেনারেট হচ্ছে...</a></div>
+            <button class="copy-link-btn" id="copyLinkBtn"><i class="fas fa-copy"></i> লিংক কপি করুন</button>
+            <div class="timestamp-note"><strong><i class="far fa-clock"></i> লিংক ওপেন করার সময়:</strong> <span id="accessTime">-</span></div>
         </div>
     </div>
 
     <script>
-        // Firebase Configuration (অপরিবর্তিত)
         const firebaseConfig = {
             apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
             authDomain: "easy-premium.firebaseapp.com",
@@ -816,6 +671,7 @@
             messagingSenderId: "155891252265",
             appId: "1:155891252265:web:77ab41de24231e8e5ef038"
         };
+
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const auth = firebase.auth();
@@ -825,14 +681,14 @@
         const adminPanel = document.getElementById('adminPanel');
         const googleLoginBtn = document.getElementById('googleLoginBtn');
         const refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
         const adminName = document.getElementById('adminName');
         const adminEmail = document.getElementById('adminEmail');
         const adminAvatar = document.getElementById('adminAvatar');
-        const logoutBtn = document.getElementById('logoutBtn');
         const totalOrdersEl = document.getElementById('totalOrders');
         const pendingOrdersEl = document.getElementById('pendingOrders');
-        const cancelledOrdersEl = document.getElementById('cancelledOrders');
         const completedOrdersEl = document.getElementById('completedOrders');
+        const cancelledOrdersEl = document.getElementById('cancelledOrders');
         const orderCountEl = document.getElementById('orderCount');
         const systemInfo = document.getElementById('systemInfo');
         const ordersTable = document.getElementById('ordersTable');
@@ -844,19 +700,33 @@
         const generatedLink = document.getElementById('generatedLink');
         const copyLinkBtn = document.getElementById('copyLinkBtn');
         const accessTime = document.getElementById('accessTime');
+        const modalOrderInfo = document.getElementById('modalOrderInfo');
 
         let orders = [];
         let currentAdminEmail = null;
-        let onlineStatusInterval = null;
+        let currentAdminUser = null;
 
-        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
+        const ALLOWED_ADMIN_EMAILS = [
+            'mdashikislam017705@gmail.com',
+            'mdsojib1388888@gmail.com',
+            'admin@easy-premium.com',
+            'shahsultanshakil204571@gmail.com',
+            'allwork204571@gmail.com'
+        ];
 
-        document.addEventListener('DOMContentLoaded', () => { checkAdminAuth(); setupEventListeners(); });
-        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            checkAdminAuth();
+        });
+
         function setupEventListeners() {
             googleLoginBtn.addEventListener('click', handleGoogleLogin);
             logoutBtn.addEventListener('click', handleLogout);
-            refreshOrdersBtn.addEventListener('click', () => { showToast('অর্ডার রিফ্রেশ করা হচ্ছে...', 'info'); loadOrdersFromRelograde(); });
+            refreshOrdersBtn.addEventListener('click', () => {
+                showToast('অর্ডার রিফ্রেশ করা হচ্ছে...', 'info');
+                loadOrdersFromRelograde();
+            });
             orderFilter.addEventListener('change', filterAndDisplayOrders);
             orderSearch.addEventListener('input', filterAndDisplayOrders);
             dateFilter.addEventListener('change', filterAndDisplayOrders);
@@ -869,16 +739,15 @@
             auth.onAuthStateChanged(async (user) => {
                 if (user && ALLOWED_ADMIN_EMAILS.includes(user.email)) {
                     currentAdminEmail = user.email;
+                    currentAdminUser = user;
                     await loadAdminData(user);
                     showAdminPanel();
-                    startOnlineStatusUpdates(user);
                     loadOrdersFromRelograde();
                 } else if (user) {
                     await auth.signOut();
                     showLoginScreen();
                     showToast('এই Gmail এড্রেস এডমিন এক্সেস নেই', 'error');
                 } else {
-                    if (onlineStatusInterval) clearInterval(onlineStatusInterval);
                     showLoginScreen();
                 }
             });
@@ -887,49 +756,73 @@
         async function loadAdminData(user) {
             adminName.textContent = user.displayName || user.email;
             adminEmail.textContent = user.email;
-            if (user.photoURL) adminAvatar.innerHTML = `<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">`;
-            else adminAvatar.innerHTML = `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
-            await database.ref(`adminUsers/${user.uid}`).update({ email: user.email, name: user.displayName, lastLogin: firebase.database.ServerValue.TIMESTAMP, status: 'active' });
+            if (user.photoURL) {
+                adminAvatar.innerHTML = `<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">`;
+            } else {
+                adminAvatar.innerHTML = `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
+            }
         }
 
-        function startOnlineStatusUpdates(user) { updateOnlineStatus(user); if(onlineStatusInterval) clearInterval(onlineStatusInterval); onlineStatusInterval = setInterval(() => updateOnlineStatus(user), 60000); }
-        async function updateOnlineStatus(user) { if(!user) return; try { await database.ref(`publicAdminInfo/${user.uid}`).set({ name: user.displayName || 'Admin', number: 'N/A', lastActive: new Date().toISOString() }); } catch(e) { console.error(e); } }
-        async function handleGoogleLogin() { try { const result = await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); if(!ALLOWED_ADMIN_EMAILS.includes(result.user.email)) { await auth.signOut(); showToast('এক্সেস নেই', 'error'); } else { await saveAdminLogin(result.user); showToast('লগইন সফল', 'success'); } } catch(e) { showToast('লগইন ব্যর্থ', 'error'); } }
-        async function saveAdminLogin(user) { await database.ref('adminLogs').push({ action: 'admin_login', email: user.email, timestamp: firebase.database.ServerValue.TIMESTAMP }); }
-        async function handleLogout() { if(onlineStatusInterval) clearInterval(onlineStatusInterval); await auth.signOut(); showLoginScreen(); showToast('লগ আউট হয়েছে', 'success'); }
-        function showLoginScreen() { loginScreen.style.display = 'flex'; adminPanel.style.display = 'none'; }
-        function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
+        async function handleGoogleLogin() {
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                const result = await auth.signInWithPopup(provider);
+                if (!ALLOWED_ADMIN_EMAILS.includes(result.user.email)) {
+                    await auth.signOut();
+                    showToast('এই Gmail এড্রেস এডমিন এক্সেস নেই', 'error');
+                }
+            } catch (error) {
+                showToast('লগইন ব্যর্থ: ' + error.message, 'error');
+            }
+        }
+
+        async function handleLogout() {
+            await auth.signOut();
+            showLoginScreen();
+            showToast('লগ আউট হয়েছে', 'success');
+        }
+
+        function showLoginScreen() {
+            loginScreen.style.display = 'flex';
+            adminPanel.style.display = 'none';
+        }
+
+        function showAdminPanel() {
+            loginScreen.style.display = 'none';
+            adminPanel.style.display = 'block';
+            updateSystemInfo();
+        }
 
         async function loadOrdersFromRelograde() {
             ordersTable.innerHTML = `<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>Relograde API থেকে অর্ডার লোড হচ্ছে...</p></td></tr>`;
             try {
                 const response = await fetch('/api/relograde-orders');
                 const result = await response.json();
-                if(!response.ok || !result.success) throw new Error(result.error || 'API error');
+                if (!response.ok || !result.success) throw new Error(result.error || 'API error');
                 orders = result.data || [];
-                if(orderCountEl) orderCountEl.textContent = `(${orders.length}টি অর্ডার)`;
+                if (orderCountEl) orderCountEl.textContent = `(${orders.length}টি অর্ডার)`;
                 filterAndDisplayOrders();
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
-            } catch(error) {
-                ordersTable.innerHTML = `<tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${error.message}</p><button onclick="loadOrdersFromRelograde()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
+            } catch (error) {
+                ordersTable.innerHTML = `<tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${error.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
             }
         }
 
         function filterAndDisplayOrders() {
             let filtered = [...orders];
             const statusValue = orderFilter.value;
-            if(statusValue !== 'all') filtered = filtered.filter(o => o.orderStatus?.toLowerCase() === statusValue.toLowerCase());
+            if (statusValue !== 'all') filtered = filtered.filter(o => o.orderStatus?.toLowerCase() === statusValue.toLowerCase());
             const searchValue = orderSearch.value.toLowerCase();
-            if(searchValue) filtered = filtered.filter(o => (o.trx?.toLowerCase().includes(searchValue) || o.reference?.toLowerCase().includes(searchValue)));
+            if (searchValue) filtered = filtered.filter(o => (o.trx?.toLowerCase().includes(searchValue) || o.reference?.toLowerCase().includes(searchValue)));
             const dateValue = dateFilter.value;
-            if(dateValue !== 'all') {
+            if (dateValue !== 'all') {
                 const today = new Date(); today.setHours(0,0,0,0);
                 filtered = filtered.filter(o => {
                     const d = new Date(o.dateCreated || 0); d.setHours(0,0,0,0);
-                    if(dateValue === 'today') return d.getTime() === today.getTime();
-                    if(dateValue === 'yesterday') { const y = new Date(today); y.setDate(y.getDate()-1); return d.getTime() === y.getTime(); }
-                    if(dateValue === 'week') { const week = new Date(today); week.setDate(week.getDate()-7); return d >= week; }
-                    if(dateValue === 'month') { const month = new Date(today); month.setMonth(month.getMonth()-1); return d >= month; }
+                    if (dateValue === 'today') return d.getTime() === today.getTime();
+                    if (dateValue === 'yesterday') { const y = new Date(today); y.setDate(y.getDate()-1); return d.getTime() === y.getTime(); }
+                    if (dateValue === 'week') { const week = new Date(today); week.setDate(week.getDate()-7); return d >= week; }
+                    if (dateValue === 'month') { const month = new Date(today); month.setMonth(month.getMonth()-1); return d >= month; }
                     return true;
                 });
             }
@@ -937,78 +830,113 @@
             updateStats(filtered);
         }
 
-        // সম্পন্ন এবং ডিলিট ফাংশন (API কল করে Relograde-এ পরিবর্তন)
-        async function markOrderCompleted(trxId, event) {
+        // Complete Order Function - Firebase Database এ সেভ করে
+        async function completeOrder(trxId, event) {
             event.stopPropagation();
-            if(!confirm('এই অর্ডারটি কি সম্পন্ন (finished) করতে চান?')) return;
+            if (!confirm('এই অর্ডারটি কি সম্পন্ন করতে চান?')) return;
+            
             try {
-                const response = await fetch('/api/order_completed', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ trxId, action: 'complete' })
+                showToast('অর্ডার সম্পন্ন করা হচ্ছে...', 'info');
+                
+                const orderData = orders.find(o => o.trx === trxId);
+                if (!orderData) throw new Error('Order not found');
+                
+                // Firebase Database এ কমপ্লিটেড অর্ডার সেভ করুন
+                await database.ref(`completedOrders/${trxId}`).set({
+                    trxId: trxId,
+                    status: 'finished',
+                    completedBy: currentAdminEmail,
+                    completedAt: firebase.database.ServerValue.TIMESTAMP,
+                    orderData: orderData
                 });
-                const result = await response.json();
-                if(result.success) {
-                    showToast('অর্ডার সম্পন্ন করা হয়েছে', 'success');
-                    loadOrdersFromRelograde(); // রিলোড
-                } else throw new Error(result.error || 'Failed');
-            } catch(e) { showToast('সম্পন্ন করতে ব্যর্থ: '+e.message, 'error'); }
+                
+                // লোকাল অ্যারেতে স্ট্যাটাস আপডেট
+                const orderIndex = orders.findIndex(o => o.trx === trxId);
+                if (orderIndex !== -1) {
+                    orders[orderIndex].orderStatus = 'finished';
+                }
+                
+                showToast('অর্ডার সম্পন্ন করা হয়েছে', 'success');
+                filterAndDisplayOrders();
+                
+            } catch (error) {
+                console.error('Complete order error:', error);
+                showToast('সম্পন্ন করতে ব্যর্থ: ' + error.message, 'error');
+            }
         }
 
+        // Delete Order Function - Firebase Database এ ব্যাকআপ করে ডিলিট
         async function deleteOrder(trxId, event) {
             event.stopPropagation();
-            if(!confirm('সতর্কতা: এই অর্ডারটি স্থায়ীভাবে মুছে ফেলা হবে। আপনি কি নিশ্চিত?')) return;
+            if (!confirm('সতর্কতা: এই অর্ডারটি মুছে ফেলা হবে। আপনি কি নিশ্চিত?')) return;
+            
             try {
-                const response = await fetch('/api/order_completed', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ trxId, action: 'delete' })
-                });
-                const result = await response.json();
-                if(result.success) {
-                    showToast('অর্ডার ডিলিট করা হয়েছে', 'success');
-                    loadOrdersFromRelograde();
-                } else throw new Error(result.error || 'Failed');
-            } catch(e) { showToast('ডিলিট ব্যর্থ: '+e.message, 'error'); }
+                showToast('অর্ডার ডিলিট করা হচ্ছে...', 'info');
+                
+                const orderData = orders.find(o => o.trx === trxId);
+                if (orderData) {
+                    // ব্যাকআপ সেভ করুন
+                    await database.ref(`deletedOrders/${trxId}`).set({
+                        ...orderData,
+                        deletedBy: currentAdminEmail,
+                        deletedAt: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+                
+                // লোকাল অ্যারে থেকে রিমুভ করুন
+                orders = orders.filter(o => o.trx !== trxId);
+                
+                showToast('অর্ডার ডিলিট করা হয়েছে', 'success');
+                filterAndDisplayOrders();
+                
+            } catch (error) {
+                console.error('Delete order error:', error);
+                showToast('ডিলিট করতে ব্যর্থ: ' + error.message, 'error');
+            }
         }
 
         function displayOrders(ordersList) {
-            if(ordersList.length === 0) { ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার পাওয়া যায়নি</td></tr>'; return; }
+            if (ordersList.length === 0) {
+                ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার পাওয়া যায়নি</td></tr>';
+                return;
+            }
+            
             let html = '';
             ordersList.slice(0, 50).forEach(order => {
                 const orderDate = order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD') : 'তারিখ নেই';
                 let statusClass = 'status-pending', statusText = order.orderStatus || 'unknown';
-                if(statusText === 'finished') { statusClass = 'status-completed'; statusText = 'সম্পূর্ণ'; }
-                else if(statusText === 'cancelled') { statusClass = 'status-cancelled'; statusText = 'ক্যানসেল'; }
-                else if(statusText === 'created') { statusClass = 'status-pending'; statusText = 'পেন্ডিং'; }
+                if (statusText === 'finished') { statusClass = 'status-completed'; statusText = 'সম্পূর্ণ'; }
+                else if (statusText === 'cancelled') { statusClass = 'status-cancelled'; statusText = 'ক্যানসেল'; }
+                else if (statusText === 'created') { statusClass = 'status-pending'; statusText = 'পেন্ডিং'; }
+                
                 const items = (order.items || []).map(i => `${i.product?.name || i.productSlug} x${i.amount}`).join('<br>') || '—';
                 const totalPrice = order.priceInclVat || order.priceAmount || 0;
                 const currency = order.priceCurrency || 'USD';
                 const reference = order.reference || '—';
                 const isPending = order.orderStatus === 'created';
-                html += `<tr onclick="showOrderModal('${order.trx || ''}')">
-                            <td style="font-family: monospace;">${order.trx || 'N/A'}</td>
-                            <td>${orderDate}</td>
-                            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                            <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
-                            <td style="color:#00bcd4;">${totalPrice} ${currency}</td>
-                            <td><div style="max-width:150px;font-size:0.8rem;" title="${reference}">${reference.substring(0,30)}${reference.length>30?'...':''}</div></td>
-                            <td>${order.paymentCurrency || currency}</td>
-                            <td class="action-buttons" onclick="event.stopPropagation()">
-                                ${isPending ? `<button class="action-btn action-complete" onclick="markOrderCompleted('${order.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button>` : `<button class="action-btn action-complete" disabled style="opacity:0.5;cursor:not-allowed;" title="শুধু পেন্ডিং অর্ডার সম্পন্ন করা যায়"><i class="fas fa-check-circle"></i> সম্পন্ন</button>`}
-                                <button class="action-btn action-delete" onclick="deleteOrder('${order.trx}', event)"><i class="fas fa-trash-alt"></i> ডিলিট</button>
-                            </td>
-                         </tr>`;
+                
+                html += `<tr onclick="showOrderModal('${order.trx}')" style="cursor:pointer;">
+                    <td style="font-family: monospace;">${order.trx || 'N/A'}</td>
+                    <td>${orderDate}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
+                    <td style="color:#00bcd4;">${totalPrice} ${currency}</td>
+                    <td><div style="max-width:150px;font-size:0.8rem;" title="${reference}">${reference.substring(0,30)}${reference.length>30?'...':''}</div></td>
+                    <td>${order.paymentCurrency || currency}</td>
+                    <td class="action-buttons" onclick="event.stopPropagation()">
+                        ${isPending ? `<button class="action-btn action-complete" onclick="completeOrder('${order.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button>` : `<button class="action-btn action-complete" disabled><i class="fas fa-check-circle"></i> সম্পন্ন</button>`}
+                        <button class="action-btn action-delete" onclick="deleteOrder('${order.trx}', event)"><i class="fas fa-trash-alt"></i> ডিলিট</button>
+                    </td>
+                 </tr>`;
             });
             ordersTable.innerHTML = html;
         }
 
         window.showOrderModal = function(trxId) {
             const order = orders.find(o => o.trx === trxId);
-            if(!order) { showToast('অর্ডার পাওয়া যায়নি', 'error'); return; }
-            document.getElementById('modalTrx')?.remove(); // cleanup dynamic
-            const modalInfo = document.getElementById('modalOrderInfo');
-            modalInfo.innerHTML = `
+            if (!order) { showToast('অর্ডার পাওয়া যায়নি', 'error'); return; }
+            
+            modalOrderInfo.innerHTML = `
                 <div class="modal-info-item"><span class="modal-info-label">TRX ID:</span><span class="modal-info-value">${order.trx || 'N/A'}</span></div>
                 <div class="modal-info-item"><span class="modal-info-label">স্ট্যাটাস:</span><span class="modal-info-value">${order.orderStatus === 'finished' ? 'সম্পূর্ণ' : order.orderStatus === 'cancelled' ? 'ক্যানসেল' : 'পেন্ডিং'}</span></div>
                 <div class="modal-info-item"><span class="modal-info-label">আইটেম:</span><span class="modal-info-value">${(order.items||[]).map(i=>`${i.product?.name||i.productSlug} x${i.amount}`).join(', ') || '—'}</span></div>
@@ -1017,33 +945,54 @@
                 <div class="modal-info-item"><span class="modal-info-label">তারিখ:</span><span class="modal-info-value">${order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD') : '—'}</span></div>
                 <div class="modal-info-item"><span class="modal-info-label">কারেন্সি:</span><span class="modal-info-value">${order.paymentCurrency||order.priceCurrency||'USD'}</span></div>
             `;
-            generateOrderLink(order);
-            orderModal.classList.add('active');
-        };
-
-        function generateOrderLink(order) {
+            
             const now = new Date();
             const orderData = {
-                OrderId: order.trx || 'N/A', PaymentMethods: 'Relograde', PaymentNumber: 'N/A', PaymentTrxID: order.trx || 'N/A',
-                Time: now.toISOString(), email: 'admin@easy-premium.com', platformId: order.items?.[0]?.productSlug || 'unknown',
-                platformName: order.items?.[0]?.product?.name || 'Unknown', uid: 'admin', amount: order.priceAmount || 0,
-                currency: order.priceCurrency || 'USD', serviceCharge: 0, totalAmount: order.priceInclVat || order.priceAmount || 0,
-                faceValue: null, status: order.orderStatus || 'pending', reference: order.reference || '',
-                adminAccess: true, accessedBy: currentAdminEmail, accessedAt: now.toISOString()
+                OrderId: order.trx, PaymentMethods: 'Relograde', PaymentTrxID: order.trx,
+                Time: now.toISOString(), email: currentAdminEmail, platformName: order.items?.[0]?.product?.name || 'Unknown',
+                amount: order.priceAmount || 0, currency: order.priceCurrency || 'USD',
+                totalAmount: order.priceInclVat || order.priceAmount || 0, reference: order.reference || ''
             };
             const base64Data = btoa(unescape(encodeURIComponent(JSON.stringify(orderData))));
             const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
             generatedLink.href = orderLink;
             generatedLink.textContent = orderLink;
-            accessTime.textContent = `${now.toLocaleString('bn-BD', {timeZone:'Asia/Dhaka'})} (এডমিন: ${currentAdminEmail})`;
+            accessTime.textContent = `${now.toLocaleString('bn-BD')} (এডমিন: ${currentAdminEmail})`;
+            
+            orderModal.classList.add('active');
+        };
+
+        function copyLinkToClipboard() {
+            const link = generatedLink.href;
+            if (link && link !== '#') {
+                navigator.clipboard.writeText(link).then(() => showToast('লিংক কপি!', 'success')).catch(() => showToast('কপি ব্যর্থ', 'error'));
+            } else showToast('লিংক নেই', 'error');
         }
 
-        function copyLinkToClipboard() { const link = generatedLink.href; if(link && link !== '#') { navigator.clipboard.writeText(link).then(()=>showToast('লিংক কপি!','success')).catch(()=>showToast('কপি ব্যর্থ','error')); } else showToast('লিংক নেই','error'); }
-        function updateStats(ordersList) { totalOrdersEl.textContent = ordersList.length; pendingOrdersEl.textContent = ordersList.filter(o=>o.orderStatus==='created').length; completedOrdersEl.textContent = ordersList.filter(o=>o.orderStatus==='finished').length; cancelledOrdersEl.textContent = ordersList.filter(o=>o.orderStatus==='cancelled').length; }
-        function updateSystemInfo() { systemInfo.innerHTML = `<div style="display:flex;gap:20px;"><div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail}</div><div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div><div><strong>স্ট্যাটাস:</strong> অনলাইন</div></div>`; }
-        function showToast(msg, type) { const t=document.createElement('div'); t.className='toast'; t.textContent=msg; t.style.background=type==='error'?'#dc3545':type==='success'?'#28a745':'#ff9800'; document.body.appendChild(t); setTimeout(()=>{t.style.animation='slideIn 0.3s ease reverse'; setTimeout(()=>t.remove(),300);},3000); }
+        function updateStats(ordersList) {
+            totalOrdersEl.textContent = ordersList.length;
+            pendingOrdersEl.textContent = ordersList.filter(o => o.orderStatus === 'created').length;
+            completedOrdersEl.textContent = ordersList.filter(o => o.orderStatus === 'finished').length;
+            cancelledOrdersEl.textContent = ordersList.filter(o => o.orderStatus === 'cancelled').length;
+        }
 
-        window.markOrderCompleted = markOrderCompleted;
+        function updateSystemInfo() {
+            systemInfo.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;"><div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div><div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div><div><strong>স্ট্যাটাস:</strong> অনলাইন</div></div>`;
+        }
+
+        function showToast(msg, type) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = msg;
+            toast.style.background = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#ff9800';
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        window.completeOrder = completeOrder;
         window.deleteOrder = deleteOrder;
         window.showOrderModal = showOrderModal;
         window.loadOrdersFromRelograde = loadOrdersFromRelograde;
