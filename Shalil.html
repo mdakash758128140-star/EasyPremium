@@ -299,11 +299,6 @@
             transform: translateY(-1px);
         }
         
-        .action-complete:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
         .action-cancel {
             background: #ff9800;
             color: white;
@@ -615,7 +610,7 @@
                     <div class="filter-item"><label class="form-label">সার্চ</label><input type="text" id="orderSearch" class="form-input" placeholder="TRX ID / রেফারেন্স"></div>
                     <div class="filter-item"><label class="form-label">তারিখ</label><select id="dateFilter" class="form-select"><option value="all">সব</option><option value="today">আজ</option><option value="yesterday">গতকাল</option><option value="week">এই সপ্তাহ</option><option value="month">এই মাস</option></select></div>
                 </div>
-                <div style="overflow-x: auto;"><table class="orders-table"><thead><tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>রেফারেন্স</th><th>কারেন্সি</th><th>অ্যাকশন</th></tr></thead><tbody id="ordersTable"></tbody></table></div>
+                <div style="overflow-x: auto;"><table class="orders-table"><thead>运转<th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>রেফারেন্স</th><th>কারেন্সি</th><th>অ্যাকশন</th> </thead><tbody id="ordersTable"></tbody> </table></div>
             </div>
         </div>
     </div>
@@ -828,7 +823,7 @@
             }
         }
         
-        // ✅ 新的取消订单函数：更新 Firebase 中的 userOrders 和 transactions 状态为 "fail"
+        // ✅ 取消订单：更新 Firebase 中的 userOrders 和 transactions 状态为 "fail"
         async function cancelOrder(trxId, event) {
             event.stopPropagation();
             if (!confirm('এই অর্ডারটি কি বাতিল (ফেল) করতে চান? স্ট্যাটাস "fail" এ সেট হবে।')) return;
@@ -842,23 +837,18 @@
                 if (!order) throw new Error('অর্ডার খুঁজে পাওয়া যায়নি');
                 
                 // Firebase-এ userOrders এবং transactions নোড আপডেট করুন
-                // ধরে নিচ্ছি টেবিলের primary key হলো trxId
                 const updates = {};
-                // userOrders পাথে trxId দিয়ে status fail সেট করা
                 updates[`userOrders/${trxId}/status`] = 'fail';
                 updates[`transactions/${trxId}/status`] = 'fail';
-                // এছাড়াও optionally orderStatus ফিল্ড আপডেট করা যায়
                 updates[`userOrders/${trxId}/orderStatus`] = 'fail';
                 updates[`transactions/${trxId}/orderStatus`] = 'fail';
                 
                 await database.ref().update(updates);
                 
-                // লোকাল অর্ডার অ্যারেতেও স্ট্যাটাস আপডেট করুন (UI তে দেখানোর জন্য)
+                // লোকাল অর্ডার অ্যারেতেও স্ট্যাটাস আপডেট করুন
                 const idx = orders.findIndex(o => o.trx === trxId);
-                if (idx !== -1) {
-                    orders[idx].orderStatus = 'fail';
-                }
-                filterOrders(); // রিফ্রেশ UI
+                if (idx !== -1) orders[idx].orderStatus = 'fail';
+                filterOrders();
                 showToast('✅ অর্ডার স্ট্যাটাস "fail" এ আপডেট করা হয়েছে', 'success');
             } catch(e) {
                 console.error('Cancel error:', e);
@@ -875,31 +865,42 @@
                 return;
             }
             let html = '';
-            list.slice(0,50).forEach(o => {
+            list.slice(0, 50).forEach(o => {
                 const date = o.dateCreated ? new Date(o.dateCreated).toLocaleString('bn-BD') : 'তারিখ নেই';
                 let statusClass = 'status-pending', statusText = o.orderStatus || 'unknown';
                 if (statusText === 'finished') { statusClass = 'status-completed'; statusText = 'সম্পূর্ণ'; }
                 else if (statusText === 'cancelled') { statusClass = 'status-cancelled'; statusText = 'ক্যানসেল'; }
                 else if (statusText === 'fail') { statusClass = 'status-cancelled'; statusText = 'ফেল'; }
                 else if (statusText === 'created') { statusClass = 'status-pending'; statusText = 'পেন্ডিং'; }
+                
                 const items = (o.items || []).map(i => `${i.product?.name || i.productSlug} x${i.amount}`).join('<br>') || '—';
                 const total = o.priceInclVat || o.priceAmount || 0;
                 const currency = o.priceCurrency || 'USD';
                 const ref = o.reference || '—';
-                const isPending = o.orderStatus === 'created';
-                // ক্যানসেল বাটন সবসময় সক্রিয়, শুধু পেন্ডিং অর্ডারের জন্য দেখানো হচ্ছে (প্রয়োজনে বদলানো যেতে পারে)
+                const isPending = (o.orderStatus === 'created');
+                
+                // ✅ 关键修改：仅当订单状态为 pending ('created') 时才显示操作按钮，否则显示 "—"
+                let actionButtonsHtml = '';
+                if (isPending) {
+                    actionButtonsHtml = `
+                        <div class="action-buttons" onclick="event.stopPropagation()">
+                            <button class="action-btn action-complete" onclick="completeOrder('${o.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button>
+                            <button class="action-btn action-cancel" onclick="cancelOrder('${o.trx}', event)"><i class="fas fa-ban"></i> ক্যানসেল</button>
+                        </div>
+                    `;
+                } else {
+                    actionButtonsHtml = '<span style="color:#888;">—</span>';
+                }
+                
                 html += `<tr onclick="showOrderModal('${o.trx}')" style="cursor:pointer;">
-                    <td style="font-family:monospace;">${o.trx || 'N/A'}${o.trx ? '' : ''}</td>
+                    <td style="font-family:monospace;">${o.trx || 'N/A'}</td>
                     <td>${date}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
                     <td style="color:#00bcd4;">${total} ${currency}</td>
                     <td><div style="max-width:150px;font-size:0.8rem;" title="${ref}">${ref.substring(0,30)}${ref.length>30?'...':''}</div></td>
                     <td>${o.paymentCurrency || currency}</td>
-                    <td class="action-buttons" onclick="event.stopPropagation()">
-                        ${isPending ? `<button class="action-btn action-complete" onclick="completeOrder('${o.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button>` : `<button class="action-btn action-complete" disabled><i class="fas fa-check-circle"></i> সম্পন্ন</button>`}
-                        <button class="action-btn action-cancel" onclick="cancelOrder('${o.trx}', event)"><i class="fas fa-ban"></i> ক্যানসেল</button>
-                    </td>
+                    <td>${actionButtonsHtml}</td>
                 </tr>`;
             });
             ordersTable.innerHTML = html;
