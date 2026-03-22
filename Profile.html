@@ -676,12 +676,14 @@
         function getStatusClass(status) {
             if (status === 'completed') return 'status-completed';
             if (status === 'cancelled') return 'status-cancelled';
+            if (status === 'fail') return 'status-cancelled'; // fail orders use same red style
             return 'status-pending';
         }
 
         function getStatusBangla(status) {
             if (status === 'completed') return 'সম্পন্ন';
             if (status === 'cancelled') return 'বাতিল';
+            if (status === 'fail') return 'ফেল'; // নতুন স্ট্যাটাস
             if (status === 'waiting') return 'অপেক্ষমান';
             return 'পেমেন্ট করুন'; // pending
         }
@@ -695,7 +697,7 @@
 
         // Fetch payment link from transactions if not present in userOrder
         async function ensurePaymentLink(orderId, orderData) {
-            if (orderData.paymentLink) return orderData.paymentLink; // already have it
+            if (orderData.paymentLink) return orderData.paymentLink;
             try {
                 const snap = await database.ref(`transactions/${orderId}`).once('value');
                 const trans = snap.val();
@@ -707,6 +709,7 @@
         }
 
         // Attach click handlers for both completed (voucher) and pending (payment link)
+        // Failed orders are NOT clickable.
         function attachClickHandlers() {
             // Completed orders (voucher link)
             document.querySelectorAll('.order-card[data-voucher-link]:not([data-voucher-link=""])').forEach(card => {
@@ -719,15 +722,13 @@
                 });
             });
 
-            // Pending orders (payment link)
+            // Pending orders (payment link) – only those with data-payment-link
             document.querySelectorAll('.order-card.clickable-pending').forEach(card => {
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
                 newCard.addEventListener('click', async (e) => {
-                    // The link might be in data-payment-link, or we need to fetch it
                     let link = newCard.dataset.paymentLink;
                     if (!link) {
-                        // Try to get it from transactions using orderId
                         const orderId = newCard.dataset.orderId;
                         if (orderId) {
                             const snap = await database.ref(`transactions/${orderId}`).once('value');
@@ -766,9 +767,14 @@
                         paymentLink = await ensurePaymentLink(order.orderId, order);
                     }
                     
-                    const clickablePendingClass = paymentLink ? 'clickable-pending' : '';
-                    const voucherAttr = voucherLink ? `data-voucher-link="${voucherLink}"` : '';
-                    const paymentAttr = paymentLink ? `data-payment-link="${paymentLink}"` : '';
+                    // Only mark as clickable if status is pending and we have a payment link, or if completed with voucher link
+                    // Fail orders should NOT be clickable.
+                    const isClickablePending = (status === 'pending' && paymentLink);
+                    const isClickableCompleted = (status === 'completed' && voucherLink);
+                    
+                    const clickablePendingClass = isClickablePending ? 'clickable-pending' : '';
+                    const voucherAttr = (isClickableCompleted && voucherLink) ? `data-voucher-link="${voucherLink}"` : '';
+                    const paymentAttr = (isClickablePending && paymentLink) ? `data-payment-link="${paymentLink}"` : '';
                     const orderIdAttr = order.orderId ? `data-order-id="${order.orderId}"` : '';
                     
                     ordersHtml += `
@@ -1038,7 +1044,7 @@
             };
         }
 
-        console.log('%c🔒 Easy Premium - প্রোফাইল পৃষ্ঠা সুরক্ষিত মোড সক্রিয়', 'color: #4caf50; font-size: 14px; font-weight: bold;');
+        console.log('%c🔒 Easy Premium - প্রোফাইল পৃষ্ঠা সুরক্ষিত মোড সক্রিয় (fail status added)', 'color: #4caf50; font-size: 14px; font-weight: bold;');
     })();
     </script>
 </body>
