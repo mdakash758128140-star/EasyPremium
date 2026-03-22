@@ -62,11 +62,14 @@ export default async function handler(req, res) {
       if (orders.length === 0) {
         return res.status(404).json({ success: false, error: 'Order not found' });
       }
-      return res.status(200).json({ success: true, data: orders[0] });
+      // একক অর্ডারের ক্ষেত্রেও Firebase চেক করা
+      const enrichedOrder = await enrichOrderWithFirebaseStatus(orders[0]);
+      return res.status(200).json({ success: true, data: enrichedOrder });
     }
 
-    // trx না থাকলে পুরো তালিকা
-    res.status(200).json({ success: true, count: orders.length, data: orders });
+    // trx না থাকলে পুরো তালিকা – প্রতিটি অর্ডারের জন্য Firebase স্ট্যাটাস চেক করুন
+    const enrichedOrders = await Promise.all(orders.map(order => enrichOrderWithFirebaseStatus(order)));
+    res.status(200).json({ success: true, count: enrichedOrders.length, data: enrichedOrders });
 
   } catch (error) {
     console.error('Error fetching orders:', error.message);
@@ -74,5 +77,57 @@ export default async function handler(req, res) {
       error: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
+  }
+}
+
+/**
+ * Firebase থেকে অর্ডারের স্ট্যাটাস চেক করে ওভাররাইড করে
+ * @param {Object} order - Relograde থেকে প্রাপ্ত অর্ডার অবজেক্ট
+ * @returns {Promise<Object>} আপডেটেড অর্ডার অবজেক্ট
+ */
+async function enrichOrderWithFirebaseStatus(order) {
+  if (!order || !order.trx) return order;
+
+  const firebaseUrl = process.env.FIREBASE_DATABASE_URL;
+  const firebaseSecret = process.env.FIREBASE_SECRET;
+
+  // যদি Firebase কনফিগার না থাকে, তাহলে অপরিবর্তিত অর্ডার ফেরত দিন
+  if (!firebaseUrl || !firebaseSecret) {
+    console.warn('Firebase configuration missing, skipping status enrichment');
+    return order;
+  }
+
+  try {
+    // CompletedOrders চেক করুন
+    const completedUrl = `${firebaseUrl}/CompletedOrders/${order.trx}.json?auth=${firebaseSecret}`;
+    const completedRes = await fetch(completedUrl);
+    if (completedRes.ok) {
+      const completedData = await completedRes.json();
+      if (completedData && completedData !== null) {
+        // অর্ডারটি CompletedOrders-এ আছে → status finished
+        order.orderStatus = 'finished';
+        console.log(`✅ Order ${order.trx} found in CompletedOrders, status set to finished`);
+        return order;
+      }
+    }
+
+    // FailOrders চেক করুন
+    const failUrl = `${firebaseUrl}/FailOrders/${order.trx}.json?auth=${firebaseSecret}`;
+    const failRes = await fetch(failUrl);
+    if (failRes.ok) {
+      const failData = await failRes.json();
+      if (failData && failData !== null) {
+        // অর্ডারটি FailOrders-এ আছে → status fail
+        order.orderStatus = 'fail';
+        console.log(`❌ Order ${order.trx} found in FailOrders, status set to fail`);
+        return order;
+      }
+    }
+
+    // Firebase-এ না থাকলে Relograde-এর মূল স্ট্যাটাস রাখা হবে
+    return order;
+  } catch (err) {
+    console.error(`Error checking Firebase status for order ${order.trx}:`, err.message);
+    return order; // ত্রুটি হলে মূল অর্ডার ফেরত
   }
 }
