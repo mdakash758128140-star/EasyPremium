@@ -149,6 +149,7 @@
         .admin-details h3 {
             color: #ff9800;
             margin-bottom: 3px;
+            font-size: 1rem;
         }
         
         .admin-details p {
@@ -171,7 +172,6 @@
         .logout-btn:hover {
             background: linear-gradient(45deg, #c82333, #dc3545);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
         }
         
         .main-content {
@@ -241,7 +241,6 @@
         .orders-table td {
             padding: 15px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            cursor: pointer;
         }
         
         .orders-table tr:hover td {
@@ -358,7 +357,6 @@
         .form-input:focus, .form-select:focus {
             border-color: #ff5722;
             background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 0 10px rgba(255, 87, 34, 0.3);
         }
         
         .system-info {
@@ -426,7 +424,6 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            margin-left: 15px;
         }
         
         .refresh-btn:hover {
@@ -434,7 +431,6 @@
             transform: translateY(-2px);
         }
         
-        /* Modal Styles - Updated for better order details */
         .modal {
             display: none;
             position: fixed;
@@ -442,7 +438,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.8);
             z-index: 10001;
             justify-content: center;
             align-items: center;
@@ -455,31 +451,28 @@
         .modal-content {
             background: linear-gradient(135deg, #1a1a2e, #16213e);
             border: 2px solid #ff9800;
-            border-radius: 20px;
-            padding: 25px;
-            max-width: 750px;
-            width: 95%;
-            max-height: 85vh;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
             overflow-y: auto;
             position: relative;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
         }
         
         .modal-close {
             position: absolute;
             top: 15px;
-            right: 20px;
+            right: 15px;
             background: none;
             border: none;
             color: #ff9800;
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             cursor: pointer;
-            transition: all 0.3s;
         }
         
         .modal-close:hover {
             color: #ff5722;
-            transform: scale(1.1);
         }
         
         .modal-title {
@@ -488,132 +481,87 @@
             margin-bottom: 20px;
             padding-bottom: 10px;
             border-bottom: 2px solid rgba(255, 152, 0, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
         
-        /* Order Details Styles */
-        .order-detail-section {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 15px;
+        .modal-info {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
         }
         
-        .section-header {
-            color: #ff9800;
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 12px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid rgba(255, 152, 0, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .detail-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-        
-        .detail-item {
+        .modal-info-item {
             display: flex;
             justify-content: space-between;
-            align-items: baseline;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 152, 0, 0.2);
         }
         
-        .detail-label {
+        .modal-info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .modal-info-label {
             color: #b0bec5;
-            font-weight: 500;
-            font-size: 0.85rem;
+            font-weight: 600;
         }
         
-        .detail-value {
+        .modal-info-value {
             color: #ffb74d;
-            font-weight: 600;
+            font-weight: 700;
             text-align: right;
-            word-break: break-word;
             max-width: 60%;
+            word-break: break-word;
+        }
+        
+        .link-box {
+            background: rgba(0, 188, 212, 0.1);
+            border: 2px solid #00bcd4;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            word-break: break-all;
+        }
+        
+        .link-box a {
+            color: #00bcd4;
+            text-decoration: none;
             font-size: 0.9rem;
         }
         
-        .item-card {
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 12px;
-            border-left: 3px solid #ff9800;
-        }
-        
-        .item-name {
-            color: #fff;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
-        .item-details {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            font-size: 0.8rem;
-            color: #b0bec5;
-        }
-        
-        .voucher-code {
-            background: rgba(76, 175, 80, 0.2);
-            color: #4caf50;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-family: monospace;
-            font-size: 0.75rem;
-            display: inline-block;
-            margin: 4px 4px 0 0;
-        }
-        
-        .copy-btn-small {
-            background: #00bcd4;
+        .copy-link-btn {
+            background: linear-gradient(45deg, #4caf50, #45a049);
             color: white;
             border: none;
-            padding: 3px 8px;
-            border-radius: 4px;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 0.65rem;
-            margin-left: 6px;
+            width: 100%;
+            font-size: 1rem;
+            margin-top: 10px;
         }
         
-        .copy-btn-small:hover {
-            background: #0097a7;
+        .copy-link-btn:hover {
+            background: linear-gradient(45deg, #45a049, #4caf50);
         }
         
-        .reference-box {
-            background: rgba(0, 188, 212, 0.1);
-            border: 1px solid #00bcd4;
-            border-radius: 8px;
-            padding: 10px;
-            margin-top: 5px;
-            font-family: monospace;
-            font-size: 0.75rem;
-            word-break: break-all;
-            cursor: pointer;
-        }
-        
-        .reference-box:hover {
-            background: rgba(0, 188, 212, 0.2);
+        .timestamp-note {
+            background: rgba(255, 152, 0, 0.1);
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #b0bec5;
         }
         
         @media (max-width: 768px) {
             .main-content { padding: 15px; }
             .filter-section { flex-direction: column; }
             .action-buttons { flex-direction: column; gap: 5px; }
-            .orders-table { font-size: 0.75rem; }
+            .orders-table { font-size: 0.8rem; }
             .orders-table th, .orders-table td { padding: 8px; }
-            .detail-grid { grid-template-columns: 1fr; }
-            .modal-content { padding: 20px; }
         }
     </style>
 </head>
@@ -628,7 +576,6 @@
                 </div>
             </div>
             <h2 class="login-title">এডমিন লগইন</h2>
-            <p style="text-align: center; color: #b0bec5; margin-bottom: 30px;">শুধুমাত্র অনুমোদিত Gmail এড্রেস দিয়ে লগইন করুন</p>
             <button id="googleLoginBtn" class="google-login-btn"><i class="fab fa-google"></i> Sign in with Google</button>
             <div id="loginError" class="error-message"></div>
         </div>
@@ -668,12 +615,7 @@
                     <div class="filter-item"><label class="form-label">সার্চ</label><input type="text" id="orderSearch" class="form-input" placeholder="TRX ID / রেফারেন্স"></div>
                     <div class="filter-item"><label class="form-label">তারিখ</label><select id="dateFilter" class="form-select"><option value="all">সব</option><option value="today">আজ</option><option value="yesterday">গতকাল</option><option value="week">এই সপ্তাহ</option><option value="month">এই মাস</option></select></div>
                 </div>
-                <div style="overflow-x: auto;">
-                    <table class="orders-table">
-                        <thead>
-                            <tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>রেফারেন্স</th><th>কারেন্সি</th><th>অ্যাকশন</th> </thead>
-                        <tbody id="ordersTable"></tbody>
-                    }</div>
+                <div style="overflow-x: auto;"><table class="orders-table"><thead><tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>রেফারেন্স</th><th>কারেন্সি</th><th>অ্যাকশন</th></tr></thead><tbody id="ordersTable"></tbody></table></div>
             </div>
         </div>
     </div>
@@ -681,8 +623,11 @@
     <div class="modal" id="orderModal">
         <div class="modal-content">
             <button class="modal-close" id="closeModalBtn">&times;</button>
-            <div class="modal-title"><i class="fas fa-receipt"></i> অর্ডার বিস্তারিত তথ্য</div>
-            <div id="orderDetailsContainer"></div>
+            <h2 class="modal-title">অর্ডার লিংক জেনারেট</h2>
+            <div class="modal-info" id="modalOrderInfo"></div>
+            <div class="link-box"><a href="#" id="generatedLink" target="_blank">লিংক জেনারেট হচ্ছে...</a></div>
+            <button class="copy-link-btn" id="copyLinkBtn"><i class="fas fa-copy"></i> লিংক কপি করুন</button>
+            <div class="timestamp-note"><strong>লিংক ওপেন করার সময়:</strong> <span id="accessTime">-</span></div>
         </div>
     </div>
 
@@ -701,16 +646,17 @@
         const auth = firebase.auth();
         const database = firebase.database();
 
-        let orders = [], currentAdminEmail = null, currentAdminUid = null;
+        let orders = [], currentAdminEmail = null;
         const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
 
+        // DOM Elements
         const loginScreen = document.getElementById('loginScreen'), adminPanel = document.getElementById('adminPanel');
         const googleLoginBtn = document.getElementById('googleLoginBtn'), logoutBtn = document.getElementById('logoutBtn'), refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
         const adminName = document.getElementById('adminName'), adminEmail = document.getElementById('adminEmail'), adminAvatar = document.getElementById('adminAvatar');
         const totalOrdersEl = document.getElementById('totalOrders'), pendingOrdersEl = document.getElementById('pendingOrders'), completedOrdersEl = document.getElementById('completedOrders'), cancelledOrdersEl = document.getElementById('cancelledOrders');
         const orderCountEl = document.getElementById('orderCount'), systemInfo = document.getElementById('systemInfo'), ordersTable = document.getElementById('ordersTable');
         const orderFilter = document.getElementById('orderFilter'), orderSearch = document.getElementById('orderSearch'), dateFilter = document.getElementById('dateFilter');
-        const orderModal = document.getElementById('orderModal'), closeModalBtn = document.getElementById('closeModalBtn');
+        const orderModal = document.getElementById('orderModal'), closeModalBtn = document.getElementById('closeModalBtn'), generatedLink = document.getElementById('generatedLink'), copyLinkBtn = document.getElementById('copyLinkBtn'), accessTime = document.getElementById('accessTime'), modalOrderInfo = document.getElementById('modalOrderInfo');
 
         document.addEventListener('DOMContentLoaded', () => { setupEventListeners(); checkAdminAuth(); });
         
@@ -723,53 +669,28 @@
             dateFilter.onchange = filterOrders;
             closeModalBtn.onclick = () => orderModal.classList.remove('active');
             window.onclick = (e) => { if (e.target === orderModal) orderModal.classList.remove('active'); };
+            copyLinkBtn.onclick = copyLink;
         }
         
         function checkAdminAuth() {
             auth.onAuthStateChanged(async (user) => {
                 if (user && ALLOWED_ADMIN_EMAILS.includes(user.email)) {
                     currentAdminEmail = user.email;
-                    currentAdminUid = user.uid;
                     await loadAdminData(user);
                     showAdminPanel();
-                    updateAdminStatus(user);
-                    setInterval(() => updateAdminStatus(user), 60000);
                     loadOrders();
                 } else if (user) {
                     await auth.signOut();
                     showLoginScreen();
-                    showToast('এই Gmail এড্রেস এডমিন এক্সেস নেই', 'error');
+                    showToast('এক্সেস নেই', 'error');
                 } else showLoginScreen();
             });
-        }
-        
-        async function updateAdminStatus(user) {
-            if (!user) return;
-            try {
-                await database.ref(`adminUsers/${user.uid}`).update({
-                    email: user.email,
-                    name: user.displayName || '',
-                    photoURL: user.photoURL || '',
-                    lastActive: firebase.database.ServerValue.TIMESTAMP,
-                    status: 'online'
-                });
-                await database.ref(`publicAdminInfo/${user.uid}`).set({
-                    name: user.displayName || 'Admin',
-                    email: user.email,
-                    status: 'online',
-                    lastActive: new Date().toISOString()
-                });
-            } catch (error) { console.error('Status update error:', error); }
         }
         
         async function loadAdminData(user) {
             adminName.textContent = user.displayName || user.email;
             adminEmail.textContent = user.email;
             adminAvatar.innerHTML = user.photoURL ? `<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">` : `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
-            await database.ref(`adminUsers/${user.uid}`).update({
-                email: user.email, name: user.displayName || '', photoURL: user.photoURL || '',
-                lastLogin: firebase.database.ServerValue.TIMESTAMP, status: 'active'
-            });
         }
         
         async function handleGoogleLogin() {
@@ -777,26 +698,22 @@
                 const result = await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
                 if (!ALLOWED_ADMIN_EMAILS.includes(result.user.email)) {
                     await auth.signOut();
-                    showToast('এই Gmail এড্রেস এডমিন এক্সেস নেই', 'error');
+                    showToast('এক্সেস নেই', 'error');
                 }
-            } catch(e) { showToast('লগইন ব্যর্থ: ' + e.message, 'error'); }
+            } catch(e) { showToast('লগইন ব্যর্থ', 'error'); }
         }
         
         async function handleLogout() {
-            if (currentAdminUid) {
-                await database.ref(`adminUsers/${currentAdminUid}`).update({ status: 'offline' });
-                await database.ref(`publicAdminInfo/${currentAdminUid}`).remove();
-            }
             await auth.signOut();
             showLoginScreen();
-            showToast('লগ আউট হয়েছে', 'success');
+            showToast('লগ আউট', 'success');
         }
         
         function showLoginScreen() { loginScreen.style.display = 'flex'; adminPanel.style.display = 'none'; }
         function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
         
         async function loadOrders() {
-            ordersTable.innerHTML = `}<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>Relograde API থেকে অর্ডার লোড হচ্ছে...</p>}</ `;
+            ordersTable.innerHTML = '<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></td></tr>';
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -806,7 +723,7 @@
                 filterOrders();
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
             } catch(e) {
-                ordersTable.innerHTML = `}<td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="loadOrders()" class="refresh-btn">আবার চেষ্টা</button>}</ `;
+                ordersTable.innerHTML = `<tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
             }
         }
         
@@ -832,129 +749,100 @@
             updateStats(filtered);
         }
         
+        // Complete order function - FIXED
         async function completeOrder(trxId, event) {
             event.stopPropagation();
             if (!confirm('এই অর্ডারটি কি সম্পন্ন করতে চান?')) return;
+            
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>...';
             btn.disabled = true;
+            
             try {
                 showToast('অর্ডার সম্পন্ন করা হচ্ছে...', 'info');
                 const orderData = orders.find(o => o.trx === trxId);
+                
                 const response = await fetch('/api/order_completed', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ trxId, action: 'complete', adminEmail: currentAdminEmail, orderData })
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        trxId: trxId,
+                        action: 'complete',
+                        adminEmail: currentAdminEmail,
+                        orderData: orderData
+                    })
                 });
+                
                 const result = await response.json();
+                
                 if (response.ok && result.success) {
                     const idx = orders.findIndex(o => o.trx === trxId);
                     if (idx !== -1) orders[idx].orderStatus = 'finished';
                     filterOrders();
                     showToast('✅ অর্ডার সম্পন্ন হয়েছে', 'success');
-                } else throw new Error(result.error || 'API failed');
-            } catch(e) { showToast('সম্পন্ন করতে ব্যর্থ: ' + e.message, 'error');
-            } finally { btn.innerHTML = originalText; btn.disabled = false; }
+                } else {
+                    throw new Error(result.error || 'API failed');
+                }
+            } catch(e) {
+                console.error('Complete error:', e);
+                showToast('সম্পন্ন করতে ব্যর্থ: ' + e.message, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
         
+        // Delete order function - FIXED
         async function deleteOrder(trxId, event) {
             event.stopPropagation();
             if (!confirm('সতর্কতা: এই অর্ডারটি মুছে ফেলা হবে। আপনি কি নিশ্চিত?')) return;
+            
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>...';
             btn.disabled = true;
+            
             try {
                 showToast('অর্ডার ডিলিট করা হচ্ছে...', 'info');
                 const orderData = orders.find(o => o.trx === trxId);
+                
                 const response = await fetch('/api/order_completed', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ trxId, action: 'delete', adminEmail: currentAdminEmail, orderData })
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        trxId: trxId,
+                        action: 'delete',
+                        adminEmail: currentAdminEmail,
+                        orderData: orderData
+                    })
                 });
+                
                 const result = await response.json();
+                
                 if (response.ok && result.success) {
                     orders = orders.filter(o => o.trx !== trxId);
                     filterOrders();
                     showToast('🗑️ অর্ডার ডিলিট হয়েছে', 'success');
-                } else throw new Error(result.error || 'Delete failed');
-            } catch(e) { showToast('ডিলিট করতে ব্যর্থ: ' + e.message, 'error');
-            } finally { btn.innerHTML = originalText; btn.disabled = false; }
-        }
-        
-        function copyToClipboard(text, msg) {
-            navigator.clipboard.writeText(text).then(() => showToast(msg || '✅ কপি করা হয়েছে!', 'success'))
-                .catch(() => showToast('❌ কপি করতে ব্যর্থ', 'error'));
-        }
-        
-        function showOrderDetails(trxId) {
-            const order = orders.find(o => o.trx === trxId);
-            if (!order) { showToast('অর্ডার পাওয়া যায়নি', 'error'); return; }
-            
-            const orderDate = order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD') : 'তারিখ নেই';
-            const statusText = order.orderStatus === 'finished' ? 'সম্পূর্ণ' : order.orderStatus === 'cancelled' ? 'ক্যানসেল' : 'পেন্ডিং';
-            const totalPrice = order.priceInclVat || order.priceAmount || 0;
-            const currency = order.priceCurrency || 'USD';
-            
-            let itemsHtml = '';
-            if (order.items && order.items.length > 0) {
-                order.items.forEach((item, idx) => {
-                    const productName = item.product?.name || item.productSlug || 'Unknown';
-                    const amount = item.amount || 1;
-                    const singlePrice = item.singlePriceAmount || (item.totalPriceAmount / amount) || 0;
-                    const totalItemPrice = item.totalPriceAmount || (singlePrice * amount);
-                    let vouchersHtml = '';
-                    if (item.orderLines && item.orderLines.length > 0) {
-                        const validVouchers = item.orderLines.filter(l => l.voucherCode);
-                        if (validVouchers.length > 0) {
-                            vouchersHtml = `<div style="margin-top: 8px;"><strong style="color:#ff9800;">🎫 ভাউচার:</strong><br>`;
-                            validVouchers.forEach(v => {
-                                vouchersHtml += `<span class="voucher-code">${v.voucherCode}</span> <button class="copy-btn-small" onclick="event.stopPropagation(); copyToClipboard('${v.voucherCode}', 'ভাউচার কপি হয়েছে')"><i class="fas fa-copy"></i> কপি</button> `;
-                            });
-                            vouchersHtml += `</div>`;
-                        }
-                    }
-                    itemsHtml += `<div class="item-card"><div class="item-name">${idx + 1}. ${productName}</div>
-                        <div class="item-details"><span>📦 পরিমাণ: ${amount}</span><span>💰 একক: ${singlePrice.toFixed(2)} ${currency}</span><span>💵 মোট: ${totalItemPrice.toFixed(2)} ${currency}</span></div>${vouchersHtml}</div>`;
-                });
+                } else {
+                    throw new Error(result.error || 'Delete failed');
+                }
+            } catch(e) {
+                console.error('Delete error:', e);
+                showToast('ডিলিট করতে ব্যর্থ: ' + e.message, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
-            
-            let referenceStr = '';
-            if (typeof order.reference === 'string') referenceStr = order.reference;
-            else if (typeof order.reference === 'object') referenceStr = JSON.stringify(order.reference, null, 2);
-            else referenceStr = String(order.reference || '—');
-            
-            const html = `<div class="order-detail-section">
-                <div class="section-header"><i class="fas fa-info-circle"></i> মৌলিক তথ্য</div>
-                <div class="detail-grid">
-                    <div class="detail-item"><span class="detail-label">🔖 TRX ID:</span><span class="detail-value">${order.trx || 'N/A'}</span></div>
-                    <div class="detail-item"><span class="detail-label">📅 তারিখ:</span><span class="detail-value">${orderDate}</span></div>
-                    <div class="detail-item"><span class="detail-label">🏷️ স্ট্যাটাস:</span><span class="detail-value"><span class="status-badge ${order.orderStatus === 'finished' ? 'status-completed' : order.orderStatus === 'cancelled' ? 'status-cancelled' : 'status-pending'}">${statusText}</span></span></div>
-                    <div class="detail-item"><span class="detail-label">💰 মোট দাম:</span><span class="detail-value">${totalPrice.toFixed(2)} ${currency}</span></div>
-                    <div class="detail-item"><span class="detail-label">💱 কারেন্সি:</span><span class="detail-value">${order.paymentCurrency || currency}</span></div>
-                    <div class="detail-item"><span class="detail-label">💳 পেমেন্ট স্ট্যাটাস:</span><span class="detail-value">${order.paymentStatus || 'N/A'}</span></div>
-                    <div class="detail-item"><span class="detail-label">🌍 এনভায়রনমেন্ট:</span><span class="detail-value">${order.state === 'sandbox' ? '🧪 স্যান্ডবক্স' : '🌍 লাইভ'}</span></div>
-                </div>
-            </div>
-            <div class="order-detail-section">
-                <div class="section-header"><i class="fas fa-box-open"></i> আইটেম সমূহ (${order.items?.length || 0}টি)</div>
-                <div class="items-list">${itemsHtml || '<div style="color:#b0bec5; text-align:center;">কোন আইটেম নেই</div>'}</div>
-            </div>
-            <div class="order-detail-section">
-                <div class="section-header"><i class="fas fa-link"></i> রেফারেন্স তথ্য</div>
-                <div class="reference-box" onclick="copyToClipboard(\`${referenceStr.replace(/`/g, '\\`')}\`, 'রেফারেন্স কপি হয়েছে')">
-                    <i class="fas fa-copy"></i> ${referenceStr.substring(0, 400)}${referenceStr.length > 400 ? '...' : ''}<br>
-                    <small style="color:#ff9800;">📋 ক্লিক করে সম্পূর্ণ কপি করুন</small>
-                </div>
-            </div>`;
-            
-            document.getElementById('orderDetailsContainer').innerHTML = html;
-            orderModal.classList.add('active');
         }
         
         function displayOrders(list) {
-            if (!list.length) { ordersTable.innerHTML = '}<td colspan="8" class="no-data">কোন অর্ডার পাওয়া যায়নি}</ '; return; }
+            if (!list.length) {
+                ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার নেই</td></tr>';
+                return;
+            }
             let html = '';
-            list.slice(0, 50).forEach(o => {
+            list.slice(0,50).forEach(o => {
                 const date = o.dateCreated ? new Date(o.dateCreated).toLocaleString('bn-BD') : 'তারিখ নেই';
                 let statusClass = 'status-pending', statusText = o.orderStatus || 'unknown';
                 if (statusText === 'finished') { statusClass = 'status-completed'; statusText = 'সম্পূর্ণ'; }
@@ -965,13 +853,13 @@
                 const currency = o.priceCurrency || 'USD';
                 const ref = o.reference || '—';
                 const isPending = o.orderStatus === 'created';
-                html += `<tr onclick="showOrderDetails('${o.trx}')" style="cursor:pointer;">
-                    <td style="font-family:monospace;">${o.trx || 'N/A'}${o.trx ? '' : 'N/A'}${o.trx || ''}${o.trx ? '' : ''}${o.trx || ''}${o.trx ? '' : ''}${o.trx || ''}${o.trx ? '' : ''}</td>
+                html += `<tr onclick="showOrderModal('${o.trx}')" style="cursor:pointer;">
+                    <td style="font-family:monospace;">${o.trx || 'N/A'}</td>
                     <td>${date}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
-                    <td style="color:#00bcd4;">${total.toFixed(2)} ${currency}</td>
-                    <td><div style="max-width:150px;font-size:0.8rem;" title="${typeof ref === 'string' ? ref : JSON.stringify(ref)}">${typeof ref === 'string' ? ref.substring(0,30) : JSON.stringify(ref).substring(0,30)}${(typeof ref === 'string' ? ref.length : JSON.stringify(ref).length) > 30 ? '...' : ''}</div></td>
+                    <td style="color:#00bcd4;">${total} ${currency}</td>
+                    <td><div style="max-width:150px;font-size:0.8rem;" title="${ref}">${ref.substring(0,30)}${ref.length>30?'...':''}</div></td>
                     <td>${o.paymentCurrency || currency}</td>
                     <td class="action-buttons" onclick="event.stopPropagation()">
                         ${isPending ? `<button class="action-btn action-complete" onclick="completeOrder('${o.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button>` : `<button class="action-btn action-complete" disabled><i class="fas fa-check-circle"></i> সম্পন্ন</button>`}
@@ -982,6 +870,42 @@
             ordersTable.innerHTML = html;
         }
         
+        window.showOrderModal = function(trxId) {
+            const order = orders.find(o => o.trx === trxId);
+            if (!order) { showToast('অর্ডার পাওয়া যায়নি', 'error'); return; }
+            
+            modalOrderInfo.innerHTML = `
+                <div class="modal-info-item"><span class="modal-info-label">TRX ID:</span><span class="modal-info-value">${order.trx || 'N/A'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">স্ট্যাটাস:</span><span class="modal-info-value">${order.orderStatus === 'finished' ? 'সম্পূর্ণ' : order.orderStatus === 'cancelled' ? 'ক্যানসেল' : 'পেন্ডिंग'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">আইটেম:</span><span class="modal-info-value">${(order.items||[]).map(i=>`${i.product?.name||i.productSlug} x${i.amount}`).join(', ') || '—'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">মোট দাম:</span><span class="modal-info-value">${(order.priceInclVat||order.priceAmount||0)} ${order.priceCurrency||'USD'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">রেফারেন্স:</span><span class="modal-info-value">${order.reference||'—'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">তারিখ:</span><span class="modal-info-value">${order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD') : '—'}</span></div>
+                <div class="modal-info-item"><span class="modal-info-label">কারেন্সি:</span><span class="modal-info-value">${order.paymentCurrency||order.priceCurrency||'USD'}</span></div>
+            `;
+            
+            const now = new Date();
+            const orderData = {
+                OrderId: order.trx, PaymentMethods: 'Relograde', PaymentTrxID: order.trx,
+                Time: now.toISOString(), email: currentAdminEmail, platformName: order.items?.[0]?.product?.name || 'Unknown',
+                amount: order.priceAmount || 0, currency: order.priceCurrency || 'USD',
+                totalAmount: order.priceInclVat || order.priceAmount || 0, reference: order.reference || ''
+            };
+            const base64Data = btoa(unescape(encodeURIComponent(JSON.stringify(orderData))));
+            const orderLink = `https://easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
+            generatedLink.href = orderLink;
+            generatedLink.textContent = orderLink;
+            accessTime.textContent = `${now.toLocaleString('bn-BD')} (এডমিন: ${currentAdminEmail})`;
+            orderModal.classList.add('active');
+        };
+        
+        function copyLink() {
+            const link = generatedLink.href;
+            if (link && link !== '#') {
+                navigator.clipboard.writeText(link).then(() => showToast('লিংক কপি!', 'success')).catch(() => showToast('কপি ব্যর্থ', 'error'));
+            } else showToast('লিংক নেই', 'error');
+        }
+        
         function updateStats(list) {
             totalOrdersEl.textContent = list.length;
             pendingOrdersEl.textContent = list.filter(o => o.orderStatus === 'created').length;
@@ -990,7 +914,7 @@
         }
         
         function updateSystemInfo() {
-            systemInfo.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;"><div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div><div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div><div><strong>স্ট্যাটাস:</strong> <span style="color:#4caf50;">অনলাইন ✅</span></div></div>`;
+            systemInfo.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;"><div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div><div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div><div><strong>স্ট্যাটাস:</strong> অনলাইন</div></div>`;
         }
         
         function showToast(msg, type) {
@@ -1007,8 +931,7 @@
         
         window.completeOrder = completeOrder;
         window.deleteOrder = deleteOrder;
-        window.showOrderDetails = showOrderDetails;
-        window.copyToClipboard = copyToClipboard;
+        window.showOrderModal = showOrderModal;
         window.loadOrders = loadOrders;
     </script>
 </body>
