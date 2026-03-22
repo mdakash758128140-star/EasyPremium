@@ -592,7 +592,6 @@
         </header>
         
         <div class="main-content">
-            <!-- ড্যাশবোর্ড সেকশন -->
             <div class="section">
                 <h2 class="section-title">Relograde অর্ডার ড্যাশবোর্ড</h2>
                 <div class="form-row">
@@ -604,7 +603,6 @@
                 <div class="system-info" id="systemInfo"></div>
             </div>
             
-            <!-- অর্ডার তালিকা সেকশন -->
             <div class="section">
                 <h2 class="section-title">Relograde অর্ডার তালিকা <span id="orderCount"></span></h2>
                 <div class="filter-section">
@@ -677,6 +675,7 @@
             copyLinkBtn.onclick = copyLink;
         }
         
+        // Admin online status update
         async function updateOnlineStatus(user) {
             if (!user) return;
             const uid = user.uid;
@@ -696,7 +695,7 @@
                     });
                 }
             } catch (error) {
-                console.error("更新在线状态失败:", error);
+                console.error("Update online status failed:", error);
             }
         }
         
@@ -720,7 +719,7 @@
                     lastLogin: firebase.database.ServerValue.TIMESTAMP,
                     status: 'active'
                 });
-            } catch (err) { console.warn("保存管理员信息失败:", err); }
+            } catch (err) { console.warn("Save admin info failed:", err); }
         }
         
         function checkAdminAuth() {
@@ -764,7 +763,7 @@
         function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
         
         async function loadOrders() {
-            ordersTable.innerHTML = ' clothed<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>  </td> </tr>';
+            ordersTable.innerHTML = '<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></td></tr>';
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -800,6 +799,32 @@
             updateStats(filtered);
         }
         
+        // Helper: Save completed order to Firebase
+        async function saveCompletedOrder(order) {
+            try {
+                await database.ref(`CompletedOrders/${order.trx}`).set({
+                    ...order,
+                    completedAt: firebase.database.ServerValue.TIMESTAMP,
+                    completedBy: currentAdminEmail
+                });
+            } catch (err) {
+                console.error("Failed to save completed order:", err);
+            }
+        }
+        
+        // Helper: Save failed order to Firebase
+        async function saveFailedOrder(order) {
+            try {
+                await database.ref(`FailOrders/${order.trx}`).set({
+                    ...order,
+                    failedAt: firebase.database.ServerValue.TIMESTAMP,
+                    failedBy: currentAdminEmail
+                });
+            } catch (err) {
+                console.error("Failed to save failed order:", err);
+            }
+        }
+        
         async function completeOrder(trxId, event) {
             event.stopPropagation();
             if (!confirm('এই অর্ডারটি কি সম্পন্ন করতে চান?')) return;
@@ -817,10 +842,13 @@
                 });
                 const result = await response.json();
                 if (response.ok && result.success) {
+                    // Update local order
                     const idx = orders.findIndex(o => o.trx === trxId);
                     if (idx !== -1) orders[idx].orderStatus = 'finished';
+                    // Save to CompletedOrders in Firebase
+                    await saveCompletedOrder(orderData);
                     filterOrders();
-                    showToast('✅ অর্ডার সম্পন্ন হয়েছে', 'success');
+                    showToast('✅ অর্ডার সম্পন্ন হয়েছে এবং CompletedOrders এ সংরক্ষিত', 'success');
                 } else throw new Error(result.error || 'API failed');
             } catch(e) {
                 console.error('Complete error:', e);
@@ -843,6 +871,7 @@
                 const order = orders.find(o => o.trx === trxId);
                 if (!order) throw new Error('অর্ডার খুঁজে পাওয়া যায়নি');
                 
+                // Update statuses in userOrders and transactions
                 const updates = {};
                 updates[`userOrders/${trxId}/status`] = 'fail';
                 updates[`transactions/${trxId}/status`] = 'fail';
@@ -850,10 +879,13 @@
                 updates[`transactions/${trxId}/orderStatus`] = 'fail';
                 await database.ref().update(updates);
                 
+                // Save to FailOrders in Firebase
+                await saveFailedOrder(order);
+                
                 const idx = orders.findIndex(o => o.trx === trxId);
                 if (idx !== -1) orders[idx].orderStatus = 'fail';
                 filterOrders();
-                showToast('✅ অর্ডার স্ট্যাটাস "fail" এ আপডেট করা হয়েছে', 'success');
+                showToast('✅ অর্ডার স্ট্যাটাস "fail" এ আপডেট করা হয়েছে এবং FailOrders এ সংরক্ষিত', 'success');
             } catch(e) {
                 console.error('Cancel error:', e);
                 showToast('অর্ডার ফেল করতে ব্যর্থ: ' + e.message, 'error');
@@ -880,7 +912,7 @@
                 const items = (o.items || []).map(i => `${i.product?.name || i.productSlug} x${i.amount}`).join('<br>') || '—';
                 const total = o.priceInclVat || o.priceAmount || 0;
                 const currency = o.priceCurrency || 'USD';
-                const adminNumber = o.reference || '—';  // Reference field contains admin phone number
+                const adminNumber = o.reference || '—';
                 const isPending = (o.orderStatus === 'created');
                 
                 let actionButtonsHtml = '';
