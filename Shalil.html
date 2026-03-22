@@ -561,11 +561,12 @@
             border: 1px solid #00bcd4;
             border-radius: 8px;
             padding: 12px;
-            margin-top: 15px;
+            margin-top: 5px;
             font-family: monospace;
             font-size: 0.8rem;
             word-break: break-all;
             cursor: pointer;
+            text-align: left;
         }
         
         .reference-box:hover {
@@ -594,6 +595,7 @@
                 </div>
             </div>
             <h2 class="login-title">এডমিন লগইন</h2>
+            <p style="text-align: center; color: #b0bec5; margin-bottom: 30px;">শুধুমাত্র অনুমোদিত Gmail এড্রেস দিয়ে লগইন করুন</p>
             <button id="googleLoginBtn" class="google-login-btn"><i class="fab fa-google"></i> Sign in with Google</button>
             <div id="loginError" class="error-message"></div>
         </div>
@@ -641,7 +643,7 @@
     <div class="modal" id="orderModal">
         <div class="modal-content">
             <button class="modal-close" id="closeModalBtn">&times;</button>
-            <h2 class="modal-title"><i class="fas fa-info-circle"></i> অর্ডার বিস্তারিত</h2>
+            <h2 class="modal-title"><i class="fas fa-info-circle"></i> অর্ডার বিস্তারিত তথ্য</h2>
             <div id="orderDetailsContainer"></div>
         </div>
     </div>
@@ -692,18 +694,18 @@
                     currentAdminUid = user.uid;
                     await loadAdminData(user);
                     showAdminPanel();
-                    updateAdminOnlineStatus(user);
-                    setInterval(() => updateAdminOnlineStatus(user), 60000);
+                    updateAdminStatus(user);
+                    setInterval(() => updateAdminStatus(user), 60000);
                     loadOrders();
                 } else if (user) {
                     await auth.signOut();
                     showLoginScreen();
-                    showToast('এক্সেস নেই', 'error');
+                    showToast('এই Gmail এড্রেস এডমিন এক্সেস নেই', 'error');
                 } else showLoginScreen();
             });
         }
         
-        async function updateAdminOnlineStatus(user) {
+        async function updateAdminStatus(user) {
             if (!user) return;
             try {
                 await database.ref(`adminUsers/${user.uid}`).update({
@@ -711,19 +713,16 @@
                     name: user.displayName || '',
                     photoURL: user.photoURL || '',
                     lastActive: firebase.database.ServerValue.TIMESTAMP,
-                    status: 'online',
-                    lastSeen: new Date().toISOString()
+                    status: 'online'
                 });
-                
                 await database.ref(`publicAdminInfo/${user.uid}`).set({
                     name: user.displayName || 'Admin',
                     email: user.email,
                     status: 'online',
                     lastActive: new Date().toISOString()
                 });
-                console.log('✅ Admin online status updated');
             } catch (error) {
-                console.error('Error updating online status:', error);
+                console.error('Status update error:', error);
             }
         }
         
@@ -737,35 +736,36 @@
                 name: user.displayName || '',
                 photoURL: user.photoURL || '',
                 lastLogin: firebase.database.ServerValue.TIMESTAMP,
-                status: 'online'
+                status: 'active'
             });
         }
         
         async function handleGoogleLogin() {
             try {
-                const result = await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+                const provider = new firebase.auth.GoogleAuthProvider();
+                const result = await auth.signInWithPopup(provider);
                 if (!ALLOWED_ADMIN_EMAILS.includes(result.user.email)) {
                     await auth.signOut();
-                    showToast('এক্সেস নেই', 'error');
+                    showToast('এই Gmail এড্রেস এডমিন এক্সেস নেই', 'error');
                 }
-            } catch(e) { showToast('লগইন ব্যর্থ', 'error'); }
+            } catch(e) { showToast('লগইন ব্যর্থ: ' + e.message, 'error'); }
         }
         
         async function handleLogout() {
             if (currentAdminUid) {
-                await database.ref(`adminUsers/${currentAdminUid}`).update({ status: 'offline', lastSeen: new Date().toISOString() });
+                await database.ref(`adminUsers/${currentAdminUid}`).update({ status: 'offline' });
                 await database.ref(`publicAdminInfo/${currentAdminUid}`).remove();
             }
             await auth.signOut();
             showLoginScreen();
-            showToast('লগ আউট', 'success');
+            showToast('লগ আউট হয়েছে', 'success');
         }
         
         function showLoginScreen() { loginScreen.style.display = 'flex'; adminPanel.style.display = 'none'; }
         function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
         
         async function loadOrders() {
-            ordersTable.innerHTML = '}<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>}</ ';
+            ordersTable.innerHTML = '}<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>Relograde API থেকে অর্ডার লোড হচ্ছে...</p>}</ ';
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -775,7 +775,7 @@
                 filterOrders();
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
             } catch(e) {
-                ordersTable.innerHTML = `<tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
+                ordersTable.innerHTML = `}<td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="loadOrders()" class="refresh-btn">আবার চেষ্টা</button>}</ `;
             }
         }
         
@@ -813,25 +813,19 @@
             try {
                 showToast('অর্ডার সম্পন্ন করা হচ্ছে...', 'info');
                 const orderData = orders.find(o => o.trx === trxId);
-                
                 const response = await fetch('/api/order_completed', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ trxId, action: 'complete', adminEmail: currentAdminEmail, orderData })
                 });
-                
                 const result = await response.json();
-                
                 if (response.ok && result.success) {
                     const idx = orders.findIndex(o => o.trx === trxId);
                     if (idx !== -1) orders[idx].orderStatus = 'finished';
                     filterOrders();
-                    showToast('✅ অর্ডার সম্পন্ন হয়েছে', 'success');
-                } else {
-                    throw new Error(result.error || 'API failed');
-                }
+                    showToast('অর্ডার সম্পন্ন করা হয়েছে', 'success');
+                } else throw new Error(result.error || 'API failed');
             } catch(e) {
-                console.error('Complete error:', e);
                 showToast('সম্পন্ন করতে ব্যর্থ: ' + e.message, 'error');
             } finally {
                 btn.innerHTML = originalText;
@@ -851,24 +845,18 @@
             try {
                 showToast('অর্ডার ডিলিট করা হচ্ছে...', 'info');
                 const orderData = orders.find(o => o.trx === trxId);
-                
                 const response = await fetch('/api/order_completed', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ trxId, action: 'delete', adminEmail: currentAdminEmail, orderData })
                 });
-                
                 const result = await response.json();
-                
                 if (response.ok && result.success) {
                     orders = orders.filter(o => o.trx !== trxId);
                     filterOrders();
-                    showToast('🗑️ অর্ডার ডিলিট হয়েছে', 'success');
-                } else {
-                    throw new Error(result.error || 'Delete failed');
-                }
+                    showToast('অর্ডার ডিলিট করা হয়েছে', 'success');
+                } else throw new Error(result.error || 'Delete failed');
             } catch(e) {
-                console.error('Delete error:', e);
                 showToast('ডিলিট করতে ব্যর্থ: ' + e.message, 'error');
             } finally {
                 btn.innerHTML = originalText;
@@ -899,17 +887,21 @@
                     const productName = item.product?.name || item.productSlug || 'Unknown';
                     const amount = item.amount || 1;
                     const singlePrice = item.singlePriceAmount || (totalPrice / amount);
-                    itemsHtml += `
-                        <div class="item-row">
-                            <strong>${idx + 1}. ${productName}</strong><br>
-                            পরিমাণ: ${amount} x ${singlePrice} ${currency} = ${item.totalPriceAmount || (singlePrice * amount)} ${currency}
-                            ${item.orderLines ? `<br>ভাউচার: ${item.orderLines.filter(l => l.voucherCode).map(l => `<span class="voucher-code">${l.voucherCode}</span> <button class="copy-btn-small" onclick="event.stopPropagation(); copyToClipboard('${l.voucherCode}', 'ভাউচার কোড কপি হয়েছে')">কপি</button>`).join(' ')}` : ''}
-                        </div>
-                    `;
+                    let vouchersHtml = '';
+                    if (item.orderLines && item.orderLines.length > 0) {
+                        const codes = item.orderLines.filter(l => l.voucherCode).map(l => l.voucherCode);
+                        if (codes.length > 0) {
+                            vouchersHtml = `<br>ভাউচার কোড: ${codes.map(c => `<span class="voucher-code">${c}</span> <button class="copy-btn-small" onclick="event.stopPropagation(); copyToClipboard('${c}', 'ভাউচার কোড কপি হয়েছে')">কপি</button>`).join(' ')}`;
+                        }
+                    }
+                    itemsHtml += `<div class="item-row"><strong>${idx + 1}. ${productName}</strong><br>পরিমাণ: ${amount} x ${singlePrice} ${currency} = ${item.totalPriceAmount || (singlePrice * amount)} ${currency}${vouchersHtml}</div>`;
                 });
             }
             
-            const referenceStr = typeof order.reference === 'string' ? order.reference : JSON.stringify(order.reference, null, 2);
+            let referenceStr = '';
+            if (typeof order.reference === 'string') referenceStr = order.reference;
+            else if (typeof order.reference === 'object') referenceStr = JSON.stringify(order.reference, null, 2);
+            else referenceStr = String(order.reference || '—');
             
             const html = `
                 <div class="order-details-container">
@@ -918,10 +910,10 @@
                     <div class="detail-row"><span class="detail-label"><i class="fas fa-tag"></i> স্ট্যাটাস:</span><span class="detail-value"><span class="status-badge ${order.orderStatus === 'finished' ? 'status-completed' : order.orderStatus === 'cancelled' ? 'status-cancelled' : 'status-pending'}">${statusText}</span></span></div>
                     <div class="detail-row"><span class="detail-label"><i class="fas fa-money-bill-wave"></i> মোট দাম:</span><span class="detail-value">${totalPrice} ${currency}</span></div>
                     <div class="detail-row"><span class="detail-label"><i class="fas fa-dollar-sign"></i> কারেন্সি:</span><span class="detail-value">${order.paymentCurrency || currency}</span></div>
-                    <div class="detail-row"><span class="detail-label"><i class="fas fa-box"></i> পেমেন্ট স্ট্যাটাস:</span><span class="detail-value">${order.paymentStatus || 'N/A'}</span></div>
+                    <div class="detail-row"><span class="detail-label"><i class="fas fa-credit-card"></i> পেমেন্ট স্ট্যাটাস:</span><span class="detail-value">${order.paymentStatus || 'N/A'}</span></div>
                     <div class="detail-row"><span class="detail-label"><i class="fas fa-globe"></i> এনভায়রনমেন্ট:</span><span class="detail-value">${order.state || 'live'}</span></div>
                     <div class="detail-row"><span class="detail-label"><i class="fas fa-list"></i> আইটেম সমূহ:</span><span class="detail-value"><div class="items-list">${itemsHtml || '—'}</div></span></div>
-                    <div class="detail-row"><span class="detail-label"><i class="fas fa-link"></i> রেফারেন্স:</span><span class="detail-value"><div class="reference-box" onclick="copyToClipboard('${referenceStr.replace(/'/g, "\\'")}', 'রেফারেন্স কপি হয়েছে')"><i class="fas fa-copy"></i> ${referenceStr.substring(0, 200)}${referenceStr.length > 200 ? '...' : ''}<br><small style="color:#00bcd4;">ক্লিক করে কপি করুন</small></div></span></div>
+                    <div class="detail-row"><span class="detail-label"><i class="fas fa-link"></i> রেফারেন্স:</span><span class="detail-value"><div class="reference-box" onclick="copyToClipboard(\`${referenceStr.replace(/`/g, '\\`')}\`, 'রেফারেন্স কপি হয়েছে')"><i class="fas fa-copy"></i> ${referenceStr.substring(0, 300)}${referenceStr.length > 300 ? '...' : ''}<br><small style="color:#00bcd4;">📋 ক্লিক করে কপি করুন</small></div></span></div>
                 </div>
             `;
             
@@ -931,7 +923,7 @@
         
         function displayOrders(list) {
             if (!list.length) {
-                ordersTable.innerHTML = '}<td colspan="8" class="no-data">কোন অর্ডার নেই</td> </tr>';
+                ordersTable.innerHTML = '}<td colspan="8" class="no-data">কোন অর্ডার পাওয়া যায়নি}</ ';
                 return;
             }
             let html = '';
@@ -947,12 +939,12 @@
                 const ref = o.reference || '—';
                 const isPending = o.orderStatus === 'created';
                 html += `<tr onclick="showOrderDetails('${o.trx}')" style="cursor:pointer;">
-                    <td style="font-family:monospace;">${o.trx || 'N/A'}</td>
+                    <td style="font-family:monospace;">${o.trx || 'N/A'}${o.trx ? '' : 'N/A'}</td>
                     <td>${date}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
                     <td style="color:#00bcd4;">${total} ${currency}</td>
-                    <td><div style="max-width:150px;font-size:0.8rem;" title="${ref}">${typeof ref === 'string' ? ref.substring(0,30) : JSON.stringify(ref).substring(0,30)}${(typeof ref === 'string' ? ref.length : JSON.stringify(ref).length) > 30 ? '...' : ''}</div></td>
+                    <td><div style="max-width:150px;font-size:0.8rem;" title="${typeof ref === 'string' ? ref : JSON.stringify(ref)}">${typeof ref === 'string' ? ref.substring(0,30) : JSON.stringify(ref).substring(0,30)}${(typeof ref === 'string' ? ref.length : JSON.stringify(ref).length) > 30 ? '...' : ''}</div></td>
                     <td>${o.paymentCurrency || currency}</td>
                     <td class="action-buttons" onclick="event.stopPropagation()">
                         ${isPending ? `<button class="action-btn action-complete" onclick="completeOrder('${o.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button>` : `<button class="action-btn action-complete" disabled><i class="fas fa-check-circle"></i> সম্পন্ন</button>`}
@@ -971,7 +963,7 @@
         }
         
         function updateSystemInfo() {
-            systemInfo.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;"><div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div><div><strong>স্ট্যাটাস:</strong> <span style="color:#4caf50;">অনলাইন ✅</span></div><div><strong>ডাটা সোর্স:</strong> Relograde API</div></div>`;
+            systemInfo.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;"><div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div><div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div><div><strong>স্ট্যাটাস:</strong> <span style="color:#4caf50;">অনলাইন ✅</span></div></div>`;
         }
         
         function showToast(msg, type) {
