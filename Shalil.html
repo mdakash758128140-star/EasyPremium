@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <style>
+        /* === Your original styles (unchanged) === */
         * {
             margin: 0;
             padding: 0;
@@ -353,10 +354,6 @@
             background: rgba(255, 255, 255, 0.15);
         }
         
-        .system-info {
-
-        }
-        
         .loading-spinner {
             text-align: center;
             padding: 40px;
@@ -628,14 +625,16 @@
                 <div style="overflow-x: auto;">
                     <table class="orders-table">
                         <thead>
-                            <tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>এডমিন নম্বর</th><th>কারেন্সি</th><th>অ্যাকশন</th> </thead>
+                            <tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>এডমিন নম্বর</th><th>কারেন্সি</th><th>অ্যাকশন</th></tr>
+                        </thead>
                         <tbody id="ordersTable"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal for Order Details -->
+    <!-- Order Details Modal -->
     <div class="modal" id="orderDetailsModal">
         <div class="modal-content">
             <button class="modal-close" id="closeDetailsModalBtn">&times;</button>
@@ -668,13 +667,18 @@
         const auth = firebase.auth();
         const database = firebase.database();
 
-        let orders = [], currentAdminEmail = null, currentAdminUid = null, currentAdminName = null;
+        let orders = [], currentAdminEmail = null, currentAdminUid = null;
         let onlineStatusInterval = null;
-        let publicInfoListener = null;
-        let isActiveAdmin = false;      // current user is the active admin
-
+        let isPrimaryAdmin = false;               // <-- NEW: track if this admin has full access
+        let lockRefreshInterval = null;           // <-- NEW: interval to keep lock alive
+        let reacquireLockInterval = null;         // <-- NEW: for non-primary admins to try to become primary
+        
         const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
-        const ACTIVE_THRESHOLD_MS = 120000; // 2 minutes
+        const ACTIVE_ADMIN_TIMEOUT = 5 * 60 * 1000;  // 5 minutes
+        const LOCK_REFRESH_INTERVAL = 60 * 1000;     // 1 minute
+
+        // Reference to the lock node
+        const activeAdminLockRef = database.ref('activeAdmin');
 
         // DOM Elements
         const loginScreen = document.getElementById('loginScreen'), adminPanel = document.getElementById('adminPanel');
@@ -683,6 +687,7 @@
         const totalOrdersEl = document.getElementById('totalOrders'), pendingOrdersEl = document.getElementById('pendingOrders'), completedOrdersEl = document.getElementById('completedOrders'), cancelledOrdersEl = document.getElementById('cancelledOrders');
         const orderCountEl = document.getElementById('orderCount'), systemInfo = document.getElementById('systemInfo'), ordersTable = document.getElementById('ordersTable');
         const orderFilter = document.getElementById('orderFilter'), orderSearch = document.getElementById('orderSearch'), dateFilter = document.getElementById('dateFilter');
+        
         const orderDetailsModal = document.getElementById('orderDetailsModal');
         const closeDetailsModalBtn = document.getElementById('closeDetailsModalBtn');
         const orderInfoGrid = document.getElementById('orderInfoGrid');
@@ -700,97 +705,162 @@
             closeDetailsModalBtn.onclick = () => orderDetailsModal.classList.remove('active');
             window.onclick = (e) => { if (e.target === orderDetailsModal) orderDetailsModal.classList.remove('active'); };
         }
-
-        // --- Active Admin Logic based on publicAdminInfo timestamps ---
-        function determineActiveAdmin(adminInfo) {
-            // adminInfo is an object with uid keys, each containing { name, lastActive? , number? }
-            let mostRecent = null;
-            let activeUid = null;
-            const now = Date.now();
-            for (const [uid, data] of Object.entries(adminInfo || {})) {
-                if (data.lastActive) {
-                    const lastActiveTime = new Date(data.lastActive).getTime();
-                    const age = now - lastActiveTime;
-                    if (age <= ACTIVE_THRESHOLD_MS) {
-                        if (!mostRecent || lastActiveTime > mostRecent) {
-                            mostRecent = lastActiveTime;
-                            activeUid = uid;
-                        }
+        
+        // ========== PRIMARY ADMIN LOCK LOGIC ==========
+        /**
+         * Attempt to claim the active admin lock.
+         * Uses a transaction to ensure only one admin gets it.
+         * Returns true if lock acquired.
+         */
+        async function acquireActiveAdminLock() {
+            return new Promise((resolve) => {
+                activeAdminLockRef.transaction((current) => {
+                    const now = Date.now();
+                    // If no lock or lock is older than timeout, we can take it
+                    if (!current || (now - (current.lastActive || 0) > ACTIVE_ADMIN_TIMEOUT)) {
+                        return { uid: currentAdminUid, lastActive: firebase.database.ServerValue.TIMESTAMP };
                     }
-                }
-            }
-            return activeUid;
-        }
-
-        async function updateMyStatusIfActive() {
-            if (!isActiveAdmin || !currentAdminUid) return;
-            try {
-                await database.ref(`publicAdminInfo/${currentAdminUid}`).update({
-                    lastActive: new Date().toISOString(),
-                    name: currentAdminName || currentAdminEmail,
-                    number: currentAdminEmail // placeholder, can be improved
-                });
-            } catch (e) {
-                console.warn("Failed to update status:", e);
-            }
-        }
-
-        async function removeMyStatus() {
-            if (!currentAdminUid) return;
-            try {
-                await database.ref(`publicAdminInfo/${currentAdminUid}`).remove();
-            } catch (e) {
-                console.warn("Failed to remove status:", e);
-            }
-        }
-
-        function listenPublicAdminInfo() {
-            if (publicInfoListener) {
-                database.ref('publicAdminInfo').off('value', publicInfoListener);
-            }
-            publicInfoListener = database.ref('publicAdminInfo').on('value', async (snapshot) => {
-                const adminInfo = snapshot.val();
-                const activeUid = determineActiveAdmin(adminInfo);
-                const wasActive = isActiveAdmin;
-                isActiveAdmin = (activeUid === currentAdminUid);
-                if (wasActive !== isActiveAdmin) {
-                    // role changed
-                    if (isActiveAdmin) {
-                        showToast('আপনি এখন সক্রিয় এডমিন। অর্ডার সম্পন্ন/বাতিল করতে পারবেন।', 'success');
-                        // immediately update status to become active
-                        await updateMyStatusIfActive();
+                    // Lock held by someone else (still fresh)
+                    return; // abort transaction, no change
+                }, (error, committed, snapshot) => {
+                    if (error) {
+                        console.error('Lock transaction error:', error);
+                        resolve(false);
+                    } else if (committed) {
+                        console.log('Lock acquired by', currentAdminUid);
+                        resolve(true);
                     } else {
-                        if (activeUid && adminInfo[activeUid]) {
-                            showToast(`সক্রিয় এডমিন: ${adminInfo[activeUid].name || activeUid}. আপনি শুধু দেখতে পারবেন।`, 'info');
-                        } else {
-                            showToast('আপনি সক্রিয় এডমিন নন। অ্যাকশন বাটন বন্ধ আছে।', 'info');
-                        }
+                        console.log('Lock already held by another admin');
+                        resolve(false);
                     }
-                    filterOrders(); // refresh action buttons visibility
-                } else {
-                    // if we are active, ensure our timestamp is refreshed (may be needed after becoming active)
-                    if (isActiveAdmin) {
-                        await updateMyStatusIfActive();
-                    }
-                }
-                updateSystemInfo(adminInfo, activeUid);
+                });
             });
         }
 
-        function startHeartbeat() {
-            if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-            onlineStatusInterval = setInterval(() => {
-                if (isActiveAdmin && currentAdminUid) {
-                    updateMyStatusIfActive();
-                }
-            }, 30000); // every 30 seconds
+        /**
+         * Release the lock if it is currently held by this admin.
+         */
+        async function releaseActiveAdminLock() {
+            return new Promise((resolve) => {
+                activeAdminLockRef.transaction((current) => {
+                    if (current && current.uid === currentAdminUid) {
+                        return null; // remove the lock
+                    }
+                    return; // no change
+                }, (error, committed) => {
+                    if (error) console.error('Release lock error:', error);
+                    resolve(committed);
+                });
+            });
         }
 
+        /**
+         * Refresh the lock (update lastActive timestamp) – only called by primary admin.
+         */
+        async function refreshActiveAdminLock() {
+            if (!isPrimaryAdmin) return;
+            try {
+                await activeAdminLockRef.update({
+                    uid: currentAdminUid,
+                    lastActive: firebase.database.ServerValue.TIMESTAMP
+                });
+                console.log('Lock refreshed');
+            } catch (err) {
+                console.error('Refresh lock error:', err);
+            }
+        }
+
+        /**
+         * For non-primary admins: periodically check if the lock has expired,
+         * and if so, try to become the new primary.
+         */
+        async function tryToBecomePrimary() {
+            if (isPrimaryAdmin) return; // already primary
+            const snapshot = await activeAdminLockRef.once('value');
+            const lock = snapshot.val();
+            if (!lock || (Date.now() - (lock.lastActive || 0) > ACTIVE_ADMIN_TIMEOUT)) {
+                // Lock is free or stale – try to claim it
+                const acquired = await acquireActiveAdminLock();
+                if (acquired) {
+                    // We are now the primary admin!
+                    becomePrimaryAdmin();
+                }
+            }
+        }
+
+        /**
+         * Switch this session to primary admin mode (enables full access, starts lock refresh).
+         */
+        function becomePrimaryAdmin() {
+            isPrimaryAdmin = true;
+            // Stop the re‑acquire loop
+            if (reacquireLockInterval) clearInterval(reacquireLockInterval);
+            reacquireLockInterval = null;
+            // Start lock refresh interval
+            if (lockRefreshInterval) clearInterval(lockRefreshInterval);
+            lockRefreshInterval = setInterval(refreshActiveAdminLock, LOCK_REFRESH_INTERVAL);
+            // Also start the online status updates (adminUsers / publicAdminInfo)
+            startOnlineStatusUpdates(auth.currentUser);
+            // Re‑render the orders to show action buttons
+            filterOrders();
+            showToast('আপনি প্রধান এডমিন হিসেবে সক্রিয় হয়েছেন', 'success');
+            updateSystemInfo(); // update the role display
+        }
+
+        /**
+         * Clean up intervals and release lock (called on logout).
+         */
+        async function cleanupPrimaryStatus() {
+            if (isPrimaryAdmin) {
+                await releaseActiveAdminLock();
+            }
+            if (lockRefreshInterval) clearInterval(lockRefreshInterval);
+            lockRefreshInterval = null;
+            if (reacquireLockInterval) clearInterval(reacquireLockInterval);
+            reacquireLockInterval = null;
+            if (onlineStatusInterval) clearInterval(onlineStatusInterval);
+            onlineStatusInterval = null;
+        }
+        // ========== END PRIMARY ADMIN LOGIC ==========
+        
+        // Admin online status update (only for primary)
+        async function updateOnlineStatus(user) {
+            if (!user || !isPrimaryAdmin) return;
+            const uid = user.uid;
+            try {
+                const adminSnapshot = await database.ref(`adminUsers/${uid}`).once('value');
+                const adminData = adminSnapshot.val();
+                if (adminData && adminData.number) {
+                    const publicInfo = {
+                        name: adminData.name || user.displayName || 'Admin',
+                        number: adminData.number,
+                        lastActive: new Date().toISOString()
+                    };
+                    await database.ref(`publicAdminInfo/${uid}`).set(publicInfo);
+                } else {
+                    await database.ref(`adminUsers/${uid}`).update({
+                        lastActive: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+            } catch (error) {
+                console.error("Update online status failed:", error);
+            }
+        }
+        
+        function startOnlineStatusUpdates(user) {
+            if (onlineStatusInterval) clearInterval(onlineStatusInterval);
+            if (!isPrimaryAdmin) return;
+            updateOnlineStatus(user);
+            onlineStatusInterval = setInterval(() => {
+                updateOnlineStatus(user);
+            }, 60000);
+        }
+        
         async function loadAdminData(user) {
-            currentAdminName = user.displayName || user.email;
-            adminName.textContent = currentAdminName;
+            adminName.textContent = user.displayName || user.email;
             adminEmail.textContent = user.email;
             adminAvatar.innerHTML = user.photoURL ? `<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">` : `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
+            // Always save admin info (even for non-primary) – this is just user data, not status
             try {
                 await database.ref(`adminUsers/${user.uid}`).update({
                     email: user.email,
@@ -801,7 +871,7 @@
                 });
             } catch (err) { console.warn("Save admin info failed:", err); }
         }
-
+        
         function checkAdminAuth() {
             auth.onAuthStateChanged(async (user) => {
                 if (user && ALLOWED_ADMIN_EMAILS.includes(user.email)) {
@@ -809,35 +879,31 @@
                     currentAdminUid = user.uid;
                     await loadAdminData(user);
                     
-                    // Initialize: first determine if we should be active based on current publicInfo
-                    const snapshot = await database.ref('publicAdminInfo').once('value');
-                    const adminInfo = snapshot.val();
-                    const activeUid = determineActiveAdmin(adminInfo);
-                    isActiveAdmin = (activeUid === currentAdminUid);
+                    // Clean up previous intervals
+                    await cleanupPrimaryStatus();
                     
-                    // If we are active, immediately write our timestamp to claim
-                    if (isActiveAdmin) {
-                        await updateMyStatusIfActive();
-                    } else if (!activeUid) {
-                        // No active admin at all -> we become active
-                        isActiveAdmin = true;
-                        await updateMyStatusIfActive();
+                    // Try to acquire the active admin lock
+                    const acquired = await acquireActiveAdminLock();
+                    if (acquired) {
+                        isPrimaryAdmin = true;
+                        // Start lock refresh
+                        lockRefreshInterval = setInterval(refreshActiveAdminLock, LOCK_REFRESH_INTERVAL);
+                        // Start online status updates (only primary does this)
+                        startOnlineStatusUpdates(user);
+                    } else {
+                        isPrimaryAdmin = false;
+                        // Start a periodic attempt to become primary when lock expires
+                        reacquireLockInterval = setInterval(tryToBecomePrimary, 120000); // every 2 minutes
                     }
                     
                     showAdminPanel();
-                    listenPublicAdminInfo(); // start listening for changes
-                    startHeartbeat();
                     loadOrders();
                 } else if (user) {
                     await auth.signOut();
                     showLoginScreen();
                     showToast('এক্সেস নেই', 'error');
                 } else {
-                    if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-                    if (publicInfoListener) {
-                        database.ref('publicAdminInfo').off('value', publicInfoListener);
-                        publicInfoListener = null;
-                    }
+                    await cleanupPrimaryStatus();
                     showLoginScreen();
                 }
             });
@@ -854,12 +920,7 @@
         }
         
         async function handleLogout() {
-            if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-            if (publicInfoListener) {
-                database.ref('publicAdminInfo').off('value', publicInfoListener);
-                publicInfoListener = null;
-            }
-            if (isActiveAdmin) await removeMyStatus();
+            await cleanupPrimaryStatus();
             await auth.signOut();
             showLoginScreen();
             showToast('লগ আউট', 'success');
@@ -869,7 +930,7 @@
         function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
         
         async function loadOrders() {
-            ordersTable.innerHTML = ' 有机会<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>   </td>' ;
+            ordersTable.innerHTML = '<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></tr>';
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -879,7 +940,7 @@
                 filterOrders();
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
             } catch(e) {
-                ordersTable.innerHTML = ` 有机会<td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button>   </td>' ;
+                ordersTable.innerHTML = `<tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
             }
         }
         
@@ -906,7 +967,10 @@
         }
         
         async function completeOrder(trxId, event) {
-            if (!isActiveAdmin) { showToast('শুধুমাত্র সক্রিয় এডমিন অর্ডার সম্পন্ন করতে পারেন', 'error'); return; }
+            if (!isPrimaryAdmin) {
+                showToast('শুধু প্রধান এডমিন অর্ডার সম্পন্ন করতে পারেন', 'error');
+                return;
+            }
             event.stopPropagation();
             if (!confirm('এই অর্ডারটি কি সম্পন্ন করতে চান?')) return;
             const btn = event.target;
@@ -938,7 +1002,10 @@
         }
         
         async function cancelOrder(trxId, event) {
-            if (!isActiveAdmin) { showToast('শুধুমাত্র সক্রিয় এডমিন অর্ডার বাতিল করতে পারেন', 'error'); return; }
+            if (!isPrimaryAdmin) {
+                showToast('শুধু প্রধান এডমিন অর্ডার বাতিল করতে পারেন', 'error');
+                return;
+            }
             event.stopPropagation();
             if (!confirm('এই অর্ডারটি কি বাতিল (ফেল) করতে চান? স্ট্যাটাস "fail" এ সেট হবে।')) return;
             const btn = event.target;
@@ -971,7 +1038,7 @@
         
         function displayOrders(list) {
             if (!list.length) {
-                ordersTable.innerHTML = ' 有机会<td colspan="8" class="no-data">কোন অর্ডার নেই</td>' ;
+                ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার নেই</td></tr>';
                 return;
             }
             let html = '';
@@ -990,21 +1057,19 @@
                 const isPending = (o.orderStatus === 'created');
                 
                 let actionButtonsHtml = '';
-                if (isPending && isActiveAdmin) {
+                if (isPending && isPrimaryAdmin) {
                     actionButtonsHtml = `
                         <div class="action-buttons" onclick="event.stopPropagation()">
                             <button class="action-btn action-complete" onclick="completeOrder('${o.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button>
                             <button class="action-btn action-cancel" onclick="cancelOrder('${o.trx}', event)"><i class="fas fa-ban"></i> ক্যানসেল</button>
                         </div>
                     `;
-                } else if (isPending && !isActiveAdmin) {
-                    actionButtonsHtml = '<span style="color:#888; font-size:12px;">(শুধু অ্যাক্টিভ এডমিন)</span>';
                 } else {
                     actionButtonsHtml = '<span style="color:#888;">—</span>';
                 }
                 
                 html += `<tr onclick="showOrderDetails('${o.trx}')" style="cursor:pointer;">
-                    <td style="font-family:monospace;">${o.trx || 'N/A'}   </td>
+                    <td style="font-family:monospace;">${o.trx || 'N/A'}</td>
                     <td>${date}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
@@ -1012,7 +1077,7 @@
                     <td><div style="max-width:150px;font-size:0.9rem; font-weight:500;" title="${adminNumber}">${adminNumber.substring(0,30)}${adminNumber.length>30?'...':''}</div></td>
                     <td>${o.paymentCurrency || currency}</td>
                     <td>${actionButtonsHtml}</td>
-                  </tr>`;
+                </tr>`;
             });
             ordersTable.innerHTML = html;
         }
@@ -1020,6 +1085,7 @@
         window.showOrderDetails = function(trxId) {
             const order = orders.find(o => o.trx === trxId);
             if (!order) { showToast('অর্ডার পাওয়া যায়নি', 'error'); return; }
+            
             orderInfoGrid.innerHTML = `
                 <div class="info-item"><div class="info-label">TRX ID</div><div class="info-value">${order.trx || 'N/A'}</div></div>
                 <div class="info-item"><div class="info-label">স্ট্যাটাস</div><div class="info-value">${order.orderStatus === 'finished' ? 'সম্পূর্ণ' : order.orderStatus === 'cancelled' ? 'ক্যানসেল' : order.orderStatus === 'fail' ? 'ফেল' : 'পেন্ডিং'}</div></div>
@@ -1028,32 +1094,58 @@
                 <div class="info-item"><div class="info-label">কারেন্সি</div><div class="info-value">${order.paymentCurrency||order.priceCurrency||'USD'}</div></div>
                 <div class="info-item"><div class="info-label">তারিখ</div><div class="info-value">${order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD') : '—'}</div></div>
             `;
+            
             const referenceRaw = order.reference || '';
             let referenceItems = [];
             try {
                 const parsed = JSON.parse(referenceRaw);
                 if (typeof parsed === 'object') {
-                    for (const [key, val] of Object.entries(parsed)) referenceItems.push(`${key}: ${val}`);
-                } else referenceItems.push(String(parsed));
+                    for (const [key, val] of Object.entries(parsed)) {
+                        referenceItems.push(`${key}: ${val}`);
+                    }
+                } else {
+                    referenceItems.push(String(parsed));
+                }
             } catch(e) {
                 let candidates = referenceRaw.split(/[,\n\r]+/);
-                if (candidates.length === 1 && candidates[0].trim() === referenceRaw.trim()) referenceItems = [referenceRaw.trim()];
-                else referenceItems = candidates.map(s => s.trim()).filter(s => s !== '');
+                if (candidates.length === 1 && candidates[0].trim() === referenceRaw.trim()) {
+                    referenceItems = [referenceRaw.trim()];
+                } else {
+                    referenceItems = candidates.map(s => s.trim()).filter(s => s !== '');
+                }
             }
-            if (referenceItems.length === 0) referenceContainer.innerHTML = '<div class="empty-reference"><i class="fas fa-info-circle"></i> কোনো রেফারেন্স তথ্য নেই</div>';
-            else {
+            
+            if (referenceItems.length === 0) {
+                referenceContainer.innerHTML = '<div class="empty-reference"><i class="fas fa-info-circle"></i> কোনো রেফারেন্স তথ্য নেই</div>';
+            } else {
                 let refHtml = '<ul class="reference-list">';
                 referenceItems.forEach(item => {
                     const escapedItem = item.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    refHtml += `<li class="reference-item" onclick="copyToClipboard('${item.replace(/'/g, "\\'")}')"><span class="reference-text">${escapedItem}</span><span class="copy-icon"><i class="fas fa-copy"></i></span></li>`;
+                    refHtml += `
+                        <li class="reference-item" onclick="copyToClipboard('${escapeHtmlForOnClick(item)}')">
+                            <span class="reference-text">${escapedItem}</span>
+                            <span class="copy-icon"><i class="fas fa-copy"></i></span>
+                        </li>
+                    `;
                 });
                 refHtml += '</ul>';
                 referenceContainer.innerHTML = refHtml;
             }
+            
             orderDetailsModal.classList.add('active');
         };
         
-        window.copyToClipboard = function(text) { navigator.clipboard.writeText(text).then(() => showToast('কপি করা হয়েছে!', 'success')).catch(() => showToast('কপি ব্যর্থ', 'error')); };
+        function escapeHtmlForOnClick(str) {
+            return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        }
+        
+        window.copyToClipboard = function(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('কপি করা হয়েছে!', 'success');
+            }).catch(() => {
+                showToast('কপি ব্যর্থ', 'error');
+            });
+        };
         
         function updateStats(list) {
             totalOrdersEl.textContent = list.length;
@@ -1062,36 +1154,15 @@
             cancelledOrdersEl.textContent = list.filter(o => o.orderStatus === 'cancelled' || o.orderStatus === 'fail').length;
         }
         
-        async function updateSystemInfo(adminInfo = null, activeUid = null) {
-            let activeStatusText = isActiveAdmin ? '✅ সক্রিয় (অ্যাকশন সক্ষম)' : '⛔ নিষ্ক্রিয় (শুধু ভিউ)';
-            let activeAdminHtml = '<div><strong>সক্রিয় এডমিন:</strong> ';
-
-            if (!adminInfo) {
-                const snapshot = await database.ref('publicAdminInfo').once('value');
-                adminInfo = snapshot.val();
-                activeUid = determineActiveAdmin(adminInfo);
-            }
-            if (activeUid && adminInfo && adminInfo[activeUid]) {
-                const activeAdminData = adminInfo[activeUid];
-                const lastActiveTime = activeAdminData.lastActive ? new Date(activeAdminData.lastActive).toLocaleString('bn-BD') : 'অজানা';
-                activeAdminHtml += `${activeAdminData.name || activeUid} (সর্বশেষ: ${lastActiveTime})`;
-            } else {
-                activeAdminHtml += `কেউ নেই`;
-            }
-            activeAdminHtml += '</div>';
-            
-            systemInfo.innerHTML = `
-                <div style="display:flex; gap:20px; flex-wrap:wrap;">
-                    <div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div>
-                    <div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div>
-                    <div><strong>এডমিন ভূমিকা:</strong> ${activeStatusText}</div>
-                    <div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div>
-                    <div><strong>স্ট্যাটাস:</strong> অনলাইন</div>
-                </div>
-                <div style="margin-top:10px; border-top:1px solid rgba(255,152,0,0.3); padding-top:10px;">
-                    ${activeAdminHtml}
-                </div>
-            `;
+        function updateSystemInfo() {
+            const roleText = isPrimaryAdmin ? '<span style="color:#4caf50;">প্রধান এডমিন (সম্পূর্ণ অ্যাক্সেস)</span>' : '<span style="color:#ff9800;">শুধু দেখার (রিড-অনলি)</span>';
+            systemInfo.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;">
+                <div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div>
+                <div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div>
+                <div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div>
+                <div><strong>স্ট্যাটাস:</strong> অনলাইন</div>
+                <div><strong>রোল:</strong> ${roleText}</div>
+            </div>`;
         }
         
         function showToast(msg, type) {
@@ -1106,6 +1177,7 @@
             }, 3000);
         }
         
+        // Expose functions globally
         window.completeOrder = completeOrder;
         window.cancelOrder = cancelOrder;
         window.showOrderDetails = showOrderDetails;
