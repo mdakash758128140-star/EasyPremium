@@ -11,7 +11,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     
-    <!-- Security meta (same as main site) -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:; style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval';">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="format-detection" content="telephone=no, address=no, email=no">
@@ -22,7 +21,7 @@
     <meta http-equiv="Expires" content="0">
     
     <style>
-        /* ========== সম্পূর্ণ মূল ওয়েবসাইটের CSS (অপরিবর্তিত) ========== */
+        /* ========== সম্পূর্ণ ডার্ক থিম – কোনো সাদা অংশ থাকবে না ========== */
         * {
             margin: 0;
             padding: 0;
@@ -32,33 +31,21 @@
             color: #fff;
         }
         html {
+            background: #0a0a1a;
             scroll-behavior: smooth;
             overflow-x: hidden;
             width: 100%;
             height: 100%;
-            background-color: #0a0a1a;
         }
         body {
-            background: linear-gradient(135deg, #0a0a1a 0%, #121230 50%, #1a1a3a 100%);
-            background-attachment: fixed;
+            background: #0a0a1a; /* পুরোপুরি কালো ব্যাকগ্রাউন্ড, গ্রেডিয়েন্ট সরানো হয়েছে */
             min-height: 100vh;
             position: relative;
         }
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at 20% 30%, rgba(255,152,0,0.05) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 70%, rgba(0,188,212,0.05) 0%, transparent 50%);
-            z-index: -1;
-            pointer-events: none;
-        }
+        /* কোনো হালকা প্রভাব নেই */
         /* Header */
         .header {
-            background: rgba(10, 10, 26, 0.95);
+            background: #0a0a1a; /* সম্পূর্ণ অপেক ডার্ক */
             padding: 12px 16px;
             display: flex;
             justify-content: space-between;
@@ -67,7 +54,6 @@
             position: sticky;
             top: 0;
             z-index: 1000;
-            backdrop-filter: blur(10px);
             width: 100%;
         }
         .header-left {
@@ -142,19 +128,17 @@
             z-index: 10;
             animation: badgePulse 2s infinite;
         }
-        /* কার্ট ব্যাজ সম্পূর্ণ লুকান */
+        /* কার্ট ব্যাজ সম্পূর্ণ লুকান (প্রয়োজন হলে দেখানো হবে) */
         #cartBadge {
             display: none !important;
         }
         @keyframes badgePulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
         
-        /* Hero (minimal for profile page) */
+        /* Hero section – সম্পূর্ণ ডার্ক */
         .hero {
             text-align: center;
             padding: 40px 20px;
-            background: linear-gradient(rgba(10,10,26,0.9), rgba(10,10,26,0.9)), url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80');
-            background-size: cover;
-            background-position: center;
+            background: #0a0a1a; /* সরাসরি কালো, কোনো হালকা গ্রেডিয়েন্ট নেই */
             min-height: 180px;
             display: flex;
             flex-direction: column;
@@ -555,7 +539,6 @@
         }
     </style>
     
-    <!-- No JavaScript = No Access (ফুল-স্ক্রিন সতর্কতা) -->
     <noscript>
         <style>
             body { display: none !important; }
@@ -579,7 +562,7 @@
     </noscript>
 </head>
 <body>
-    <!-- Header (same as main) -->
+    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <a href="https://www.easy-premium.com" class="logo">
@@ -592,6 +575,7 @@
         </div>
         <div class="header-right">
             <div class="cart-icon-container" id="cartIcon">
+                <div class="cart-modern-icon"><i class="fas fa-shopping-cart"></i></div>
                 <span class="cart-badge" id="cartBadge" style="display: none;">0</span>
             </div>
             <div class="menu-icon-container" id="menuIcon">
@@ -611,7 +595,7 @@
         </div>
     </div>
 
-    <!-- Hero Section (profile page variant) -->
+    <!-- Hero Section -->
     <section class="hero">
         <h1>আমার প্রোফাইল</h1>
         <p>আপনার অ্যাকাউন্টের তথ্য ও অর্ডার ইতিহাস</p>
@@ -626,7 +610,7 @@
         </div>
     </div>
 
-    <!-- Footer (same as main) -->
+    <!-- Footer -->
     <footer class="footer">
         <div class="footer-policy-links">
             <a href="https://www.easy-premium.com/privacy-refund-policy-terms-of-service.html?data=PrivacyPolicy">Privacy Policy</a>
@@ -654,7 +638,7 @@
     </a>
 
     <script>
-        // ================== এনকোডেড ফায়ারবেস কনফিগ (গোপন) ==================
+        // ================== এনকোডেড ফায়ারবেস কনফিগ ==================
         const encodedFirebaseConfig = "ewogICJhcGlLZXkiOiAiQUl6YVN5QnQ5dDZtY2pVdFh4WDJpZ0FKZHNldUlJYzhwUF9RUEV3IiwKICAiYXV0aERvbWFpbiI6ICJlYXN5LXByZW1pdW0uZmlyZWJhc2VhcHAuY29tIiwKICAiZGF0YWJhc2VVUkwiOiAiaHR0cHM6Ly9lYXN5LXByZW1pdW0tZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcCIsCiAgInByb2plY3RJZCI6ICJlYXN5LXByZW1pdW0iLAogICJzdG9yYWdlQnVja2V0IjogImVhc3ktcHJlbWl1bS5maXJlYmFzZXN0b3JhZ2UuYXBwIiwKICAibWVzc2FnaW5nU2VuZGVySWQiOiAiMTU1ODkxMjUyMjY1IiwKICAiYXBwSWQiOiAiMToxNTU4OTEyNTIyNjU6d2ViOjc3YWI0MWRlMjQyMzFlOGU1ZWYwMzgiLAogICJtZWFzdXJlbWVudElkIjogIkctQ0hMODFLOEhSUFgiCn0=";
         
         function decodeBase64(str) {
@@ -681,7 +665,7 @@
         drawerClose.addEventListener('click', closeDrawer);
         drawer.addEventListener('click', e => e.stopPropagation());
         
-        // ✅ কার্ট আইকন: একই উইন্ডোতে প্রোফাইল পৃষ্ঠা খুলবে (নতুন ট্যাব নয়)
+        // Cart icon redirect
         const cartIcon = document.getElementById('cartIcon');
         cartIcon.addEventListener('click', () => {
             window.location.href = 'https://www.easy-premium.com/Profile.html';
@@ -739,7 +723,6 @@
         }
 
         // Attach click handlers for both completed (voucher) and pending (payment link)
-        // Failed orders get a separate reorder button (already in HTML)
         function attachClickHandlers() {
             // Completed orders (voucher link)
             document.querySelectorAll('.order-card[data-voucher-link]:not([data-voucher-link=""])').forEach(card => {
@@ -753,7 +736,7 @@
                 });
             });
 
-            // Pending orders (payment link) – only those with data-payment-link
+            // Pending orders (payment link)
             document.querySelectorAll('.order-card.clickable-pending').forEach(card => {
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
@@ -813,8 +796,6 @@
                         paymentLink = await ensurePaymentLink(order.orderId, order);
                     }
                     
-                    // Only mark as clickable if status is pending and we have a payment link, or if completed with voucher link
-                    // Fail orders are NOT clickable (but have a separate reorder button)
                     const isClickablePending = (status === 'pending' && paymentLink);
                     const isClickableCompleted = (status === 'completed' && voucherLink);
                     
@@ -892,26 +873,23 @@
         });
     </script>
 
-    <!-- ================== উন্নত নিরাপত্তা স্ক্রিপ্ট (DevTools detection with redirect, rate limiting, session timeout, etc.) ================== -->
+    <!-- ================== উন্নত নিরাপত্তা স্ক্রিপ্ট (DevTools detection, rate limiting, session timeout) ================== -->
     <script>
     (function() {
         'use strict';
 
-        // ========== কনফিগারেশন ==========
         const SECURITY_CONFIG = {
-            SESSION_TIMEOUT: 30 * 60 * 1000, // 30 মিনিট
+            SESSION_TIMEOUT: 30 * 60 * 1000,
             MAX_ATTEMPTS: 5,
-            RATE_LIMIT_WINDOW: 15 * 60 * 1000, // 15 মিনিট
-            REDIRECT_URL: 'https://easy-premium.com/privacy-refund-policy-terms-of-service.html', // ডেভ টুলস খুললে যেখানে রিডাইরেক্ট হবে
+            RATE_LIMIT_WINDOW: 15 * 60 * 1000,
+            REDIRECT_URL: 'https://easy-premium.com/privacy-refund-policy-terms-of-service.html',
             ENFORCE_HTTPS: true
         };
 
-        // ========== ১. HTTPS ফোর্স ==========
         if (SECURITY_CONFIG.ENFORCE_HTTPS && location.protocol !== 'https:' && location.hostname !== 'localhost' && !location.hostname.includes('127.0.0.1')) {
             location.replace('https://' + location.host + location.pathname + location.search);
         }
 
-        // ========== ২. ক্লিকজ্যাকিং প্রোটেকশন ==========
         if (self !== top) {
             try {
                 top.location.href = self.location.href;
@@ -921,16 +899,13 @@
             }
         }
 
-        // ========== ৩. ডেভ টুলস ডিটেকশন (সরাসরি রিডাইরেক্ট) ==========
         let devToolsOpened = false;
         function detectDevTools() {
             const start = performance.now();
-            debugger; // ডিবাগার ট্রিগার
+            debugger;
             const end = performance.now();
-
             if (end - start > 100 && !devToolsOpened) {
                 devToolsOpened = true;
-                // কোনো সতর্কতা নয়, সরাসরি রিডাইরেক্ট
                 window.location.href = SECURITY_CONFIG.REDIRECT_URL;
             }
             return false;
@@ -938,30 +913,24 @@
         setInterval(detectDevTools, 1000);
         setTimeout(detectDevTools, 500);
 
-        // ========== ৪. রেট লিমিটিং (অর্ডার স্প্যাম প্রতিরোধ) ==========
         window._rateLimitStore = window._rateLimitStore || { attempts: {}, blockUntil: {} };
         window.checkRateLimit = function(action, userId = 'anonymous') {
             const key = `${action}_${userId}`;
             const now = Date.now();
-
             if (window._rateLimitStore.blockUntil[key] && window._rateLimitStore.blockUntil[key] > now) {
                 const remaining = Math.ceil((window._rateLimitStore.blockUntil[key] - now) / 1000 / 60);
                 return { allowed: false, message: `অনেক চেষ্টা করেছেন। ${remaining} মিনিট পরে আবার চেষ্টা করুন।` };
             }
-
             if (!window._rateLimitStore.attempts[key]) window._rateLimitStore.attempts[key] = [];
             window._rateLimitStore.attempts[key] = window._rateLimitStore.attempts[key].filter(t => t > now - SECURITY_CONFIG.RATE_LIMIT_WINDOW);
-
             if (window._rateLimitStore.attempts[key].length >= SECURITY_CONFIG.MAX_ATTEMPTS) {
                 window._rateLimitStore.blockUntil[key] = now + SECURITY_CONFIG.RATE_LIMIT_WINDOW;
                 return { allowed: false, message: 'অনেক চেষ্টা করেছেন। ১৫ মিনিট পরে আবার চেষ্টা করুন।' };
             }
-
             window._rateLimitStore.attempts[key].push(now);
             return { allowed: true };
         };
 
-        // ========== ৫. সেশন টাইমআউট ==========
         let sessionTimer;
         function resetSessionTimer() {
             if (sessionTimer) clearTimeout(sessionTimer);
@@ -976,24 +945,13 @@
                 }
             }, SECURITY_CONFIG.SESSION_TIMEOUT);
         }
-
         ['click', 'keypress', 'scroll', 'mousemove', 'touchstart'].forEach(event => {
             document.addEventListener(event, resetSessionTimer, { passive: true });
         });
 
-        // ========== ৬. XSS প্রোটেকশন (ইনপুট স্যানিটাইজ) ==========
         function sanitizeInput(input) {
             if (typeof input !== 'string') return input;
-            return input
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#x27;')
-                .replace(/\//g, '&#x2F;')
-                .replace(/\\/g, '&#x5C;')
-                .replace(/`/g, '&#96;')
-                .replace(/=/g, '&#61;');
+            return input.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/\//g, '&#x2F;').replace(/\\/g, '&#x5C;').replace(/`/g, '&#96;').replace(/=/g, '&#61;');
         }
 
         function setupFormProtection() {
@@ -1010,15 +968,12 @@
                 }, true);
             });
         }
-
         const mutationObserver = new MutationObserver(() => setupFormProtection());
         mutationObserver.observe(document.body, { childList: true, subtree: true });
 
-        // ========== ৭. লোকাল স্টোরেজ এনক্রিপশন (সংবেদনশীল ডেটার জন্য) ==========
         const originalSetItem = localStorage.setItem;
         const originalGetItem = localStorage.getItem;
         const sensitiveKeys = ['user', 'session', 'token', 'auth'];
-
         localStorage.setItem = function(key, value) {
             if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
                 try {
@@ -1030,7 +985,6 @@
             }
             return originalSetItem.call(this, key, value);
         };
-
         localStorage.getItem = function(key) {
             if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
                 try {
@@ -1043,52 +997,24 @@
             return originalGetItem.call(this, key);
         };
 
-        // ========== ৮. ডোমেইন ভেরিফিকেশন ==========
-        function verifyDomain() {
-            const allowedDomains = ['easy-premium.com', 'www.easy-premium.com', 'localhost', '127.0.0.1'];
-            const currentHost = window.location.hostname;
-            if (!allowedDomains.includes(currentHost) && !currentHost.endsWith('.easy-premium.com')) {
-                console.warn('অজানা ডোমেইনে চলছে:', currentHost);
-            }
-        }
-        verifyDomain();
-
-        // ========== ৯. কীবোর্ড শর্টকাট ব্লক ==========
         document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.keyCode === 85) { e.preventDefault(); return false; } // Ctrl+U
-            if (e.ctrlKey && e.keyCode === 83) { e.preventDefault(); return false; } // Ctrl+S
-            if (e.ctrlKey && e.shiftKey && e.keyCode === 73) { e.preventDefault(); return false; } // Ctrl+Shift+I
-            if (e.keyCode === 123) { e.preventDefault(); return false; } // F12
+            if (e.ctrlKey && e.keyCode === 85) { e.preventDefault(); return false; }
+            if (e.ctrlKey && e.keyCode === 83) { e.preventDefault(); return false; }
+            if (e.ctrlKey && e.shiftKey && e.keyCode === 73) { e.preventDefault(); return false; }
+            if (e.keyCode === 123) { e.preventDefault(); return false; }
         });
 
-        // ========== ১০. রাইট ক্লিক প্রোটেকশন ==========
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            return false;
-        });
-
-        document.addEventListener('mousedown', function(e) {
-            if (e.button === 2) {
-                e.preventDefault();
-                return false;
-            }
-        });
-
+        document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
+        document.addEventListener('mousedown', function(e) { if (e.button === 2) { e.preventDefault(); return false; } });
         document.addEventListener('touchstart', function(e) {
             let touchTimer;
-            const handleTouchEnd = function() {
-                clearTimeout(touchTimer);
-                document.removeEventListener('touchend', handleTouchEnd);
-            };
+            const handleTouchEnd = function() { clearTimeout(touchTimer); document.removeEventListener('touchend', handleTouchEnd); };
             if (e.touches.length === 1) {
-                touchTimer = setTimeout(function() {
-                    e.preventDefault();
-                }, 500);
+                touchTimer = setTimeout(function() { e.preventDefault(); }, 500);
                 document.addEventListener('touchend', handleTouchEnd, { once: true });
             }
         }, { passive: false });
 
-        // ========== ১১. অর্ডার ফর্মে রেট লিমিট (যদি থাকে) ==========
         if (window.purchaseForm) {
             const form = window.purchaseForm;
             const originalHandler = form.onsubmit;
@@ -1096,17 +1022,14 @@
                 e.preventDefault();
                 if (firebase && firebase.auth() && firebase.auth().currentUser) {
                     const rateCheck = window.checkRateLimit('purchase', firebase.auth().currentUser.uid);
-                    if (!rateCheck.allowed) {
-                        alert(rateCheck.message);
-                        return false;
-                    }
+                    if (!rateCheck.allowed) { alert(rateCheck.message); return false; }
                 }
                 if (originalHandler) return originalHandler.call(this, e);
                 return false;
             };
         }
 
-        console.log('%c🔒 Easy Premium - প্রোফাইল পৃষ্ঠা সুরক্ষিত মোড সক্রিয় (reorder button added for failed orders)', 'color: #4caf50; font-size: 14px; font-weight: bold;');
+        console.log('%c🔒 Easy Premium - প্রোফাইল পৃষ্ঠা সুরক্ষিত মোড সক্রিয় (পুরোপুরি ডার্ক থিম)', 'color: #4caf50; font-size: 14px; font-weight: bold;');
     })();
     </script>
 </body>
