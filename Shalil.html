@@ -669,11 +669,11 @@
 
         let orders = [], currentAdminEmail = null, currentAdminUid = null;
         let onlineStatusInterval = null;
-        let isPrimaryAdmin = false;               // <-- NEW: track if this admin has full access
-        let lockRefreshInterval = null;           // <-- NEW: interval to keep lock alive
-        let reacquireLockInterval = null;         // <-- NEW: for non-primary admins to try to become primary
+        let isPrimaryAdmin = false;             
+        let lockRefreshInterval = null;         
+        let reacquireLockInterval = null;        
         
-        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
+        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'mdsojib138888@gmail.com', 'allwork204571@gmail.com'];
         const ACTIVE_ADMIN_TIMEOUT = 5 * 60 * 1000;  // 5 minutes
         const LOCK_REFRESH_INTERVAL = 60 * 1000;     // 1 minute
 
