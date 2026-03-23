@@ -11,7 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-    
+
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:; style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval';">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="format-detection" content="telephone=no, address=no, email=no">
@@ -20,9 +20,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    
+
     <style>
-        /* ========== সম্পূর্ণ ডার্ক থিম – মূল সাইটের CSS হুবহু ========== */
         * {
             margin: 0;
             padding: 0;
@@ -31,7 +30,7 @@
             -webkit-tap-highlight-color: transparent;
             color: #fff;
         }
-        
+
         html {
             scroll-behavior: smooth;
             overflow-x: hidden;
@@ -39,7 +38,7 @@
             height: 100%;
             background-color: #0a0a1a;
         }
-        
+
         body {
             background: #0a0a1a;
             background-attachment: fixed;
@@ -47,19 +46,18 @@
             color: #fff;
             position: relative;
         }
-        
-        /* সব মৌলিক এলাকার ব্যাকগ্রাউন্ড ডার্ক */
-        .header, .hero, .platforms-section, .footer, .drawer, .drawer-overlay, .login-modal, .profile-modal, .loading-overlay, .website-overlay,
+
+        /* সব ডার্ক ব্যাকগ্রাউন্ড */
+        .header, .hero, .footer, .drawer, .drawer-overlay, .login-modal, .profile-modal, .loading-overlay, .website-overlay,
         .login-content, .profile-content, .search-results, .platform-card, .order-card {
             background-color: #0a0a1a;
         }
         .header { background: rgba(10, 10, 26, 0.98); backdrop-filter: blur(10px); }
         .hero { background: linear-gradient(rgba(10, 10, 26, 0.95), rgba(10, 10, 26, 0.95)), url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80'); background-size: cover; background-position: center; }
-        .platform-card { background: rgba(20, 20, 40, 0.95); }
         .footer { background: rgba(10, 10, 26, 0.98); }
         .drawer { background: rgba(10, 10, 26, 0.98); backdrop-filter: blur(10px); }
         .login-content, .profile-content { background: rgba(10, 10, 26, 0.98); }
-        
+
         /* হেডার */
         .header {
             padding: 12px 16px;
@@ -72,12 +70,14 @@
             z-index: 1000;
             width: 100%;
         }
+
         .header-left {
             display: flex;
             align-items: center;
             gap: 15px;
             flex: 1;
         }
+
         .logo {
             display: flex;
             align-items: center;
@@ -85,7 +85,9 @@
             text-decoration: none;
             transition: transform 0.3s;
         }
+
         .logo:hover { transform: scale(1.02); }
+
         .logo-image-container {
             width: 45px;
             height: 45px;
@@ -98,16 +100,18 @@
             box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
             transition: all 0.3s;
             border-radius: 8px;
-            background: white;
+            /* 🔥 এখানে সাদা ব্যাকগ্রাউন্ড সরিয়ে ডার্ক করা হয়েছে */
+            background: #0a0a1a;
             padding: 5px;
         }
+
         .logo-image { width: 100%; height: 100%; object-fit: contain; }
         .logo-text { display: flex; flex-direction: column; line-height: 1; }
         .logo-main { font-size: 1.3rem; font-weight: 800; color: #ff9800; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap; }
         .logo-sub { font-size: 0.75rem; font-weight: 600; color: #00bcd4; letter-spacing: 0.3px; margin-top: 2px; white-space: nowrap; }
-        
+
         .header-right { display: flex; align-items: center; gap: 10px; }
-        
+
         .cart-icon-container {
             cursor: pointer;
             transition: all 0.3s;
@@ -116,6 +120,7 @@
             align-items: center;
             justify-content: center;
         }
+
         .cart-modern-icon {
             position: relative;
             width: 45px;
@@ -129,9 +134,11 @@
             transition: all 0.4s;
             overflow: hidden;
         }
+
         .cart-modern-icon i { font-size: 1.4rem; color: #ff9800; transition: all 0.4s; position: relative; z-index: 2; }
         .cart-icon-container:hover .cart-modern-icon { border-color: #ff9800; box-shadow: 0 0 20px rgba(255, 152, 0, 0.4); transform: translateY(-3px); }
         .cart-icon-container:hover .cart-modern-icon i { color: #fff; transform: scale(1.1); }
+
         .cart-badge {
             position: absolute;
             top: -5px;
@@ -151,8 +158,9 @@
             z-index: 10;
             animation: badgePulse 2s infinite;
         }
+
         @keyframes badgePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-        
+
         .menu-icon-container {
             cursor: pointer;
             transition: all 0.3s;
@@ -162,6 +170,7 @@
             justify-content: center;
             margin-left: 10px;
         }
+
         .menu-modern-icon {
             position: relative;
             width: 45px;
@@ -175,10 +184,11 @@
             transition: all 0.4s;
             overflow: hidden;
         }
+
         .menu-modern-icon i { font-size: 1.4rem; color: #ff9800; transition: all 0.4s; position: relative; z-index: 2; }
         .menu-icon-container:hover .menu-modern-icon { border-color: #ff9800; box-shadow: 0 0 20px rgba(255, 152, 0, 0.4); transform: translateY(-3px); }
         .menu-icon-container:hover .menu-modern-icon i { color: #fff; transform: scale(1.1); }
-        
+
         .search-container { display: block; flex: 1; max-width: 300px; margin-left: 20px; }
         .search-wrapper { position: relative; width: 100%; }
         .search-input {
@@ -238,7 +248,19 @@
         .search-result-name { font-weight: 600; color: #fff; margin-bottom: 3px; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .search-result-desc { font-size: 0.75rem; color: #b0bec5; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         .search-result-price { font-weight: 700; color: #ff9800; font-size: 0.95rem; white-space: nowrap; }
-        
+
+        .hero {
+            text-align: center;
+            padding: 40px 20px;
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            width: 100%;
+        }
+        .hero h1 { font-size: 2rem; margin-bottom: 15px; color: #ff9800; line-height: 1.3; max-width: 800px; margin-left: auto; margin-right: auto; padding: 0 15px; }
+        .hero p { font-size: 1rem; max-width: 800px; margin: 0 auto; color: #ddd; line-height: 1.6; padding: 0 15px; }
+
         /* প্রোফাইল কন্টেন্ট */
         .profile-container {
             max-width: 1200px;
@@ -295,7 +317,7 @@
             font-size: 0.95rem;
             word-break: break-word;
         }
-        
+
         /* Orders section */
         .orders-section {
             margin-top: 20px;
@@ -402,7 +424,7 @@
             transform: translateY(-2px);
             box-shadow: 0 3px 10px rgba(255,152,0,0.4);
         }
-        
+
         /* Loading & error */
         .loading {
             text-align: center;
@@ -426,7 +448,7 @@
             border-radius: 16px;
             border: 1px solid #ff6b6b;
         }
-        
+
         /* Footer */
         .footer {
             padding: 40px 20px 30px;
@@ -483,7 +505,7 @@
         .social-link:nth-child(5) i { color: #25D366; }
         .social-link:nth-child(6) i { color: #0088cc; }
         .copyright { color: #b0bec5; font-size: 0.85rem; line-height: 1.6; max-width: 800px; margin: 0 auto; }
-        
+
         /* Drawer */
         .drawer-overlay {
             position: fixed;
@@ -548,7 +570,7 @@
         .drawer-btn i { color: #ff9800; font-size: 1.2rem; }
         .drawer-btn:hover { background: #ff9800; color: #000; transform: translateX(-5px); }
         .drawer-btn:hover i { color: #000; }
-        
+
         /* Messenger float */
         .messenger-float {
             position: fixed;
@@ -575,8 +597,8 @@
             70% { box-shadow: 0 0 0 15px rgba(0, 132, 255, 0); }
             100% { box-shadow: 0 0 0 0 rgba(0, 132, 255, 0); }
         }
-        
-        /* Login Modal & Profile Modal (অপ্রয়োজনীয় মোডাল রাখা হয়েছে তবে ব্যবহার করা হবে না) */
+
+        /* Login & Profile Modal (প্রয়োজনে) */
         .login-modal, .profile-modal {
             display: none;
             position: fixed;
@@ -673,7 +695,7 @@
             color: white;
         }
         .accept-btn:hover { background: linear-gradient(45deg, #ff2222, #0008ff); transform: translateY(-2px); }
-        
+
         @media (max-width: 768px) {
             .search-container { display: none !important; }
             .user-info { flex-direction: column; align-items: flex-start; }
@@ -691,7 +713,7 @@
             .profile-container { padding: 15px; }
         }
     </style>
-    
+
     <noscript>
         <style> body { display: none !important; } html { background: #000 !important; height: 100% !important; overflow: hidden !important; } </style>
         <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:#000;color:#ff0000;display:flex;align-items:center;justify-content:center;z-index:999999;font-family:monospace;text-align:center;flex-direction:column;">
@@ -715,7 +737,6 @@
         </div>
     </div>
 
-    <!-- লগইন মোডাল (প্রোফাইল পৃষ্ঠায় প্রয়োজন হলে) -->
     <div id="loginModal" class="login-modal">
         <div class="login-content">
             <div class="login-logo">
@@ -797,17 +818,17 @@
 
     <script>
         const encodedFirebaseConfig = "ewogICJhcGlLZXkiOiAiQUl6YVN5QnQ5dDZtY2pVdFh4WDJpZ0FKZHNldUlJYzhwUF9RUEV3IiwKICAiYXV0aERvbWFpbiI6ICJlYXN5LXByZW1pdW0uZmlyZWJhc2VhcHAuY29tIiwKICAiZGF0YWJhc2VVUkwiOiAiaHR0cHM6Ly9lYXN5LXByZW1pdW0tZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcCIsCiAgInByb2plY3RJZCI6ICJlYXN5LXByZW1pdW0iLAogICJzdG9yYWdlQnVja2V0IjogImVhc3ktcHJlbWl1bS5maXJlYmFzZXN0b3JhZ2UuYXBwIiwKICAibWVzc2FnaW5nU2VuZGVySWQiOiAiMTU1ODkxMjUyMjY1IiwKICAiYXBwSWQiOiAiMToxNTU4OTEyNTIyNjU6d2ViOjc3YWI0MWRlMjQyMzFlOGU1ZWYwMzgiLAogICJtZWFzdXJlbWVudElkIjogIkctQ0hMODFLOEhSUFgiCn0=";
-        
+
         function decodeBase64(str) { try { return JSON.parse(atob(str)); } catch(e) { return null; } }
         const firebaseConfig = decodeBase64(encodedFirebaseConfig);
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const auth = firebase.auth();
-        
+
         const profileContent = document.getElementById('profileContent');
         const cartBadge = document.getElementById('cartBadge');
         const loadingOverlay = document.getElementById('loadingOverlay');
-        
+
         // Cookie consent
         const overlay = document.getElementById('websiteOverlay');
         const overlayAcceptBtn = document.getElementById('overlayAcceptBtn');
@@ -816,7 +837,7 @@
             overlay.style.display = 'flex'; return false;
         }
         overlayAcceptBtn.addEventListener('click', function() { localStorage.setItem('cookieAccepted', 'true'); overlay.style.display = 'none'; location.reload(); });
-        
+
         // Drawer logic
         const menuIcon = document.getElementById('menuIcon');
         const drawer = document.getElementById('drawer');
@@ -827,18 +848,18 @@
         drawerOverlay.addEventListener('click', closeDrawer);
         drawerClose.addEventListener('click', closeDrawer);
         drawer.addEventListener('click', e => e.stopPropagation());
-        
+
         // Cart icon redirect
         const cartIcon = document.getElementById('cartIcon');
         cartIcon.addEventListener('click', () => { window.location.href = 'https://www.easy-premium.com/Profile.html'; });
-        
-        // Search (for consistency, but not used heavily)
+
+        // Search (inactive for profile page)
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
         const searchResults = document.getElementById('searchResults');
         searchInput.addEventListener('input', () => { searchResults.style.display = 'none'; });
         searchBtn.addEventListener('click', () => { window.location.href = 'https://www.easy-premium.com'; });
-        
+
         // Helper functions
         function formatDate(iso) {
             if (!iso) return 'N/A';
@@ -857,14 +878,14 @@
             if (status === 'waiting') return 'অপেক্ষমান';
             return 'পেমেন্ট করুন';
         }
-        
+
         async function updateCartBadge(uid) {
             const snap = await database.ref(`userOrders/${uid}`).once('value');
             const count = snap.numChildren();
             if (count > 0) { cartBadge.textContent = count; cartBadge.style.display = 'flex'; }
             else cartBadge.style.display = 'none';
         }
-        
+
         async function ensurePaymentLink(orderId) {
             try {
                 const snap = await database.ref(`transactions/${orderId}`).once('value');
@@ -873,13 +894,13 @@
             } catch(e) { console.warn(e); }
             return null;
         }
-        
+
         async function reorderOrder(orderId, platformId, price, platformName) {
             const mainUrl = `https://www.easy-premium.com?reorder=true&product=${encodeURIComponent(platformId)}&price=${encodeURIComponent(price)}&name=${encodeURIComponent(platformName)}`;
             window.open(mainUrl, '_blank');
             alert('পুনরায় অর্ডার করতে পৃষ্ঠাটি খুলেছে। অনুগ্রহ করে একই পণ্য নির্বাচন করুন।');
         }
-        
+
         function attachClickHandlers() {
             // Completed orders (voucher link)
             document.querySelectorAll('.order-card[data-voucher-link]:not([data-voucher-link=""])').forEach(card => {
@@ -921,7 +942,7 @@
                 btn.addEventListener('click', btn._reorderHandler);
             });
         }
-        
+
         async function renderProfile(user, orders) {
             const avatarHtml = user.photoURL ? `<img src="${user.photoURL}" alt="avatar">` : `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
             let ordersHtml = '';
@@ -973,7 +994,7 @@
                 </div>
             </div>`;
         }
-        
+
         auth.onAuthStateChanged(async (user) => {
             if (!user) {
                 window.location.href = 'https://www.easy-premium.com';
@@ -991,14 +1012,14 @@
                 profileContent.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> তথ্য লোড করতে সমস্যা হয়েছে: ${error.message}</div>`;
             }
         });
-        
+
         checkCookieConsent();
     </script>
 
     <script>
     (function() {
         'use strict';
-        
+
         const CONFIG = {
             SESSION_TIMEOUT: 30 * 60 * 1000, 
             MAX_ATTEMPTS: 5, 
@@ -1008,15 +1029,15 @@
             ENFORCE_HTTPS: true,
             REDIRECT_URL: 'https://www.easy-premium.com/privacy-refund-policy-terms-of-service.html'
         };
-        
+
         if (CONFIG.ENFORCE_HTTPS && location.protocol !== 'https:' && location.hostname !== 'localhost' && !location.hostname.includes('127.0.0.1')) {
             location.replace('https://' + location.host + location.pathname + location.search);
         }
-        
+
         if (self !== top) {
             try { top.location.href = self.location.href; } catch(e) { document.body.innerHTML = '<h1 style="color:red;text-align:center;padding:50px;">Access Denied</h1>'; throw new Error('Clickjacking protection'); }
         }
-        
+
         let devToolsOpened = false;
         function detectDevTools() {
             const start = performance.now();
@@ -1030,7 +1051,7 @@
         }
         setInterval(detectDevTools, 1000);
         setTimeout(detectDevTools, 500);
-        
+
         window._rateLimitStore = window._rateLimitStore || { attempts: {}, blockUntil: {} };
         window.checkRateLimit = function(action, userId = 'anonymous') {
             const key = `${action}_${userId}`;
@@ -1048,7 +1069,7 @@
             window._rateLimitStore.attempts[key].push(now);
             return { allowed: true };
         };
-        
+
         let sessionTimer;
         function resetSessionTimer() {
             if (sessionTimer) clearTimeout(sessionTimer);
@@ -1060,7 +1081,7 @@
             }, CONFIG.SESSION_TIMEOUT);
         }
         ['click', 'keypress', 'scroll', 'mousemove', 'touchstart'].forEach(event => document.addEventListener(event, resetSessionTimer, { passive: true }));
-        
+
         function sanitizeInput(input) {
             if (typeof input !== 'string') return input;
             return input.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/\//g, '&#x2F;').replace(/\\/g, '&#x5C;').replace(/`/g, '&#96;').replace(/=/g, '&#61;');
@@ -1078,7 +1099,7 @@
         }
         const formObserver = new MutationObserver(() => setupFormProtection());
         formObserver.observe(document.body, { childList: true, subtree: true });
-        
+
         const originalSetItem = localStorage.setItem, originalGetItem = localStorage.getItem;
         const sensitiveKeys = ['user', 'session', 'token', 'auth'];
         localStorage.setItem = function(key, value) {
@@ -1093,14 +1114,14 @@
             }
             return originalGetItem.call(this, key);
         };
-        
+
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.keyCode === 85) { e.preventDefault(); return false; }
             if (e.ctrlKey && e.keyCode === 83) { e.preventDefault(); return false; }
             if (e.ctrlKey && e.shiftKey && e.keyCode === 73) { e.preventDefault(); return false; }
             if (e.keyCode === 123) { e.preventDefault(); return false; }
         });
-        
+
         document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
         document.addEventListener('mousedown', function(e) { if (e.button === 2) { e.preventDefault(); return false; } });
         document.addEventListener('touchstart', function(e) {
@@ -1108,7 +1129,7 @@
             const handleTouchEnd = function() { clearTimeout(touchTimer); document.removeEventListener('touchend', handleTouchEnd); };
             if (e.touches.length === 1) { touchTimer = setTimeout(() => e.preventDefault(), 500); document.addEventListener('touchend', handleTouchEnd, { once: true }); }
         }, { passive: false });
-        
+
         console.log('%c🔒 Easy Premium - প্রোফাইল পৃষ্ঠা সুরক্ষিত (সম্পূর্ণ ডার্ক থিম)', 'color: #4caf50; font-size: 14px; font-weight: bold;');
     })();
     </script>
