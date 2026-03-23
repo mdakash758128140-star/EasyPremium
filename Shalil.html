@@ -625,8 +625,7 @@
                 <div style="overflow-x: auto;">
                     <table class="orders-table">
                         <thead>
-                            <tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>এডমিন নম্বর</th><th>কারেন্সি</th><th>অ্যাকশন</th></tr>
-                        </thead>
+                            <tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>এডমিন নম্বর</th><th>কারেন্সি</th><th>অ্যাকশন</th> </thead>
                         <tbody id="ordersTable"></tbody>
                     </table>
                 </div>
@@ -669,13 +668,14 @@
 
         let orders = [], currentAdminEmail = null, currentAdminUid = null;
         let onlineStatusInterval = null;
-        let isPrimaryAdmin = false;             
-        let lockRefreshInterval = null;         
-        let reacquireLockInterval = null;        
+        let isPrimaryAdmin = false;               // <-- NEW: track if this admin has full access
+        let lockRefreshInterval = null;           // <-- NEW: interval to keep lock alive
+        let reacquireLockInterval = null;         // <-- NEW: for non-primary admins to try to become primary
         
-        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'mdsojib138888@gmail.com', 'allwork204571@gmail.com'];
-        const ACTIVE_ADMIN_TIMEOUT = 5 * 60 * 1000;  // 5 minutes
+        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
+        const ACTIVE_ADMIN_TIMEOUT = 2 * 60 * 1000;  // 2 minutes (as per your latest requirement)
         const LOCK_REFRESH_INTERVAL = 60 * 1000;     // 1 minute
+        const REACQUIRE_INTERVAL = 60 * 1000;        // 1 minute
 
         // Reference to the lock node
         const activeAdminLockRef = database.ref('activeAdmin');
@@ -893,7 +893,7 @@
                     } else {
                         isPrimaryAdmin = false;
                         // Start a periodic attempt to become primary when lock expires
-                        reacquireLockInterval = setInterval(tryToBecomePrimary, 120000); // every 2 minutes
+                        reacquireLockInterval = setInterval(tryToBecomePrimary, REACQUIRE_INTERVAL);
                     }
                     
                     showAdminPanel();
@@ -930,7 +930,7 @@
         function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
         
         async function loadOrders() {
-            ordersTable.innerHTML = '<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></tr>';
+            ordersTable.innerHTML = '<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></td></tr>';
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
