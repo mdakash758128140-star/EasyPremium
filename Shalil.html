@@ -157,22 +157,6 @@
             font-size: 0.8rem;
         }
         
-        .role-badge {
-            background: rgba(0,188,212,0.2);
-            border-left: 3px solid #00bcd4;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            display: inline-block;
-        }
-        
-        .role-inactive {
-            background: rgba(220,53,69,0.2);
-            border-left-color: #dc3545;
-            color: #ff9e9e;
-        }
-        
         .logout-btn {
             background: linear-gradient(45deg, #dc3545, #c82333);
             color: white;
@@ -236,44 +220,6 @@
         .stat-label {
             font-size: 0.9rem;
             color: #b0bec5;
-        }
-        
-        .admin-status-card {
-            background: rgba(0, 188, 212, 0.1);
-            border: 1px solid #00bcd4;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 15px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            gap: 15px;
-        }
-        
-        .admin-status-item {
-            flex: 1;
-            min-width: 200px;
-            background: rgba(0,0,0,0.3);
-            padding: 12px;
-            border-radius: 8px;
-        }
-        
-        .admin-status-label {
-            font-size: 0.8rem;
-            color: #b0bec5;
-            margin-bottom: 5px;
-        }
-        
-        .admin-status-value {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: #ffb74d;
-        }
-        
-        .admin-status-time {
-            font-size: 0.75rem;
-            color: #aaa;
-            margin-top: 4px;
         }
         
         .orders-table {
@@ -408,7 +354,7 @@
         }
         
         .system-info {
-            margin-top: 15px;
+
         }
         
         .loading-spinner {
@@ -653,7 +599,6 @@
                     <h3 id="adminName">Loading...</h3>
                     <p id="adminEmail">Loading...</p>
                 </div>
-                <div id="roleBadge" class="role-badge">⏳ চেক করা হচ্ছে...</div>
             </div>
             <div style="display: flex; gap: 10px;">
                 <button id="refreshOrdersBtn" class="refresh-btn"><i class="fas fa-sync-alt"></i> রিফ্রেশ</button>
@@ -670,21 +615,6 @@
                     <div class="stats-card"><div class="stat-value" id="completedOrders">0</div><div class="stat-label">সম্পূর্ণ</div></div>
                     <div class="stats-card"><div class="stat-value" id="cancelledOrders">0</div><div class="stat-label">ক্যানসেল / ফেল</div></div>
                 </div>
-                
-                <!-- নতুন: এডমিন অনলাইন স্ট্যাটাস দেখানোর এলাকা -->
-                <div class="admin-status-card" id="adminStatusCard">
-                    <div class="admin-status-item">
-                        <div class="admin-status-label">বর্তমান সক্রিয় এডমিন (অ্যাকশন করতে পারবেন)</div>
-                        <div class="admin-status-value" id="currentActiveAdmin">লোড হচ্ছে...</div>
-                        <div class="admin-status-time" id="currentActiveTime"></div>
-                    </div>
-                    <div class="admin-status-item">
-                        <div class="admin-status-label">সর্বশেষ সক্রিয় এডমিন (publicAdminInfo)</div>
-                        <div class="admin-status-value" id="lastActiveAdmin">লোড হচ্ছে...</div>
-                        <div class="admin-status-time" id="lastActiveTime"></div>
-                    </div>
-                </div>
-                
                 <div class="system-info" id="systemInfo"></div>
             </div>
             
@@ -705,7 +635,6 @@
         </div>
     </div>
 
-    <!-- Modal for Order Details -->
     <div class="modal" id="orderDetailsModal">
         <div class="modal-content">
             <button class="modal-close" id="closeDetailsModalBtn">&times;</button>
@@ -737,11 +666,10 @@
         const database = firebase.database();
 
         let orders = [], currentAdminEmail = null, currentAdminUid = null;
-        let isActiveAdmin = false;
-        let activeAdminRef = null;
         let onlineStatusInterval = null;
-        let activeAdminDisconnectRef = null;
-        let publicInfoRef = null;
+        let claimCheckInterval = null;
+        let activeAdminListenerRef = null;
+        let isActiveAdmin = false;
         
         const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
 
@@ -752,12 +680,6 @@
         const totalOrdersEl = document.getElementById('totalOrders'), pendingOrdersEl = document.getElementById('pendingOrders'), completedOrdersEl = document.getElementById('completedOrders'), cancelledOrdersEl = document.getElementById('cancelledOrders');
         const orderCountEl = document.getElementById('orderCount'), systemInfo = document.getElementById('systemInfo'), ordersTable = document.getElementById('ordersTable');
         const orderFilter = document.getElementById('orderFilter'), orderSearch = document.getElementById('orderSearch'), dateFilter = document.getElementById('dateFilter');
-        const roleBadge = document.getElementById('roleBadge');
-        const currentActiveAdminEl = document.getElementById('currentActiveAdmin');
-        const currentActiveTimeEl = document.getElementById('currentActiveTime');
-        const lastActiveAdminEl = document.getElementById('lastActiveAdmin');
-        const lastActiveTimeEl = document.getElementById('lastActiveTime');
-        
         const orderDetailsModal = document.getElementById('orderDetailsModal');
         const closeDetailsModalBtn = document.getElementById('closeDetailsModalBtn');
         const orderInfoGrid = document.getElementById('orderInfoGrid');
@@ -776,167 +698,159 @@
             window.onclick = (e) => { if (e.target === orderDetailsModal) orderDetailsModal.classList.remove('active'); };
         }
         
-        // ---------- Active Admin Management (Only ONE active at a time) ----------
-        async function tryBecomeActiveAdmin(user) {
-            const activeAdminPath = database.ref('activeAdmin');
+        // --- Active Admin Logic ---
+        async function tryClaimActiveAdmin(uid, userInfo) {
+            const activeRef = database.ref('activeAdmin');
             try {
-                const result = await activeAdminPath.transaction((current) => {
-                    if (current === null) {
-                        return {
-                            uid: user.uid,
-                            email: user.email,
-                            name: user.displayName || user.email,
-                            lastActive: firebase.database.ServerValue.TIMESTAMP,
-                            activeSince: new Date().toISOString()
-                        };
-                    } else {
-                        return;
-                    }
-                });
-                if (result.committed) {
-                    isActiveAdmin = true;
-                    roleBadge.innerHTML = '<i class="fas fa-check-circle"></i> ✅ সক্রিয় এডমিন (অ্যাকশন করতে পারবেন)';
-                    roleBadge.classList.remove('role-inactive');
-                    const onDisconnectRef = database.ref('activeAdmin');
-                    activeAdminDisconnectRef = onDisconnectRef.onDisconnect().remove();
-                    activeAdminDisconnectRef.then(() => console.log('onDisconnect set for activeAdmin')).catch(console.warn);
-                    startOnlineStatusUpdates(user);
-                    showToast('আপনি সক্রিয় এডমিন হিসেবে নিযুক্ত হয়েছেন', 'success');
+                const snapshot = await activeRef.once('value');
+                const currentActive = snapshot.val();
+                const now = Date.now();
+                // No active admin or expired (2 min)
+                if (!currentActive || (now - (currentActive.lastActive || 0) > 120000)) {
+                    await activeRef.set({
+                        uid: uid,
+                        email: userInfo.email,
+                        name: userInfo.name,
+                        lastActive: now,
+                        claimedAt: now
+                    });
+                    return true;
+                } else if (currentActive.uid === uid) {
+                    await activeRef.update({ lastActive: now });
+                    return true;
                 } else {
-                    isActiveAdmin = false;
-                    roleBadge.innerHTML = '<i class="fas fa-eye"></i> 👁️ নিষ্ক্রিয় মোড (শুধু দেখার অনুমতি)';
-                    roleBadge.classList.add('role-inactive');
-                    showToast('অন্য একজন এডমিন সক্রিয় আছেন। আপনি শুধু দেখতে পারবেন।', 'info');
+                    return false;
                 }
-                updateAdminModeUI();
-                filterOrders();
-            } catch (err) {
-                console.error('Transaction failed', err);
-                isActiveAdmin = false;
-                roleBadge.innerHTML = '⚠️ স্ট্যাটাস অজানা (শুধু ভিউ)';
-                roleBadge.classList.add('role-inactive');
-                updateAdminModeUI();
+            } catch(e) {
+                console.warn("Claim active admin error:", e);
+                return false;
             }
         }
         
-        function listenActiveAdminChanges(user) {
-            if (activeAdminRef) activeAdminRef.off();
-            activeAdminRef = database.ref('activeAdmin');
-            activeAdminRef.on('value', (snapshot) => {
-                const active = snapshot.val();
-                // Update UI for current active admin
-                if (active && active.name) {
-                    currentActiveAdminEl.innerHTML = `${active.name} (${active.email || active.uid.substring(0,8)})`;
-                    const activeTime = active.activeSince ? new Date(active.activeSince).toLocaleString('bn-BD') : 'অজানা';
-                    currentActiveTimeEl.innerHTML = `সক্রিয় থেকে: ${activeTime}`;
+        async function renewActiveAdmin(uid) {
+            if (!isActiveAdmin) return;
+            const activeRef = database.ref('activeAdmin');
+            try {
+                const snapshot = await activeRef.once('value');
+                const current = snapshot.val();
+                if (current && current.uid === uid) {
+                    await activeRef.update({ lastActive: Date.now() });
                 } else {
-                    currentActiveAdminEl.innerHTML = 'কেউ সক্রিয় নয়';
-                    currentActiveTimeEl.innerHTML = '';
-                }
-                
-                if (!active && currentAdminUid && !isActiveAdmin) {
-                    console.log('Active admin removed, attempting to become active...');
-                    tryBecomeActiveAdmin({ uid: currentAdminUid, email: currentAdminEmail, displayName: adminName.innerText });
-                } else if (active && active.uid === currentAdminUid && !isActiveAdmin) {
-                    isActiveAdmin = true;
-                    roleBadge.innerHTML = '<i class="fas fa-check-circle"></i> ✅ সক্রিয় এডমিন (অ্যাকশন করতে পারবেন)';
-                    roleBadge.classList.remove('role-inactive');
-                    updateAdminModeUI();
-                    filterOrders();
-                } else if (active && active.uid !== currentAdminUid && isActiveAdmin) {
                     isActiveAdmin = false;
-                    roleBadge.innerHTML = '<i class="fas fa-eye"></i> 👁️ নিষ্ক্রিয় মোড (শুধু দেখার অনুমতি)';
-                    roleBadge.classList.add('role-inactive');
-                    updateAdminModeUI();
+                    showToast('আপনি আর সক্রিয় এডমিন নন। অ্যাকশন বাটন বন্ধ হয়েছে।', 'info');
                     filterOrders();
-                    if (onlineStatusInterval) clearInterval(onlineStatusInterval);
                 }
-            });
+            } catch(e) { console.warn("Renew active failed", e); }
         }
         
-        // Watch publicAdminInfo to show the most recent lastActive
-        function listenPublicAdminInfo() {
-            if (publicInfoRef) publicInfoRef.off();
-            publicInfoRef = database.ref('publicAdminInfo');
-            publicInfoRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (!data) {
-                    lastActiveAdminEl.innerHTML = 'কোন তথ্য নেই';
-                    lastActiveTimeEl.innerHTML = '';
-                    return;
+        async function releaseActiveAdmin(uid) {
+            if (!isActiveAdmin) return;
+            const activeRef = database.ref('activeAdmin');
+            try {
+                const snapshot = await activeRef.once('value');
+                const current = snapshot.val();
+                if (current && current.uid === uid) {
+                    await activeRef.remove();
                 }
-                let latest = null;
-                let latestTime = 0;
-                for (const uid in data) {
-                    const admin = data[uid];
-                    if (admin.lastActive) {
-                        const time = new Date(admin.lastActive).getTime();
-                        if (time > latestTime) {
-                            latestTime = time;
-                            latest = admin;
+            } catch(e) { console.warn("Release active failed", e); }
+        }
+        
+        async function attemptClaimIfNeeded() {
+            if (!currentAdminUid) return;
+            const activeRef = database.ref('activeAdmin');
+            const snapshot = await activeRef.once('value');
+            const current = snapshot.val();
+            const now = Date.now();
+            const isExpired = !current || (now - (current.lastActive || 0) > 120000);
+            const isAlreadyActive = (current && current.uid === currentAdminUid);
+            if (isExpired && !isAlreadyActive) {
+                const userInfo = { email: currentAdminEmail, name: adminName.innerText };
+                const claimed = await tryClaimActiveAdmin(currentAdminUid, userInfo);
+                if (claimed) {
+                    isActiveAdmin = true;
+                    await updatePublicInfoIfActive({ uid: currentAdminUid, email: currentAdminEmail, displayName: adminName.innerText });
+                    showToast('আপনি এখন সক্রিয় এডমিন হয়েছেন।', 'success');
+                    filterOrders();
+                }
+            } else if (isAlreadyActive) {
+                await renewActiveAdmin(currentAdminUid);
+            }
+        }
+        
+        function listenActiveAdminChanges() {
+            if (activeAdminListenerRef) {
+                database.ref('activeAdmin').off('value', activeAdminListenerRef);
+            }
+            activeAdminListenerRef = database.ref('activeAdmin').on('value', async (snapshot) => {
+                const active = snapshot.val();
+                const now = Date.now();
+                const isExpired = !active || (now - (active.lastActive || 0) > 120000);
+                
+                if (active && active.uid === currentAdminUid) {
+                    if (!isActiveAdmin) {
+                        isActiveAdmin = true;
+                        showToast('আপনি সক্রিয় এডমিন হয়েছেন। অর্ডার সম্পন্ন/বাতিল করতে পারবেন।', 'success');
+                        filterOrders();
+                    }
+                } else {
+                    if (isActiveAdmin) {
+                        isActiveAdmin = false;
+                        showToast('অন্য এডমিন সক্রিয় হয়েছেন। আপনার অ্যাকশন বাটন বন্ধ আছে।', 'info');
+                        filterOrders();
+                    } else {
+                        isActiveAdmin = false;
+                    }
+                    
+                    // If no active admin or expired, try to claim
+                    if ((!active || isExpired) && currentAdminUid) {
+                        const userInfo = { email: currentAdminEmail, name: adminName.innerText };
+                        const claimed = await tryClaimActiveAdmin(currentAdminUid, userInfo);
+                        if (claimed) {
+                            isActiveAdmin = true;
+                            await updatePublicInfoIfActive({ uid: currentAdminUid, email: currentAdminEmail, displayName: adminName.innerText });
+                            showToast('আপনি এখন সক্রিয় এডমিন হয়েছেন।', 'success');
+                            filterOrders();
                         }
                     }
                 }
-                if (latest) {
-                    lastActiveAdminEl.innerHTML = `${latest.name} (${latest.number || 'নম্বর নেই'})`;
-                    lastActiveTimeEl.innerHTML = `সর্বশেষ সক্রিয়: ${new Date(latest.lastActive).toLocaleString('bn-BD')}`;
-                } else {
-                    lastActiveAdminEl.innerHTML = 'কোনো lastActive তথ্য নেই';
-                    lastActiveTimeEl.innerHTML = '';
-                }
+                updateSystemInfo();
             });
         }
         
-        async function clearActiveOnLogout() {
-            if (isActiveAdmin && currentAdminUid) {
-                const activeSnap = await database.ref('activeAdmin').once('value');
-                if (activeSnap.val() && activeSnap.val().uid === currentAdminUid) {
-                    await database.ref('activeAdmin').remove();
-                }
-                if (activeAdminDisconnectRef) {
-                    activeAdminDisconnectRef.cancel();
-                }
-            }
-        }
-        
-        async function updateOnlineStatus(user) {
+        // Update public info ONLY if active admin
+        async function updatePublicInfoIfActive(user) {
             if (!user || !isActiveAdmin) return;
-            const uid = user.uid;
             try {
-                const adminSnapshot = await database.ref(`adminUsers/${uid}`).once('value');
+                const adminSnapshot = await database.ref(`adminUsers/${user.uid}`).once('value');
                 const adminData = adminSnapshot.val();
                 if (adminData && adminData.number) {
                     const publicInfo = {
                         name: adminData.name || user.displayName || 'Admin',
                         number: adminData.number,
                         lastActive: new Date().toISOString(),
-                        role: 'active'
+                        uid: user.uid
                     };
-                    await database.ref(`publicAdminInfo/${uid}`).set(publicInfo);
+                    await database.ref(`publicAdminInfo/${user.uid}`).set(publicInfo);
                 } else {
-                    await database.ref(`adminUsers/${uid}`).update({
-                        lastActive: firebase.database.ServerValue.TIMESTAMP,
-                        status: 'active'
+                    await database.ref(`adminUsers/${user.uid}`).update({
+                        lastActive: firebase.database.ServerValue.TIMESTAMP
                     });
                 }
             } catch (error) {
-                console.error("Update online status failed:", error);
+                console.error("Update public info failed:", error);
             }
         }
         
-        function startOnlineStatusUpdates(user) {
+        function startHeartbeat(user) {
             if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-            if (!isActiveAdmin) return;
-            updateOnlineStatus(user);
-            onlineStatusInterval = setInterval(() => {
-                if (isActiveAdmin) updateOnlineStatus(user);
-            }, 60000);
-        }
-        
-        function updateAdminModeUI() {
-            if (orders.length) filterOrders();
-            const infoMsg = isActiveAdmin ? '✅ সক্রিয় এডমিন (অর্ডার পরিবর্তন করতে পারবেন)' : '⛔ নিষ্ক্রিয় মোড (শুধু দেখা যাবে)';
-            systemInfo.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;"><div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div><div><strong>ভূমিকা:</strong> ${infoMsg}</div><div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div><div><strong>স্ট্যাটাস:</strong> অনলাইন</div></div>`;
+            onlineStatusInterval = setInterval(async () => {
+                if (user && currentAdminUid) {
+                    if (isActiveAdmin) {
+                        await renewActiveAdmin(currentAdminUid);
+                        await updatePublicInfoIfActive(user);
+                    }
+                }
+            }, 30000);
         }
         
         async function loadAdminData(user) {
@@ -949,7 +863,7 @@
                     name: user.displayName || '',
                     photoURL: user.photoURL || '',
                     lastLogin: firebase.database.ServerValue.TIMESTAMP,
-                    status: 'logged_in'
+                    status: 'active'
                 });
             } catch (err) { console.warn("Save admin info failed:", err); }
         }
@@ -960,10 +874,20 @@
                     currentAdminEmail = user.email;
                     currentAdminUid = user.uid;
                     await loadAdminData(user);
+                    
+                    const userInfo = { email: user.email, name: user.displayName || user.email };
+                    const claimed = await tryClaimActiveAdmin(user.uid, userInfo);
+                    isActiveAdmin = claimed;
+                    
+                    if (isActiveAdmin) {
+                        await updatePublicInfoIfActive(user);
+                    }
+                    
                     showAdminPanel();
-                    await tryBecomeActiveAdmin(user);
-                    listenActiveAdminChanges(user);
-                    listenPublicAdminInfo(); // নতুন: publicAdminInfo দেখার জন্য
+                    listenActiveAdminChanges();
+                    startHeartbeat(user);
+                    if (claimCheckInterval) clearInterval(claimCheckInterval);
+                    claimCheckInterval = setInterval(() => attemptClaimIfNeeded(), 30000);
                     loadOrders();
                 } else if (user) {
                     await auth.signOut();
@@ -971,8 +895,7 @@
                     showToast('এক্সেস নেই', 'error');
                 } else {
                     if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-                    if (activeAdminRef) activeAdminRef.off();
-                    if (publicInfoRef) publicInfoRef.off();
+                    if (claimCheckInterval) clearInterval(claimCheckInterval);
                     showLoginScreen();
                 }
             });
@@ -990,19 +913,22 @@
         
         async function handleLogout() {
             if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-            await clearActiveOnLogout();
+            if (claimCheckInterval) clearInterval(claimCheckInterval);
+            if (activeAdminListenerRef) {
+                database.ref('activeAdmin').off('value', activeAdminListenerRef);
+                activeAdminListenerRef = null;
+            }
+            if (isActiveAdmin) await releaseActiveAdmin(currentAdminUid);
             await auth.signOut();
             showLoginScreen();
             showToast('লগ আউট', 'success');
         }
         
         function showLoginScreen() { loginScreen.style.display = 'flex'; adminPanel.style.display = 'none'; }
-        function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; }
+        function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
         
         async function loadOrders() {
-            ordersTable.innerHTML = '    ...
-
-                            <td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>    </tr>';
+            ordersTable.innerHTML = ' 有机会<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>  </tr>';
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -1012,9 +938,7 @@
                 filterOrders();
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
             } catch(e) {
-                ordersTable.innerHTML = `    ...
-
-                            <td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button>    </tr>`;
+                ordersTable.innerHTML = ` 有机会<td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button>  </tr>`;
             }
         }
         
@@ -1041,14 +965,15 @@
         }
         
         async function completeOrder(trxId, event) {
+            if (!isActiveAdmin) { showToast('শুধুমাত্র সক্রিয় এডমিন অর্ডার সম্পন্ন করতে পারেন', 'error'); return; }
             event.stopPropagation();
-            if (!isActiveAdmin) { showToast('আপনি নিষ্ক্রিয় মোডে আছেন, অর্ডার পরিবর্তন করতে পারবেন না।', 'error'); return; }
             if (!confirm('এই অর্ডারটি কি সম্পন্ন করতে চান?')) return;
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>...';
             btn.disabled = true;
             try {
+                showToast('অর্ডার সম্পন্ন করা হচ্ছে...', 'info');
                 const orderData = orders.find(o => o.trx === trxId);
                 const response = await fetch('/api/order_completed', {
                     method: 'POST',
@@ -1063,6 +988,7 @@
                     showToast('✅ অর্ডার সম্পন্ন হয়েছে', 'success');
                 } else throw new Error(result.error || 'API failed');
             } catch(e) {
+                console.error('Complete error:', e);
                 showToast('সম্পন্ন করতে ব্যর্থ: ' + e.message, 'error');
             } finally {
                 btn.innerHTML = originalText;
@@ -1071,14 +997,15 @@
         }
         
         async function cancelOrder(trxId, event) {
+            if (!isActiveAdmin) { showToast('শুধুমাত্র সক্রিয় এডমিন অর্ডার বাতিল করতে পারেন', 'error'); return; }
             event.stopPropagation();
-            if (!isActiveAdmin) { showToast('আপনি নিষ্ক্রিয় মোডে আছেন, অর্ডার পরিবর্তন করতে পারবেন না।', 'error'); return; }
-            if (!confirm('এই অর্ডারটি কি বাতিল (ফেল) করতে চান?')) return;
+            if (!confirm('এই অর্ডারটি কি বাতিল (ফেল) করতে চান? স্ট্যাটাস "fail" এ সেট হবে।')) return;
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>...';
             btn.disabled = true;
             try {
+                showToast('অর্ডার ফেল হিসেবে আপডেট করা হচ্ছে...', 'info');
                 const orderData = orders.find(o => o.trx === trxId);
                 const response = await fetch('/api/order_completed', {
                     method: 'POST',
@@ -1093,6 +1020,7 @@
                     showToast('✅ অর্ডার ফেল করা হয়েছে', 'success');
                 } else throw new Error(result.error || 'API failed');
             } catch(e) {
+                console.error('Cancel error:', e);
                 showToast('অর্ডার ফেল করতে ব্যর্থ: ' + e.message, 'error');
             } finally {
                 btn.innerHTML = originalText;
@@ -1102,9 +1030,7 @@
         
         function displayOrders(list) {
             if (!list.length) {
-                ordersTable.innerHTML = '    ...
-
-                            <td colspan="8" class="no-data">কোন অর্ডার নেই    </tr>';
+                ordersTable.innerHTML = ' 有机会<td colspan="8" class="no-data">কোন অর্ডার নেই</tr>';
                 return;
             }
             let html = '';
@@ -1123,27 +1049,29 @@
                 const isPending = (o.orderStatus === 'created');
                 
                 let actionButtonsHtml = '';
-                if (isActiveAdmin && isPending) {
+                if (isPending && isActiveAdmin) {
                     actionButtonsHtml = `
                         <div class="action-buttons" onclick="event.stopPropagation()">
                             <button class="action-btn action-complete" onclick="completeOrder('${o.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button>
                             <button class="action-btn action-cancel" onclick="cancelOrder('${o.trx}', event)"><i class="fas fa-ban"></i> ক্যানসেল</button>
                         </div>
                     `;
+                } else if (isPending && !isActiveAdmin) {
+                    actionButtonsHtml = '<span style="color:#888; font-size:12px;">(শুধু অ্যাক্টিভ এডমিন)</span>';
                 } else {
                     actionButtonsHtml = '<span style="color:#888;">—</span>';
                 }
                 
                 html += `<tr onclick="showOrderDetails('${o.trx}')" style="cursor:pointer;">
-                    <td style="font-family:monospace;">${o.trx || 'N/A'}    </td>
-                    <td>${date}    </td>
-                    <td><span class="status-badge ${statusClass}">${statusText}</span>    </td>
-                    <td><div style="max-width:200px;font-size:0.85rem;">${items}</div>    </td>
-                    <td style="color:#00bcd4;">${total} ${currency}    </td>
-                    <td><div style="max-width:150px;font-size:0.9rem; font-weight:500;" title="${adminNumber}">${adminNumber.substring(0,30)}${adminNumber.length>30?'...':''}</div>    </td>
-                    <td>${o.paymentCurrency || currency}    </td>
-                    <td>${actionButtonsHtml}    </td>
-                </tr>`;
+                    <td style="font-family:monospace;">${o.trx || 'N/A'}  </td>
+                    <td>${date}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
+                    <td style="color:#00bcd4;">${total} ${currency}</td>
+                    <td><div style="max-width:150px;font-size:0.9rem; font-weight:500;" title="${adminNumber}">${adminNumber.substring(0,30)}${adminNumber.length>30?'...':''}</div></td>
+                    <td>${o.paymentCurrency || currency}</td>
+                    <td>${actionButtonsHtml}</td>
+                 </tr>`;
             });
             ordersTable.innerHTML = html;
         }
@@ -1184,15 +1112,45 @@
             orderDetailsModal.classList.add('active');
         };
         
-        window.copyToClipboard = function(text) {
-            navigator.clipboard.writeText(text).then(() => showToast('কপি করা হয়েছে!', 'success')).catch(() => showToast('কপি ব্যর্থ', 'error'));
-        };
+        window.copyToClipboard = function(text) { navigator.clipboard.writeText(text).then(() => showToast('কপি করা হয়েছে!', 'success')).catch(() => showToast('কপি ব্যর্থ', 'error')); };
         
         function updateStats(list) {
             totalOrdersEl.textContent = list.length;
             pendingOrdersEl.textContent = list.filter(o => o.orderStatus === 'created').length;
             completedOrdersEl.textContent = list.filter(o => o.orderStatus === 'finished').length;
             cancelledOrdersEl.textContent = list.filter(o => o.orderStatus === 'cancelled' || o.orderStatus === 'fail').length;
+        }
+        
+        async function updateSystemInfo() {
+            let activeStatusText = isActiveAdmin ? '✅ সক্রিয় (অ্যাকশন সক্ষম)' : '⛔ নিষ্ক্রিয় (শুধু ভিউ)';
+            
+            // Get currently active admin info from activeAdmin node
+            let activeAdminInfo = '';
+            try {
+                const activeSnapshot = await database.ref('activeAdmin').once('value');
+                const active = activeSnapshot.val();
+                if (active && active.name && active.lastActive) {
+                    const lastActiveTime = new Date(active.lastActive).toLocaleString('bn-BD');
+                    activeAdminInfo = `<div><strong>সক্রিয় এডমিন:</strong> ${active.name} (সর্বশেষ: ${lastActiveTime})</div>`;
+                } else {
+                    activeAdminInfo = `<div><strong>সক্রিয় এডমিন:</strong> কেউ নেই</div>`;
+                }
+            } catch(e) {
+                activeAdminInfo = `<div><strong>সক্রিয় এডমিন:</strong> ত্রুটি</div>`;
+            }
+            
+            systemInfo.innerHTML = `
+                <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                    <div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div>
+                    <div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div>
+                    <div><strong>এডমিন ভূমিকা:</strong> ${activeStatusText}</div>
+                    <div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div>
+                    <div><strong>স্ট্যাটাস:</strong> অনলাইন</div>
+                </div>
+                <div style="margin-top:10px; border-top:1px solid rgba(255,152,0,0.3); padding-top:10px;">
+                    ${activeAdminInfo}
+                </div>
+            `;
         }
         
         function showToast(msg, type) {
