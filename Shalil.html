@@ -635,14 +635,17 @@
         </div>
     </div>
 
+    <!-- Modal for Order Details -->
     <div class="modal" id="orderDetailsModal">
         <div class="modal-content">
             <button class="modal-close" id="closeDetailsModalBtn">&times;</button>
             <h2 class="modal-title">অর্ডার বিস্তারিত</h2>
+            
             <div class="modal-section">
                 <div class="modal-section-title">অর্ডার তথ্য</div>
                 <div class="order-info-grid" id="orderInfoGrid"></div>
             </div>
+            
             <div class="modal-section">
                 <div class="modal-section-title">রেফারেন্স তথ্য <i class="fas fa-copy" style="font-size:0.8rem; margin-left:5px;"></i> <span style="font-size:0.75rem;">(ক্লিক করে কপি করুন)</span></div>
                 <div id="referenceContainer"></div>
@@ -665,13 +668,13 @@
         const auth = firebase.auth();
         const database = firebase.database();
 
-        let orders = [], currentAdminEmail = null, currentAdminUid = null;
+        let orders = [], currentAdminEmail = null, currentAdminUid = null, currentAdminName = null;
         let onlineStatusInterval = null;
-        let claimCheckInterval = null;
-        let activeAdminListenerRef = null;
-        let isActiveAdmin = false;
-        
+        let publicInfoListener = null;
+        let isActiveAdmin = false;      // current user is the active admin
+
         const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
+        const ACTIVE_THRESHOLD_MS = 120000; // 2 minutes
 
         // DOM Elements
         const loginScreen = document.getElementById('loginScreen'), adminPanel = document.getElementById('adminPanel');
@@ -697,164 +700,95 @@
             closeDetailsModalBtn.onclick = () => orderDetailsModal.classList.remove('active');
             window.onclick = (e) => { if (e.target === orderDetailsModal) orderDetailsModal.classList.remove('active'); };
         }
-        
-        // --- Active Admin Logic ---
-        async function tryClaimActiveAdmin(uid, userInfo) {
-            const activeRef = database.ref('activeAdmin');
-            try {
-                const snapshot = await activeRef.once('value');
-                const currentActive = snapshot.val();
-                const now = Date.now();
-                // No active admin or expired (2 min)
-                if (!currentActive || (now - (currentActive.lastActive || 0) > 120000)) {
-                    await activeRef.set({
-                        uid: uid,
-                        email: userInfo.email,
-                        name: userInfo.name,
-                        lastActive: now,
-                        claimedAt: now
-                    });
-                    return true;
-                } else if (currentActive.uid === uid) {
-                    await activeRef.update({ lastActive: now });
-                    return true;
-                } else {
-                    return false;
-                }
-            } catch(e) {
-                console.warn("Claim active admin error:", e);
-                return false;
-            }
-        }
-        
-        async function renewActiveAdmin(uid) {
-            if (!isActiveAdmin) return;
-            const activeRef = database.ref('activeAdmin');
-            try {
-                const snapshot = await activeRef.once('value');
-                const current = snapshot.val();
-                if (current && current.uid === uid) {
-                    await activeRef.update({ lastActive: Date.now() });
-                } else {
-                    isActiveAdmin = false;
-                    showToast('আপনি আর সক্রিয় এডমিন নন। অ্যাকশন বাটন বন্ধ হয়েছে।', 'info');
-                    filterOrders();
-                }
-            } catch(e) { console.warn("Renew active failed", e); }
-        }
-        
-        async function releaseActiveAdmin(uid) {
-            if (!isActiveAdmin) return;
-            const activeRef = database.ref('activeAdmin');
-            try {
-                const snapshot = await activeRef.once('value');
-                const current = snapshot.val();
-                if (current && current.uid === uid) {
-                    await activeRef.remove();
-                }
-            } catch(e) { console.warn("Release active failed", e); }
-        }
-        
-        async function attemptClaimIfNeeded() {
-            if (!currentAdminUid) return;
-            const activeRef = database.ref('activeAdmin');
-            const snapshot = await activeRef.once('value');
-            const current = snapshot.val();
+
+        // --- Active Admin Logic based on publicAdminInfo timestamps ---
+        function determineActiveAdmin(adminInfo) {
+            // adminInfo is an object with uid keys, each containing { name, lastActive? , number? }
+            let mostRecent = null;
+            let activeUid = null;
             const now = Date.now();
-            const isExpired = !current || (now - (current.lastActive || 0) > 120000);
-            const isAlreadyActive = (current && current.uid === currentAdminUid);
-            if (isExpired && !isAlreadyActive) {
-                const userInfo = { email: currentAdminEmail, name: adminName.innerText };
-                const claimed = await tryClaimActiveAdmin(currentAdminUid, userInfo);
-                if (claimed) {
-                    isActiveAdmin = true;
-                    await updatePublicInfoIfActive({ uid: currentAdminUid, email: currentAdminEmail, displayName: adminName.innerText });
-                    showToast('আপনি এখন সক্রিয় এডমিন হয়েছেন।', 'success');
-                    filterOrders();
-                }
-            } else if (isAlreadyActive) {
-                await renewActiveAdmin(currentAdminUid);
-            }
-        }
-        
-        function listenActiveAdminChanges() {
-            if (activeAdminListenerRef) {
-                database.ref('activeAdmin').off('value', activeAdminListenerRef);
-            }
-            activeAdminListenerRef = database.ref('activeAdmin').on('value', async (snapshot) => {
-                const active = snapshot.val();
-                const now = Date.now();
-                const isExpired = !active || (now - (active.lastActive || 0) > 120000);
-                
-                if (active && active.uid === currentAdminUid) {
-                    if (!isActiveAdmin) {
-                        isActiveAdmin = true;
-                        showToast('আপনি সক্রিয় এডমিন হয়েছেন। অর্ডার সম্পন্ন/বাতিল করতে পারবেন।', 'success');
-                        filterOrders();
-                    }
-                } else {
-                    if (isActiveAdmin) {
-                        isActiveAdmin = false;
-                        showToast('অন্য এডমিন সক্রিয় হয়েছেন। আপনার অ্যাকশন বাটন বন্ধ আছে।', 'info');
-                        filterOrders();
-                    } else {
-                        isActiveAdmin = false;
-                    }
-                    
-                    // If no active admin or expired, try to claim
-                    if ((!active || isExpired) && currentAdminUid) {
-                        const userInfo = { email: currentAdminEmail, name: adminName.innerText };
-                        const claimed = await tryClaimActiveAdmin(currentAdminUid, userInfo);
-                        if (claimed) {
-                            isActiveAdmin = true;
-                            await updatePublicInfoIfActive({ uid: currentAdminUid, email: currentAdminEmail, displayName: adminName.innerText });
-                            showToast('আপনি এখন সক্রিয় এডমিন হয়েছেন।', 'success');
-                            filterOrders();
+            for (const [uid, data] of Object.entries(adminInfo || {})) {
+                if (data.lastActive) {
+                    const lastActiveTime = new Date(data.lastActive).getTime();
+                    const age = now - lastActiveTime;
+                    if (age <= ACTIVE_THRESHOLD_MS) {
+                        if (!mostRecent || lastActiveTime > mostRecent) {
+                            mostRecent = lastActiveTime;
+                            activeUid = uid;
                         }
                     }
                 }
-                updateSystemInfo();
-            });
+            }
+            return activeUid;
         }
-        
-        // Update public info ONLY if active admin
-        async function updatePublicInfoIfActive(user) {
-            if (!user || !isActiveAdmin) return;
+
+        async function updateMyStatusIfActive() {
+            if (!isActiveAdmin || !currentAdminUid) return;
             try {
-                const adminSnapshot = await database.ref(`adminUsers/${user.uid}`).once('value');
-                const adminData = adminSnapshot.val();
-                if (adminData && adminData.number) {
-                    const publicInfo = {
-                        name: adminData.name || user.displayName || 'Admin',
-                        number: adminData.number,
-                        lastActive: new Date().toISOString(),
-                        uid: user.uid
-                    };
-                    await database.ref(`publicAdminInfo/${user.uid}`).set(publicInfo);
-                } else {
-                    await database.ref(`adminUsers/${user.uid}`).update({
-                        lastActive: firebase.database.ServerValue.TIMESTAMP
-                    });
-                }
-            } catch (error) {
-                console.error("Update public info failed:", error);
+                await database.ref(`publicAdminInfo/${currentAdminUid}`).update({
+                    lastActive: new Date().toISOString(),
+                    name: currentAdminName || currentAdminEmail,
+                    number: currentAdminEmail // placeholder, can be improved
+                });
+            } catch (e) {
+                console.warn("Failed to update status:", e);
             }
         }
-        
-        function startHeartbeat(user) {
-            if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-            onlineStatusInterval = setInterval(async () => {
-                if (user && currentAdminUid) {
+
+        async function removeMyStatus() {
+            if (!currentAdminUid) return;
+            try {
+                await database.ref(`publicAdminInfo/${currentAdminUid}`).remove();
+            } catch (e) {
+                console.warn("Failed to remove status:", e);
+            }
+        }
+
+        function listenPublicAdminInfo() {
+            if (publicInfoListener) {
+                database.ref('publicAdminInfo').off('value', publicInfoListener);
+            }
+            publicInfoListener = database.ref('publicAdminInfo').on('value', async (snapshot) => {
+                const adminInfo = snapshot.val();
+                const activeUid = determineActiveAdmin(adminInfo);
+                const wasActive = isActiveAdmin;
+                isActiveAdmin = (activeUid === currentAdminUid);
+                if (wasActive !== isActiveAdmin) {
+                    // role changed
                     if (isActiveAdmin) {
-                        await renewActiveAdmin(currentAdminUid);
-                        await updatePublicInfoIfActive(user);
+                        showToast('আপনি এখন সক্রিয় এডমিন। অর্ডার সম্পন্ন/বাতিল করতে পারবেন।', 'success');
+                        // immediately update status to become active
+                        await updateMyStatusIfActive();
+                    } else {
+                        if (activeUid && adminInfo[activeUid]) {
+                            showToast(`সক্রিয় এডমিন: ${adminInfo[activeUid].name || activeUid}. আপনি শুধু দেখতে পারবেন।`, 'info');
+                        } else {
+                            showToast('আপনি সক্রিয় এডমিন নন। অ্যাকশন বাটন বন্ধ আছে।', 'info');
+                        }
+                    }
+                    filterOrders(); // refresh action buttons visibility
+                } else {
+                    // if we are active, ensure our timestamp is refreshed (may be needed after becoming active)
+                    if (isActiveAdmin) {
+                        await updateMyStatusIfActive();
                     }
                 }
-            }, 30000);
+                updateSystemInfo(adminInfo, activeUid);
+            });
         }
-        
+
+        function startHeartbeat() {
+            if (onlineStatusInterval) clearInterval(onlineStatusInterval);
+            onlineStatusInterval = setInterval(() => {
+                if (isActiveAdmin && currentAdminUid) {
+                    updateMyStatusIfActive();
+                }
+            }, 30000); // every 30 seconds
+        }
+
         async function loadAdminData(user) {
-            adminName.textContent = user.displayName || user.email;
+            currentAdminName = user.displayName || user.email;
+            adminName.textContent = currentAdminName;
             adminEmail.textContent = user.email;
             adminAvatar.innerHTML = user.photoURL ? `<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">` : `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
             try {
@@ -867,7 +801,7 @@
                 });
             } catch (err) { console.warn("Save admin info failed:", err); }
         }
-        
+
         function checkAdminAuth() {
             auth.onAuthStateChanged(async (user) => {
                 if (user && ALLOWED_ADMIN_EMAILS.includes(user.email)) {
@@ -875,19 +809,24 @@
                     currentAdminUid = user.uid;
                     await loadAdminData(user);
                     
-                    const userInfo = { email: user.email, name: user.displayName || user.email };
-                    const claimed = await tryClaimActiveAdmin(user.uid, userInfo);
-                    isActiveAdmin = claimed;
+                    // Initialize: first determine if we should be active based on current publicInfo
+                    const snapshot = await database.ref('publicAdminInfo').once('value');
+                    const adminInfo = snapshot.val();
+                    const activeUid = determineActiveAdmin(adminInfo);
+                    isActiveAdmin = (activeUid === currentAdminUid);
                     
+                    // If we are active, immediately write our timestamp to claim
                     if (isActiveAdmin) {
-                        await updatePublicInfoIfActive(user);
+                        await updateMyStatusIfActive();
+                    } else if (!activeUid) {
+                        // No active admin at all -> we become active
+                        isActiveAdmin = true;
+                        await updateMyStatusIfActive();
                     }
                     
                     showAdminPanel();
-                    listenActiveAdminChanges();
-                    startHeartbeat(user);
-                    if (claimCheckInterval) clearInterval(claimCheckInterval);
-                    claimCheckInterval = setInterval(() => attemptClaimIfNeeded(), 30000);
+                    listenPublicAdminInfo(); // start listening for changes
+                    startHeartbeat();
                     loadOrders();
                 } else if (user) {
                     await auth.signOut();
@@ -895,7 +834,10 @@
                     showToast('এক্সেস নেই', 'error');
                 } else {
                     if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-                    if (claimCheckInterval) clearInterval(claimCheckInterval);
+                    if (publicInfoListener) {
+                        database.ref('publicAdminInfo').off('value', publicInfoListener);
+                        publicInfoListener = null;
+                    }
                     showLoginScreen();
                 }
             });
@@ -913,12 +855,11 @@
         
         async function handleLogout() {
             if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-            if (claimCheckInterval) clearInterval(claimCheckInterval);
-            if (activeAdminListenerRef) {
-                database.ref('activeAdmin').off('value', activeAdminListenerRef);
-                activeAdminListenerRef = null;
+            if (publicInfoListener) {
+                database.ref('publicAdminInfo').off('value', publicInfoListener);
+                publicInfoListener = null;
             }
-            if (isActiveAdmin) await releaseActiveAdmin(currentAdminUid);
+            if (isActiveAdmin) await removeMyStatus();
             await auth.signOut();
             showLoginScreen();
             showToast('লগ আউট', 'success');
@@ -928,7 +869,7 @@
         function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
         
         async function loadOrders() {
-            ordersTable.innerHTML = ' 有机会<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>  </tr>';
+            ordersTable.innerHTML = ' 有机会<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>   </td>' ;
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -938,7 +879,7 @@
                 filterOrders();
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
             } catch(e) {
-                ordersTable.innerHTML = ` 有机会<td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button>  </tr>`;
+                ordersTable.innerHTML = ` 有机会<td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button>   </td>' ;
             }
         }
         
@@ -1030,7 +971,7 @@
         
         function displayOrders(list) {
             if (!list.length) {
-                ordersTable.innerHTML = ' 有机会<td colspan="8" class="no-data">কোন অর্ডার নেই</tr>';
+                ordersTable.innerHTML = ' 有机会<td colspan="8" class="no-data">কোন অর্ডার নেই</td>' ;
                 return;
             }
             let html = '';
@@ -1063,7 +1004,7 @@
                 }
                 
                 html += `<tr onclick="showOrderDetails('${o.trx}')" style="cursor:pointer;">
-                    <td style="font-family:monospace;">${o.trx || 'N/A'}  </td>
+                    <td style="font-family:monospace;">${o.trx || 'N/A'}   </td>
                     <td>${date}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
@@ -1071,7 +1012,7 @@
                     <td><div style="max-width:150px;font-size:0.9rem; font-weight:500;" title="${adminNumber}">${adminNumber.substring(0,30)}${adminNumber.length>30?'...':''}</div></td>
                     <td>${o.paymentCurrency || currency}</td>
                     <td>${actionButtonsHtml}</td>
-                 </tr>`;
+                  </tr>`;
             });
             ordersTable.innerHTML = html;
         }
@@ -1121,23 +1062,23 @@
             cancelledOrdersEl.textContent = list.filter(o => o.orderStatus === 'cancelled' || o.orderStatus === 'fail').length;
         }
         
-        async function updateSystemInfo() {
+        async function updateSystemInfo(adminInfo = null, activeUid = null) {
             let activeStatusText = isActiveAdmin ? '✅ সক্রিয় (অ্যাকশন সক্ষম)' : '⛔ নিষ্ক্রিয় (শুধু ভিউ)';
-            
-            // Get currently active admin info from activeAdmin node
-            let activeAdminInfo = '';
-            try {
-                const activeSnapshot = await database.ref('activeAdmin').once('value');
-                const active = activeSnapshot.val();
-                if (active && active.name && active.lastActive) {
-                    const lastActiveTime = new Date(active.lastActive).toLocaleString('bn-BD');
-                    activeAdminInfo = `<div><strong>সক্রিয় এডমিন:</strong> ${active.name} (সর্বশেষ: ${lastActiveTime})</div>`;
-                } else {
-                    activeAdminInfo = `<div><strong>সক্রিয় এডমিন:</strong> কেউ নেই</div>`;
-                }
-            } catch(e) {
-                activeAdminInfo = `<div><strong>সক্রিয় এডমিন:</strong> ত্রুটি</div>`;
+            let activeAdminHtml = '<div><strong>সক্রিয় এডমিন:</strong> ';
+
+            if (!adminInfo) {
+                const snapshot = await database.ref('publicAdminInfo').once('value');
+                adminInfo = snapshot.val();
+                activeUid = determineActiveAdmin(adminInfo);
             }
+            if (activeUid && adminInfo && adminInfo[activeUid]) {
+                const activeAdminData = adminInfo[activeUid];
+                const lastActiveTime = activeAdminData.lastActive ? new Date(activeAdminData.lastActive).toLocaleString('bn-BD') : 'অজানা';
+                activeAdminHtml += `${activeAdminData.name || activeUid} (সর্বশেষ: ${lastActiveTime})`;
+            } else {
+                activeAdminHtml += `কেউ নেই`;
+            }
+            activeAdminHtml += '</div>';
             
             systemInfo.innerHTML = `
                 <div style="display:flex; gap:20px; flex-wrap:wrap;">
@@ -1148,7 +1089,7 @@
                     <div><strong>স্ট্যাটাস:</strong> অনলাইন</div>
                 </div>
                 <div style="margin-top:10px; border-top:1px solid rgba(255,152,0,0.3); padding-top:10px;">
-                    ${activeAdminInfo}
+                    ${activeAdminHtml}
                 </div>
             `;
         }
