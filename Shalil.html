@@ -635,7 +635,7 @@
         </div>
     </div>
 
-    <!-- New Modal for Order Details (No Link Generation) -->
+    <!-- Modal for Order Details -->
     <div class="modal" id="orderDetailsModal">
         <div class="modal-content">
             <button class="modal-close" id="closeDetailsModalBtn">&times;</button>
@@ -670,8 +670,10 @@
 
         let orders = [], currentAdminEmail = null, currentAdminUid = null;
         let onlineStatusInterval = null;
+        let isActiveAdmin = false;      // current user is the active (primary) admin
+        let activeAdminUid = null;      // uid of the active admin from DB
         
-        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
+        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'mdsojib138888@gmail.com', 'allwork204571@gmail.com'];
 
         // DOM Elements
         const loginScreen = document.getElementById('loginScreen'), adminPanel = document.getElementById('adminPanel');
@@ -680,8 +682,6 @@
         const totalOrdersEl = document.getElementById('totalOrders'), pendingOrdersEl = document.getElementById('pendingOrders'), completedOrdersEl = document.getElementById('completedOrders'), cancelledOrdersEl = document.getElementById('cancelledOrders');
         const orderCountEl = document.getElementById('orderCount'), systemInfo = document.getElementById('systemInfo'), ordersTable = document.getElementById('ordersTable');
         const orderFilter = document.getElementById('orderFilter'), orderSearch = document.getElementById('orderSearch'), dateFilter = document.getElementById('dateFilter');
-        
-        // New modal elements
         const orderDetailsModal = document.getElementById('orderDetailsModal');
         const closeDetailsModalBtn = document.getElementById('closeDetailsModalBtn');
         const orderInfoGrid = document.getElementById('orderInfoGrid');
@@ -700,36 +700,123 @@
             window.onclick = (e) => { if (e.target === orderDetailsModal) orderDetailsModal.classList.remove('active'); };
         }
         
-        // Admin online status update
-        async function updateOnlineStatus(user) {
-            if (!user) return;
-            const uid = user.uid;
+        // --- Active Admin Logic (only one admin writes status & has action buttons) ---
+        async function tryClaimActiveAdmin(uid, userInfo) {
+            const activeRef = database.ref('activeAdmin');
             try {
-                const adminSnapshot = await database.ref(`adminUsers/${uid}`).once('value');
+                const snapshot = await activeRef.once('value');
+                const currentActive = snapshot.val();
+                // If no active admin, or the existing one expired (lastActive older than 2 mins)
+                const now = Date.now();
+                if (!currentActive || (now - (currentActive.lastActive || 0) > 120000)) {
+                    // claim
+                    await activeRef.set({
+                        uid: uid,
+                        email: userInfo.email,
+                        name: userInfo.name,
+                        lastActive: now,
+                        claimedAt: now
+                    });
+                    return true;
+                } else if (currentActive.uid === uid) {
+                    // already active, just renew
+                    await activeRef.update({ lastActive: now });
+                    return true;
+                } else {
+                    // another admin is active
+                    return false;
+                }
+            } catch(e) {
+                console.warn("Claim active admin error:", e);
+                return false;
+            }
+        }
+        
+        async function renewActiveAdmin(uid) {
+            if (!isActiveAdmin) return;
+            const activeRef = database.ref('activeAdmin');
+            try {
+                const snapshot = await activeRef.once('value');
+                const current = snapshot.val();
+                if (current && current.uid === uid) {
+                    await activeRef.update({ lastActive: Date.now() });
+                } else {
+                    // lost active status, maybe another claimed
+                    isActiveAdmin = false;
+                    showToast('আপনি আর সক্রিয় এডমিন নন। অ্যাকশন বাটন বন্ধ হয়েছে।', 'info');
+                    filterOrders(); // re-render to hide buttons
+                }
+            } catch(e) { console.warn("Renew active failed", e); }
+        }
+        
+        async function releaseActiveAdmin(uid) {
+            if (!isActiveAdmin) return;
+            const activeRef = database.ref('activeAdmin');
+            try {
+                const snapshot = await activeRef.once('value');
+                const current = snapshot.val();
+                if (current && current.uid === uid) {
+                    await activeRef.remove();
+                }
+            } catch(e) { console.warn("Release active failed", e); }
+        }
+        
+        function listenActiveAdminChanges() {
+            database.ref('activeAdmin').on('value', (snapshot) => {
+                const active = snapshot.val();
+                if (active && active.uid === currentAdminUid) {
+                    if (!isActiveAdmin) {
+                        isActiveAdmin = true;
+                        showToast('আপনি সক্রিয় এডমিন হয়েছেন। অর্ডার সম্পন্ন/বাতিল করতে পারবেন।', 'success');
+                        filterOrders(); // re-render to show action buttons
+                    }
+                } else {
+                    if (isActiveAdmin) {
+                        isActiveAdmin = false;
+                        showToast('অন্য এডমিন সক্রিয় হয়েছেন। আপনার অ্যাকশন বাটন বন্ধ আছে।', 'info');
+                        filterOrders();
+                    } else {
+                        isActiveAdmin = false;
+                    }
+                }
+                updateSystemInfo();
+            });
+        }
+        
+        // Update public info ONLY if this admin is active
+        async function updatePublicInfoIfActive(user) {
+            if (!user || !isActiveAdmin) return;
+            try {
+                const adminSnapshot = await database.ref(`adminUsers/${user.uid}`).once('value');
                 const adminData = adminSnapshot.val();
                 if (adminData && adminData.number) {
                     const publicInfo = {
                         name: adminData.name || user.displayName || 'Admin',
                         number: adminData.number,
-                        lastActive: new Date().toISOString()
+                        lastActive: new Date().toISOString(),
+                        uid: user.uid
                     };
-                    await database.ref(`publicAdminInfo/${uid}`).set(publicInfo);
+                    await database.ref(`publicAdminInfo/${user.uid}`).set(publicInfo);
                 } else {
-                    await database.ref(`adminUsers/${uid}`).update({
+                    await database.ref(`adminUsers/${user.uid}`).update({
                         lastActive: firebase.database.ServerValue.TIMESTAMP
                     });
                 }
             } catch (error) {
-                console.error("Update online status failed:", error);
+                console.error("Update public info failed:", error);
             }
         }
         
-        function startOnlineStatusUpdates(user) {
+        function startHeartbeat(user) {
             if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-            updateOnlineStatus(user);
-            onlineStatusInterval = setInterval(() => {
-                updateOnlineStatus(user);
-            }, 60000);
+            onlineStatusInterval = setInterval(async () => {
+                if (user && currentAdminUid) {
+                    if (isActiveAdmin) {
+                        await renewActiveAdmin(currentAdminUid);
+                        await updatePublicInfoIfActive(user);
+                    }
+                }
+            }, 30000); // every 30 seconds
         }
         
         async function loadAdminData(user) {
@@ -753,8 +840,20 @@
                     currentAdminEmail = user.email;
                     currentAdminUid = user.uid;
                     await loadAdminData(user);
+                    
+                    // Try to claim active admin role
+                    const userInfo = { email: user.email, name: user.displayName || user.email };
+                    const claimed = await tryClaimActiveAdmin(user.uid, userInfo);
+                    isActiveAdmin = claimed;
+                    
+                    // If claimed, update public info; else, do not write to publicAdminInfo
+                    if (isActiveAdmin) {
+                        await updatePublicInfoIfActive(user);
+                    }
+                    
                     showAdminPanel();
-                    startOnlineStatusUpdates(user);
+                    listenActiveAdminChanges();  // listen for changes in active admin
+                    startHeartbeat(user);
                     loadOrders();
                 } else if (user) {
                     await auth.signOut();
@@ -779,6 +878,7 @@
         
         async function handleLogout() {
             if (onlineStatusInterval) clearInterval(onlineStatusInterval);
+            if (isActiveAdmin) await releaseActiveAdmin(currentAdminUid);
             await auth.signOut();
             showLoginScreen();
             showToast('লগ আউট', 'success');
@@ -788,7 +888,7 @@
         function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
         
         async function loadOrders() {
-            ordersTable.innerHTML = ' clothed<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>    </tr>';
+            ordersTable.innerHTML = '<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></td></tr>';
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -798,7 +898,7 @@
                 filterOrders();
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
             } catch(e) {
-                ordersTable.innerHTML = ` <tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
+                ordersTable.innerHTML = `<tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
             }
         }
         
@@ -825,6 +925,7 @@
         }
         
         async function completeOrder(trxId, event) {
+            if (!isActiveAdmin) { showToast('শুধুমাত্র সক্রিয় এডমিন অর্ডার সম্পন্ন করতে পারেন', 'error'); return; }
             event.stopPropagation();
             if (!confirm('এই অর্ডারটি কি সম্পন্ন করতে চান?')) return;
             const btn = event.target;
@@ -856,6 +957,7 @@
         }
         
         async function cancelOrder(trxId, event) {
+            if (!isActiveAdmin) { showToast('শুধুমাত্র সক্রিয় এডমিন অর্ডার বাতিল করতে পারেন', 'error'); return; }
             event.stopPropagation();
             if (!confirm('এই অর্ডারটি কি বাতিল (ফেল) করতে চান? স্ট্যাটাস "fail" এ সেট হবে।')) return;
             const btn = event.target;
@@ -888,7 +990,7 @@
         
         function displayOrders(list) {
             if (!list.length) {
-                ordersTable.innerHTML = ' <tr><td colspan="8" class="no-data">কোন অর্ডার নেই</td></tr>';
+                ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার নেই</td></tr>';
                 return;
             }
             let html = '';
@@ -907,13 +1009,15 @@
                 const isPending = (o.orderStatus === 'created');
                 
                 let actionButtonsHtml = '';
-                if (isPending) {
+                if (isPending && isActiveAdmin) {
                     actionButtonsHtml = `
                         <div class="action-buttons" onclick="event.stopPropagation()">
                             <button class="action-btn action-complete" onclick="completeOrder('${o.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button>
                             <button class="action-btn action-cancel" onclick="cancelOrder('${o.trx}', event)"><i class="fas fa-ban"></i> ক্যানসেল</button>
                         </div>
                     `;
+                } else if (isPending && !isActiveAdmin) {
+                    actionButtonsHtml = '<span style="color:#888; font-size:12px;">(শুধু অ্যাক্টিভ এডমিন)</span>';
                 } else {
                     actionButtonsHtml = '<span style="color:#888;">—</span>';
                 }
@@ -927,17 +1031,14 @@
                     <td><div style="max-width:150px;font-size:0.9rem; font-weight:500;" title="${adminNumber}">${adminNumber.substring(0,30)}${adminNumber.length>30?'...':''}</div></td>
                     <td>${o.paymentCurrency || currency}</td>
                     <td>${actionButtonsHtml}</td>
-                </tr>`;
+                 </tr>`;
             });
             ordersTable.innerHTML = html;
         }
         
-        // New function: show order details without any link generation
         window.showOrderDetails = function(trxId) {
             const order = orders.find(o => o.trx === trxId);
             if (!order) { showToast('অর্ডার পাওয়া যায়নি', 'error'); return; }
-            
-            // Populate order info grid
             orderInfoGrid.innerHTML = `
                 <div class="info-item"><div class="info-label">TRX ID</div><div class="info-value">${order.trx || 'N/A'}</div></div>
                 <div class="info-item"><div class="info-label">স্ট্যাটাস</div><div class="info-value">${order.orderStatus === 'finished' ? 'সম্পূর্ণ' : order.orderStatus === 'cancelled' ? 'ক্যানসেল' : order.orderStatus === 'fail' ? 'ফেল' : 'পেন্ডিং'}</div></div>
@@ -946,66 +1047,32 @@
                 <div class="info-item"><div class="info-label">কারেন্সি</div><div class="info-value">${order.paymentCurrency||order.priceCurrency||'USD'}</div></div>
                 <div class="info-item"><div class="info-label">তারিখ</div><div class="info-value">${order.dateCreated ? new Date(order.dateCreated).toLocaleString('bn-BD') : '—'}</div></div>
             `;
-            
-            // Process reference field and display as copyable items
             const referenceRaw = order.reference || '';
             let referenceItems = [];
-            
-            // Try to parse as JSON first
             try {
                 const parsed = JSON.parse(referenceRaw);
                 if (typeof parsed === 'object') {
-                    // Convert object to array of strings
-                    for (const [key, val] of Object.entries(parsed)) {
-                        referenceItems.push(`${key}: ${val}`);
-                    }
-                } else {
-                    referenceItems.push(String(parsed));
-                }
+                    for (const [key, val] of Object.entries(parsed)) referenceItems.push(`${key}: ${val}`);
+                } else referenceItems.push(String(parsed));
             } catch(e) {
-                // Not JSON, split by common delimiters
                 let candidates = referenceRaw.split(/[,\n\r]+/);
-                if (candidates.length === 1 && candidates[0].trim() === referenceRaw.trim()) {
-                    // Single line, no delimiters - keep as one item
-                    referenceItems = [referenceRaw.trim()];
-                } else {
-                    referenceItems = candidates.map(s => s.trim()).filter(s => s !== '');
-                }
+                if (candidates.length === 1 && candidates[0].trim() === referenceRaw.trim()) referenceItems = [referenceRaw.trim()];
+                else referenceItems = candidates.map(s => s.trim()).filter(s => s !== '');
             }
-            
-            // If still no items, show a placeholder
-            if (referenceItems.length === 0) {
-                referenceContainer.innerHTML = '<div class="empty-reference"><i class="fas fa-info-circle"></i> কোনো রেফারেন্স তথ্য নেই</div>';
-            } else {
+            if (referenceItems.length === 0) referenceContainer.innerHTML = '<div class="empty-reference"><i class="fas fa-info-circle"></i> কোনো রেফারেন্স তথ্য নেই</div>';
+            else {
                 let refHtml = '<ul class="reference-list">';
                 referenceItems.forEach(item => {
                     const escapedItem = item.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    refHtml += `
-                        <li class="reference-item" onclick="copyToClipboard('${escapeHtmlForOnClick(item)}')">
-                            <span class="reference-text">${escapedItem}</span>
-                            <span class="copy-icon"><i class="fas fa-copy"></i></span>
-                        </li>
-                    `;
+                    refHtml += `<li class="reference-item" onclick="copyToClipboard('${item.replace(/'/g, "\\'")}')"><span class="reference-text">${escapedItem}</span><span class="copy-icon"><i class="fas fa-copy"></i></span></li>`;
                 });
                 refHtml += '</ul>';
                 referenceContainer.innerHTML = refHtml;
             }
-            
             orderDetailsModal.classList.add('active');
         };
         
-        // Helper to escape for onclick attribute
-        function escapeHtmlForOnClick(str) {
-            return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        }
-        
-        window.copyToClipboard = function(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                showToast('কপি করা হয়েছে!', 'success');
-            }).catch(() => {
-                showToast('কপি ব্যর্থ', 'error');
-            });
-        };
+        window.copyToClipboard = function(text) { navigator.clipboard.writeText(text).then(() => showToast('কপি করা হয়েছে!', 'success')).catch(() => showToast('কপি ব্যর্থ', 'error')); };
         
         function updateStats(list) {
             totalOrdersEl.textContent = list.length;
@@ -1015,7 +1082,8 @@
         }
         
         function updateSystemInfo() {
-            systemInfo.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;"><div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div><div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div><div><strong>স্ট্যাটাস:</strong> অনলাইন</div></div>`;
+            let activeStatusText = isActiveAdmin ? '✅ সক্রিয় (অ্যাকশন সক্ষম)' : '⛔ নিষ্ক্রিয় (শুধু ভিউ)';
+            systemInfo.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;"><div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div><div><strong>এডমিন ভূমিকা:</strong> ${activeStatusText}</div><div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div><div><strong>স্ট্যাটাস:</strong> অনলাইন</div></div>`;
         }
         
         function showToast(msg, type) {
