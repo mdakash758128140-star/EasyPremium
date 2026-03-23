@@ -670,10 +670,11 @@
 
         let orders = [], currentAdminEmail = null, currentAdminUid = null;
         let onlineStatusInterval = null;
+        let claimCheckInterval = null;
+        let activeAdminListenerRef = null;
         let isActiveAdmin = false;      // current user is the active (primary) admin
-        let activeAdminUid = null;      // uid of the active admin from DB
         
-        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'mdsojib138888@gmail.com', 'allwork204571@gmail.com'];
+        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
 
         // DOM Elements
         const loginScreen = document.getElementById('loginScreen'), adminPanel = document.getElementById('adminPanel');
@@ -706,8 +707,8 @@
             try {
                 const snapshot = await activeRef.once('value');
                 const currentActive = snapshot.val();
-                // If no active admin, or the existing one expired (lastActive older than 2 mins)
                 const now = Date.now();
+                // If no active admin, or the existing one expired (lastActive older than 2 minutes)
                 if (!currentActive || (now - (currentActive.lastActive || 0) > 120000)) {
                     // claim
                     await activeRef.set({
@@ -761,8 +762,35 @@
             } catch(e) { console.warn("Release active failed", e); }
         }
         
+        // Periodically try to become active if no active admin or expired
+        async function attemptClaimIfNeeded() {
+            if (!currentAdminUid) return;
+            const activeRef = database.ref('activeAdmin');
+            const snapshot = await activeRef.once('value');
+            const current = snapshot.val();
+            const now = Date.now();
+            const isExpired = !current || (now - (current.lastActive || 0) > 120000);
+            const isAlreadyActive = (current && current.uid === currentAdminUid);
+            if (isExpired && !isAlreadyActive) {
+                const userInfo = { email: currentAdminEmail, name: adminName.innerText };
+                const claimed = await tryClaimActiveAdmin(currentAdminUid, userInfo);
+                if (claimed) {
+                    isActiveAdmin = true;
+                    await updatePublicInfoIfActive({ uid: currentAdminUid, email: currentAdminEmail, displayName: adminName.innerText });
+                    showToast('আপনি এখন সক্রিয় এডমিন হয়েছেন।', 'success');
+                    filterOrders();
+                }
+            } else if (isAlreadyActive) {
+                // ensure we renew
+                await renewActiveAdmin(currentAdminUid);
+            }
+        }
+        
         function listenActiveAdminChanges() {
-            database.ref('activeAdmin').on('value', (snapshot) => {
+            if (activeAdminListenerRef) {
+                database.ref('activeAdmin').off('value', activeAdminListenerRef);
+            }
+            activeAdminListenerRef = database.ref('activeAdmin').on('value', (snapshot) => {
                 const active = snapshot.val();
                 if (active && active.uid === currentAdminUid) {
                     if (!isActiveAdmin) {
@@ -846,7 +874,7 @@
                     const claimed = await tryClaimActiveAdmin(user.uid, userInfo);
                     isActiveAdmin = claimed;
                     
-                    // If claimed, update public info; else, do not write to publicAdminInfo
+                    // If claimed, update public info
                     if (isActiveAdmin) {
                         await updatePublicInfoIfActive(user);
                     }
@@ -854,6 +882,9 @@
                     showAdminPanel();
                     listenActiveAdminChanges();  // listen for changes in active admin
                     startHeartbeat(user);
+                    // Start periodic claim check (every 60 seconds)
+                    if (claimCheckInterval) clearInterval(claimCheckInterval);
+                    claimCheckInterval = setInterval(() => attemptClaimIfNeeded(), 60000);
                     loadOrders();
                 } else if (user) {
                     await auth.signOut();
@@ -861,6 +892,7 @@
                     showToast('এক্সেস নেই', 'error');
                 } else {
                     if (onlineStatusInterval) clearInterval(onlineStatusInterval);
+                    if (claimCheckInterval) clearInterval(claimCheckInterval);
                     showLoginScreen();
                 }
             });
@@ -878,6 +910,11 @@
         
         async function handleLogout() {
             if (onlineStatusInterval) clearInterval(onlineStatusInterval);
+            if (claimCheckInterval) clearInterval(claimCheckInterval);
+            if (activeAdminListenerRef) {
+                database.ref('activeAdmin').off('value', activeAdminListenerRef);
+                activeAdminListenerRef = null;
+            }
             if (isActiveAdmin) await releaseActiveAdmin(currentAdminUid);
             await auth.signOut();
             showLoginScreen();
@@ -888,7 +925,7 @@
         function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
         
         async function loadOrders() {
-            ordersTable.innerHTML = '<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></td></tr>';
+            ordersTable.innerHTML = ' <tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></td></tr>';
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -898,7 +935,7 @@
                 filterOrders();
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
             } catch(e) {
-                ordersTable.innerHTML = `<tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
+                ordersTable.innerHTML = ` <tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
             }
         }
         
@@ -990,7 +1027,7 @@
         
         function displayOrders(list) {
             if (!list.length) {
-                ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার নেই</td></tr>';
+                ordersTable.innerHTML = ' <tr><td colspan="8" class="no-data">কোন অর্ডার নেই</td></tr>';
                 return;
             }
             let html = '';
@@ -1023,7 +1060,7 @@
                 }
                 
                 html += `<tr onclick="showOrderDetails('${o.trx}')" style="cursor:pointer;">
-                    <td style="font-family:monospace;">${o.trx || 'N/A'}</td>
+                    <td style="font-family:monospace;">${o.trx || 'N/A'} </td>
                     <td>${date}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
