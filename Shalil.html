@@ -10,18 +10,19 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <style>
-        /* All styles remain exactly as before – no UI change */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             font-family: 'Segoe UI', 'Noto Sans Bengali', sans-serif;
         }
+        
         body {
             background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
             min-height: 100vh;
             color: #fff;
         }
+        
         .login-screen {
             display: flex;
             justify-content: center;
@@ -29,6 +30,7 @@
             min-height: 100vh;
             padding: 20px;
         }
+        
         .login-box {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
@@ -39,10 +41,12 @@
             border: 2px solid #ff9800;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
+        
         .logo {
             text-align: center;
             margin-bottom: 30px;
         }
+        
         .logo-icon {
             width: 80px;
             height: 80px;
@@ -55,21 +59,25 @@
             font-size: 2.5rem;
             color: white;
         }
+        
         .logo-text h1 {
             color: #ff9800;
             font-size: 2rem;
             margin-bottom: 5px;
         }
+        
         .logo-text p {
             color: #00bcd4;
             font-size: 0.9rem;
         }
+        
         .login-title {
             text-align: center;
             font-size: 1.5rem;
             margin-bottom: 30px;
             color: #fff;
         }
+        
         .google-login-btn {
             background: white;
             color: #333;
@@ -87,11 +95,13 @@
             transition: all 0.3s;
             margin-bottom: 20px;
         }
+        
         .google-login-btn:hover {
             background: #f1f1f1;
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
+        
         .error-message {
             color: #ff6b6b;
             font-size: 0.9rem;
@@ -99,9 +109,11 @@
             text-align: center;
             min-height: 20px;
         }
+        
         .admin-panel {
             display: none;
         }
+        
         .admin-header {
             background: rgba(0, 0, 0, 0.8);
             padding: 15px 30px;
@@ -115,11 +127,13 @@
             flex-wrap: wrap;
             gap: 15px;
         }
+        
         .admin-info {
             display: flex;
             align-items: center;
             gap: 15px;
         }
+        
         .admin-avatar {
             width: 40px;
             height: 40px;
@@ -131,15 +145,34 @@
             font-weight: bold;
             color: white;
         }
+        
         .admin-details h3 {
             color: #ff9800;
             margin-bottom: 3px;
             font-size: 1rem;
         }
+        
         .admin-details p {
             color: #b0bec5;
             font-size: 0.8rem;
         }
+        
+        .role-badge {
+            background: rgba(0,188,212,0.2);
+            border-left: 3px solid #00bcd4;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        .role-inactive {
+            background: rgba(220,53,69,0.2);
+            border-left-color: #dc3545;
+            color: #ff9e9e;
+        }
+        
         .logout-btn {
             background: linear-gradient(45deg, #dc3545, #c82333);
             color: white;
@@ -151,15 +184,18 @@
             transition: all 0.3s;
             font-size: 0.9rem;
         }
+        
         .logout-btn:hover {
             background: linear-gradient(45deg, #c82333, #dc3545);
             transform: translateY(-2px);
         }
+        
         .main-content {
             padding: 30px;
             max-width: 1400px;
             margin: 0 auto;
         }
+        
         .section {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
@@ -167,18 +203,21 @@
             margin-bottom: 30px;
             border: 1px solid rgba(255, 152, 0, 0.2);
         }
+        
         .section-title {
             color: #ff9800;
             margin-bottom: 20px;
             padding-bottom: 10px;
             font-size: 1.5rem;
         }
+        
         .form-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
+        
         .stats-card {
             background: rgba(255, 152, 0, 0.1);
             border-radius: 10px;
@@ -186,16 +225,19 @@
             text-align: center;
             border: 1px solid rgba(255, 152, 0, 0.3);
         }
+        
         .stat-value {
             font-size: 2.5rem;
             font-weight: 800;
             color: #ff9800;
             margin-bottom: 5px;
         }
+        
         .stat-label {
             font-size: 0.9rem;
             color: #b0bec5;
         }
+        
         .orders-table {
             width: 100%;
             background: rgba(255, 255, 255, 0.05);
@@ -203,19 +245,23 @@
             overflow-x: auto;
             display: block;
         }
+        
         .orders-table th {
             background: rgba(255, 152, 0, 0.2);
             padding: 15px;
             text-align: left;
             color: #ff9800;
         }
+        
         .orders-table td {
             padding: 15px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
+        
         .orders-table tr:hover td {
             background: rgba(255, 152, 0, 0.1);
         }
+        
         .status-badge {
             padding: 5px 10px;
             border-radius: 20px;
@@ -223,23 +269,28 @@
             font-weight: bold;
             display: inline-block;
         }
+        
         .status-pending {
             background: rgba(255, 152, 0, 0.2);
             color: #ff9800;
         }
+        
         .status-cancelled {
             background: rgba(220, 53, 69, 0.2);
             color: #dc3545;
         }
+        
         .status-completed {
             background: rgba(76, 175, 80, 0.2);
             color: #4caf50;
         }
+        
         .action-buttons {
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
         }
+        
         .action-btn {
             padding: 5px 10px;
             border-radius: 5px;
@@ -252,22 +303,27 @@
             align-items: center;
             gap: 4px;
         }
+        
         .action-complete {
             background: #4caf50;
             color: white;
         }
+        
         .action-complete:hover:not(:disabled) {
             background: #45a049;
             transform: translateY(-1px);
         }
+        
         .action-cancel {
             background: #ff9800;
             color: white;
         }
+        
         .action-cancel:hover:not(:disabled) {
             background: #fb8c00;
             transform: translateY(-1px);
         }
+        
         .filter-section {
             display: flex;
             gap: 15px;
@@ -277,10 +333,12 @@
             padding: 20px;
             border-radius: 10px;
         }
+        
         .filter-item {
             flex: 1;
             min-width: 200px;
         }
+        
         .form-label {
             display: block;
             margin-bottom: 8px;
@@ -288,6 +346,7 @@
             color: #fff;
             font-size: 0.95rem;
         }
+        
         .form-select, .form-input {
             width: 100%;
             padding: 12px 15px;
@@ -299,20 +358,26 @@
             outline: none;
             transition: all 0.3s;
         }
+        
         .form-select option {
             background: #1a1a2e;
             color: #fff;
         }
+        
         .form-input:focus, .form-select:focus {
             border-color: #ff5722;
             background: rgba(255, 255, 255, 0.15);
         }
+        
         .system-info {
+            margin-top: 15px;
         }
+        
         .loading-spinner {
             text-align: center;
             padding: 40px;
         }
+        
         .spinner {
             border: 4px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
@@ -322,10 +387,12 @@
             animation: spin 1s linear infinite;
             margin: 0 auto 15px;
         }
+        
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
         .toast {
             position: fixed;
             top: 20px;
@@ -338,15 +405,18 @@
             z-index: 10000;
             animation: slideIn 0.3s ease;
         }
+        
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
+        
         .no-data {
             text-align: center;
             padding: 40px;
             color: #b0bec5;
         }
+        
         .refresh-btn {
             background: rgba(0, 188, 212, 0.2);
             color: #00bcd4;
@@ -361,10 +431,12 @@
             align-items: center;
             gap: 8px;
         }
+        
         .refresh-btn:hover {
             background: rgba(0, 188, 212, 0.3);
             transform: translateY(-2px);
         }
+        
         .modal {
             display: none;
             position: fixed;
@@ -377,9 +449,11 @@
             justify-content: center;
             align-items: center;
         }
+        
         .modal.active {
             display: flex;
         }
+        
         .modal-content {
             background: linear-gradient(135deg, #1a1a2e, #16213e);
             border: 2px solid #ff9800;
@@ -390,6 +464,7 @@
             overflow-y: auto;
             position: relative;
         }
+        
         .modal-close {
             position: absolute;
             top: 15px;
@@ -400,9 +475,11 @@
             font-size: 1.5rem;
             cursor: pointer;
         }
+        
         .modal-close:hover {
             color: #ff5722;
         }
+        
         .modal-title {
             color: #ff9800;
             font-size: 1.5rem;
@@ -410,9 +487,11 @@
             padding-bottom: 10px;
             border-bottom: 2px solid rgba(255, 152, 0, 0.3);
         }
+        
         .modal-section {
             margin-bottom: 25px;
         }
+        
         .modal-section-title {
             font-size: 1.1rem;
             font-weight: 600;
@@ -420,6 +499,7 @@
             margin-bottom: 12px;
             padding-left: 10px;
         }
+        
         .order-info-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -428,21 +508,25 @@
             border-radius: 10px;
             padding: 15px;
         }
+        
         .info-item {
             display: flex;
             flex-direction: column;
             gap: 5px;
         }
+        
         .info-label {
             font-size: 0.8rem;
             color: #b0bec5;
         }
+        
         .info-value {
             font-size: 1rem;
             font-weight: 600;
             color: #ffb74d;
             word-break: break-word;
         }
+        
         .reference-list {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
@@ -450,6 +534,7 @@
             list-style: none;
             margin: 0;
         }
+        
         .reference-item {
             background: rgba(0, 0, 0, 0.3);
             border-radius: 8px;
@@ -464,31 +549,37 @@
             transition: all 0.2s;
             border-left: 3px solid #ff9800;
         }
+        
         .reference-item:hover {
             background: rgba(255, 152, 0, 0.2);
             transform: translateX(5px);
         }
+        
         .reference-text {
             font-size: 0.95rem;
             color: #fff;
             word-break: break-all;
             flex: 1;
         }
+        
         .copy-icon {
             color: #00bcd4;
             font-size: 0.9rem;
             opacity: 0.7;
             transition: opacity 0.2s;
         }
+        
         .reference-item:hover .copy-icon {
             opacity: 1;
         }
+        
         .empty-reference {
             text-align: center;
             padding: 20px;
             color: #b0bec5;
             font-style: italic;
         }
+        
         @media (max-width: 768px) {
             .main-content { padding: 15px; }
             .filter-section { flex-direction: column; }
@@ -524,6 +615,7 @@
                     <h3 id="adminName">Loading...</h3>
                     <p id="adminEmail">Loading...</p>
                 </div>
+                <div id="roleBadge" class="role-badge">⏳ চেক করা হচ্ছে...</div>
             </div>
             <div style="display: flex; gap: 10px;">
                 <button id="refreshOrdersBtn" class="refresh-btn"><i class="fas fa-sync-alt"></i> রিফ্রেশ</button>
@@ -560,6 +652,7 @@
         </div>
     </div>
 
+    <!-- Modal for Order Details -->
     <div class="modal" id="orderDetailsModal">
         <div class="modal-content">
             <button class="modal-close" id="closeDetailsModalBtn">&times;</button>
@@ -591,10 +684,10 @@
         const database = firebase.database();
 
         let orders = [], currentAdminEmail = null, currentAdminUid = null;
+        let isActiveAdmin = false;          // core flag: can perform actions
+        let activeAdminRef = null;           // listener ref
         let onlineStatusInterval = null;
-        let claimCheckInterval = null;
-        let activeAdminListenerRef = null;
-        let isActiveAdmin = false;
+        let activeAdminDisconnectRef = null; // onDisconnect handle
         
         const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
 
@@ -605,6 +698,8 @@
         const totalOrdersEl = document.getElementById('totalOrders'), pendingOrdersEl = document.getElementById('pendingOrders'), completedOrdersEl = document.getElementById('completedOrders'), cancelledOrdersEl = document.getElementById('cancelledOrders');
         const orderCountEl = document.getElementById('orderCount'), systemInfo = document.getElementById('systemInfo'), ordersTable = document.getElementById('ordersTable');
         const orderFilter = document.getElementById('orderFilter'), orderSearch = document.getElementById('orderSearch'), dateFilter = document.getElementById('dateFilter');
+        const roleBadge = document.getElementById('roleBadge');
+        
         const orderDetailsModal = document.getElementById('orderDetailsModal');
         const closeDetailsModalBtn = document.getElementById('closeDetailsModalBtn');
         const orderInfoGrid = document.getElementById('orderInfoGrid');
@@ -623,159 +718,140 @@
             window.onclick = (e) => { if (e.target === orderDetailsModal) orderDetailsModal.classList.remove('active'); };
         }
         
-        // --- Active Admin Logic ---
-        async function tryClaimActiveAdmin(uid, userInfo) {
-            const activeRef = database.ref('activeAdmin');
+        // ---------- Active Admin Management (Only ONE active at a time) ----------
+        async function tryBecomeActiveAdmin(user) {
+            const activeAdminPath = database.ref('activeAdmin');
             try {
-                const snapshot = await activeRef.once('value');
-                const currentActive = snapshot.val();
-                const now = Date.now();
-                // No active admin or expired (2 min)
-                if (!currentActive || (now - (currentActive.lastActive || 0) > 120000)) {
-                    await activeRef.set({
-                        uid: uid,
-                        email: userInfo.email,
-                        name: userInfo.name,
-                        lastActive: now,
-                        claimedAt: now
-                    });
-                    return true;
-                } else if (currentActive.uid === uid) {
-                    await activeRef.update({ lastActive: now });
-                    return true;
-                } else {
-                    return false;
-                }
-            } catch(e) {
-                console.warn("Claim active admin error:", e);
-                return false;
-            }
-        }
-        
-        async function renewActiveAdmin(uid) {
-            if (!isActiveAdmin) return;
-            const activeRef = database.ref('activeAdmin');
-            try {
-                const snapshot = await activeRef.once('value');
-                const current = snapshot.val();
-                if (current && current.uid === uid) {
-                    await activeRef.update({ lastActive: Date.now() });
-                } else {
-                    isActiveAdmin = false;
-                    showToast('আপনি আর সক্রিয় এডমিন নন। অ্যাকশন বাটন বন্ধ হয়েছে।', 'info');
-                    filterOrders();
-                }
-            } catch(e) { console.warn("Renew active failed", e); }
-        }
-        
-        async function releaseActiveAdmin(uid) {
-            if (!isActiveAdmin) return;
-            const activeRef = database.ref('activeAdmin');
-            try {
-                const snapshot = await activeRef.once('value');
-                const current = snapshot.val();
-                if (current && current.uid === uid) {
-                    await activeRef.remove();
-                }
-            } catch(e) { console.warn("Release active failed", e); }
-        }
-        
-        async function attemptClaimIfNeeded() {
-            if (!currentAdminUid) return;
-            const activeRef = database.ref('activeAdmin');
-            const snapshot = await activeRef.once('value');
-            const current = snapshot.val();
-            const now = Date.now();
-            const isExpired = !current || (now - (current.lastActive || 0) > 120000);
-            const isAlreadyActive = (current && current.uid === currentAdminUid);
-            if (isExpired && !isAlreadyActive) {
-                const userInfo = { email: currentAdminEmail, name: adminName.innerText };
-                const claimed = await tryClaimActiveAdmin(currentAdminUid, userInfo);
-                if (claimed) {
-                    isActiveAdmin = true;
-                    await updatePublicInfoIfActive({ uid: currentAdminUid, email: currentAdminEmail, displayName: adminName.innerText });
-                    showToast('আপনি এখন সক্রিয় এডমিন হয়েছেন।', 'success');
-                    filterOrders();
-                }
-            } else if (isAlreadyActive) {
-                await renewActiveAdmin(currentAdminUid);
-            }
-        }
-        
-        function listenActiveAdminChanges() {
-            if (activeAdminListenerRef) {
-                database.ref('activeAdmin').off('value', activeAdminListenerRef);
-            }
-            activeAdminListenerRef = database.ref('activeAdmin').on('value', async (snapshot) => {
-                const active = snapshot.val();
-                const now = Date.now();
-                const isExpired = !active || (now - (active.lastActive || 0) > 120000);
-                
-                if (active && active.uid === currentAdminUid) {
-                    if (!isActiveAdmin) {
-                        isActiveAdmin = true;
-                        showToast('আপনি সক্রিয় এডমিন হয়েছেন। অর্ডার সম্পন্ন/বাতিল করতে পারবেন।', 'success');
-                        filterOrders();
-                    }
-                } else {
-                    if (isActiveAdmin) {
-                        isActiveAdmin = false;
-                        showToast('অন্য এডমিন সক্রিয় হয়েছেন। আপনার অ্যাকশন বাটন বন্ধ আছে।', 'info');
-                        filterOrders();
+                // Transaction: set only if null
+                const result = await activeAdminPath.transaction((current) => {
+                    if (current === null) {
+                        return {
+                            uid: user.uid,
+                            email: user.email,
+                            name: user.displayName || user.email,
+                            lastActive: firebase.database.ServerValue.TIMESTAMP,
+                            activeSince: new Date().toISOString()
+                        };
                     } else {
-                        isActiveAdmin = false;
+                        return; // abort, already exists
                     }
-                    
-                    // If no active admin or expired, try to claim
-                    if ((!active || isExpired) && currentAdminUid) {
-                        const userInfo = { email: currentAdminEmail, name: adminName.innerText };
-                        const claimed = await tryClaimActiveAdmin(currentAdminUid, userInfo);
-                        if (claimed) {
-                            isActiveAdmin = true;
-                            await updatePublicInfoIfActive({ uid: currentAdminUid, email: currentAdminEmail, displayName: adminName.innerText });
-                            showToast('আপনি এখন সক্রিয় এডমিন হয়েছেন।', 'success');
-                            filterOrders();
-                        }
-                    }
+                });
+                if (result.committed) {
+                    // became active
+                    isActiveAdmin = true;
+                    roleBadge.innerHTML = '<i class="fas fa-check-circle"></i> ✅ সক্রিয় এডমিন (অ্যাকশন করতে পারবেন)';
+                    roleBadge.classList.remove('role-inactive');
+                    // set onDisconnect to remove activeAdmin if this client disconnects
+                    const onDisconnectRef = database.ref('activeAdmin');
+                    activeAdminDisconnectRef = onDisconnectRef.onDisconnect().remove();
+                    activeAdminDisconnectRef.then(() => {
+                        console.log('onDisconnect set for activeAdmin');
+                    }).catch(console.warn);
+                    // Start online status updates only for active admin
+                    startOnlineStatusUpdates(user);
+                    showToast('আপনি সক্রিয় এডমিন হিসেবে নিযুক্ত হয়েছেন', 'success');
+                } else {
+                    // someone else is active
+                    isActiveAdmin = false;
+                    roleBadge.innerHTML = '<i class="fas fa-eye"></i> 👁️ নিষ্ক্রিয় মোড (শুধু দেখার অনুমতি)';
+                    roleBadge.classList.add('role-inactive');
+                    showToast('অন্য একজন এডমিন সক্রিয় আছেন। আপনি শুধু দেখতে পারবেন।', 'info');
                 }
-                updateSystemInfo();
+                updateAdminModeUI();
+                filterOrders(); // re-render to hide action buttons if inactive
+            } catch (err) {
+                console.error('Transaction failed', err);
+                isActiveAdmin = false;
+                roleBadge.innerHTML = '⚠️ স্ট্যাটাস অজানা (শুধু ভিউ)';
+                roleBadge.classList.add('role-inactive');
+                updateAdminModeUI();
+            }
+        }
+        
+        // Listen for changes on activeAdmin (if it gets removed, try to become active)
+        function listenActiveAdminChanges(user) {
+            if (activeAdminRef) activeAdminRef.off();
+            activeAdminRef = database.ref('activeAdmin');
+            activeAdminRef.on('value', (snapshot) => {
+                const active = snapshot.val();
+                if (!active && currentAdminUid && !isActiveAdmin) {
+                    // active admin disappeared and we are not active -> try to become active
+                    console.log('Active admin removed, attempting to become active...');
+                    tryBecomeActiveAdmin({ uid: currentAdminUid, email: currentAdminEmail, displayName: adminName.innerText });
+                } else if (active && active.uid === currentAdminUid && !isActiveAdmin) {
+                    // corner case: our own uid appears but flag false (maybe after reconnect)
+                    isActiveAdmin = true;
+                    roleBadge.innerHTML = '<i class="fas fa-check-circle"></i> ✅ সক্রিয় এডমিন (অ্যাকশন করতে পারবেন)';
+                    roleBadge.classList.remove('role-inactive');
+                    updateAdminModeUI();
+                    filterOrders();
+                } else if (active && active.uid !== currentAdminUid && isActiveAdmin) {
+                    // we were active but someone else overwrote (should not happen if onDisconnect works, but fallback)
+                    console.warn('Another admin became active, demoting ourselves');
+                    isActiveAdmin = false;
+                    roleBadge.innerHTML = '<i class="fas fa-eye"></i> 👁️ নিষ্ক্রিয় মোড (শুধু দেখার অনুমতি)';
+                    roleBadge.classList.add('role-inactive');
+                    updateAdminModeUI();
+                    filterOrders();
+                    if (onlineStatusInterval) clearInterval(onlineStatusInterval);
+                }
             });
         }
         
-        // Update public info ONLY if active admin
-        async function updatePublicInfoIfActive(user) {
+        async function clearActiveOnLogout() {
+            if (isActiveAdmin && currentAdminUid) {
+                // only remove if we are the active one
+                const activeSnap = await database.ref('activeAdmin').once('value');
+                if (activeSnap.val() && activeSnap.val().uid === currentAdminUid) {
+                    await database.ref('activeAdmin').remove();
+                }
+                if (activeAdminDisconnectRef) {
+                    activeAdminDisconnectRef.cancel();
+                }
+            }
+        }
+        
+        // ---------- Admin Online Status (only for active admin) ----------
+        async function updateOnlineStatus(user) {
             if (!user || !isActiveAdmin) return;
+            const uid = user.uid;
             try {
-                const adminSnapshot = await database.ref(`adminUsers/${user.uid}`).once('value');
+                const adminSnapshot = await database.ref(`adminUsers/${uid}`).once('value');
                 const adminData = adminSnapshot.val();
                 if (adminData && adminData.number) {
                     const publicInfo = {
                         name: adminData.name || user.displayName || 'Admin',
                         number: adminData.number,
                         lastActive: new Date().toISOString(),
-                        uid: user.uid
+                        role: 'active'
                     };
-                    await database.ref(`publicAdminInfo/${user.uid}`).set(publicInfo);
+                    await database.ref(`publicAdminInfo/${uid}`).set(publicInfo);
                 } else {
-                    await database.ref(`adminUsers/${user.uid}`).update({
-                        lastActive: firebase.database.ServerValue.TIMESTAMP
+                    await database.ref(`adminUsers/${uid}`).update({
+                        lastActive: firebase.database.ServerValue.TIMESTAMP,
+                        status: 'active'
                     });
                 }
             } catch (error) {
-                console.error("Update public info failed:", error);
+                console.error("Update online status failed:", error);
             }
         }
         
-        function startHeartbeat(user) {
+        function startOnlineStatusUpdates(user) {
             if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-            onlineStatusInterval = setInterval(async () => {
-                if (user && currentAdminUid) {
-                    if (isActiveAdmin) {
-                        await renewActiveAdmin(currentAdminUid);
-                        await updatePublicInfoIfActive(user);
-                    }
-                }
-            }, 30000);
+            if (!isActiveAdmin) return;
+            updateOnlineStatus(user);
+            onlineStatusInterval = setInterval(() => {
+                if (isActiveAdmin) updateOnlineStatus(user);
+            }, 60000);
+        }
+        
+        // ---------- Helper UI & Data ----------
+        function updateAdminModeUI() {
+            // refresh orders table to reflect action buttons availability
+            if (orders.length) filterOrders();
+            const infoMsg = isActiveAdmin ? '✅ সক্রিয় এডমিন (অর্ডার পরিবর্তন করতে পারবেন)' : '⛔ নিষ্ক্রিয় মোড (শুধু দেখা যাবে)';
+            systemInfo.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;"><div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div><div><strong>ভূমিকা:</strong> ${infoMsg}</div><div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div><div><strong>স্ট্যাটাস:</strong> অনলাইন</div></div>`;
         }
         
         async function loadAdminData(user) {
@@ -788,7 +864,7 @@
                     name: user.displayName || '',
                     photoURL: user.photoURL || '',
                     lastLogin: firebase.database.ServerValue.TIMESTAMP,
-                    status: 'active'
+                    status: 'logged_in'
                 });
             } catch (err) { console.warn("Save admin info failed:", err); }
         }
@@ -799,20 +875,10 @@
                     currentAdminEmail = user.email;
                     currentAdminUid = user.uid;
                     await loadAdminData(user);
-                    
-                    const userInfo = { email: user.email, name: user.displayName || user.email };
-                    const claimed = await tryClaimActiveAdmin(user.uid, userInfo);
-                    isActiveAdmin = claimed;
-                    
-                    if (isActiveAdmin) {
-                        await updatePublicInfoIfActive(user);
-                    }
-                    
                     showAdminPanel();
-                    listenActiveAdminChanges();
-                    startHeartbeat(user);
-                    if (claimCheckInterval) clearInterval(claimCheckInterval);
-                    claimCheckInterval = setInterval(() => attemptClaimIfNeeded(), 30000);
+                    // Check active admin status and try to become active if none
+                    await tryBecomeActiveAdmin(user);
+                    listenActiveAdminChanges(user);
                     loadOrders();
                 } else if (user) {
                     await auth.signOut();
@@ -820,7 +886,7 @@
                     showToast('এক্সেস নেই', 'error');
                 } else {
                     if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-                    if (claimCheckInterval) clearInterval(claimCheckInterval);
+                    if (activeAdminRef) activeAdminRef.off();
                     showLoginScreen();
                 }
             });
@@ -838,22 +904,17 @@
         
         async function handleLogout() {
             if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-            if (claimCheckInterval) clearInterval(claimCheckInterval);
-            if (activeAdminListenerRef) {
-                database.ref('activeAdmin').off('value', activeAdminListenerRef);
-                activeAdminListenerRef = null;
-            }
-            if (isActiveAdmin) await releaseActiveAdmin(currentAdminUid);
+            await clearActiveOnLogout();
             await auth.signOut();
             showLoginScreen();
             showToast('লগ আউট', 'success');
         }
         
         function showLoginScreen() { loginScreen.style.display = 'flex'; adminPanel.style.display = 'none'; }
-        function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
+        function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; }
         
         async function loadOrders() {
-            ordersTable.innerHTML = '<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></td></tr>';
+            ordersTable.innerHTML = '   <tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></td></tr>';
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -890,15 +951,14 @@
         }
         
         async function completeOrder(trxId, event) {
-            if (!isActiveAdmin) { showToast('শুধুমাত্র সক্রিয় এডমিন অর্ডার সম্পন্ন করতে পারেন', 'error'); return; }
             event.stopPropagation();
+            if (!isActiveAdmin) { showToast('আপনি নিষ্ক্রিয় মোডে আছেন, অর্ডার পরিবর্তন করতে পারবেন না।', 'error'); return; }
             if (!confirm('এই অর্ডারটি কি সম্পন্ন করতে চান?')) return;
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>...';
             btn.disabled = true;
             try {
-                showToast('অর্ডার সম্পন্ন করা হচ্ছে...', 'info');
                 const orderData = orders.find(o => o.trx === trxId);
                 const response = await fetch('/api/order_completed', {
                     method: 'POST',
@@ -913,7 +973,6 @@
                     showToast('✅ অর্ডার সম্পন্ন হয়েছে', 'success');
                 } else throw new Error(result.error || 'API failed');
             } catch(e) {
-                console.error('Complete error:', e);
                 showToast('সম্পন্ন করতে ব্যর্থ: ' + e.message, 'error');
             } finally {
                 btn.innerHTML = originalText;
@@ -922,15 +981,14 @@
         }
         
         async function cancelOrder(trxId, event) {
-            if (!isActiveAdmin) { showToast('শুধুমাত্র সক্রিয় এডমিন অর্ডার বাতিল করতে পারেন', 'error'); return; }
             event.stopPropagation();
-            if (!confirm('এই অর্ডারটি কি বাতিল (ফেল) করতে চান? স্ট্যাটাস "fail" এ সেট হবে।')) return;
+            if (!isActiveAdmin) { showToast('আপনি নিষ্ক্রিয় মোডে আছেন, অর্ডার পরিবর্তন করতে পারবেন না।', 'error'); return; }
+            if (!confirm('এই অর্ডারটি কি বাতিল (ফেল) করতে চান?')) return;
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>...';
             btn.disabled = true;
             try {
-                showToast('অর্ডার ফেল হিসেবে আপডেট করা হচ্ছে...', 'info');
                 const orderData = orders.find(o => o.trx === trxId);
                 const response = await fetch('/api/order_completed', {
                     method: 'POST',
@@ -945,7 +1003,6 @@
                     showToast('✅ অর্ডার ফেল করা হয়েছে', 'success');
                 } else throw new Error(result.error || 'API failed');
             } catch(e) {
-                console.error('Cancel error:', e);
                 showToast('অর্ডার ফেল করতে ব্যর্থ: ' + e.message, 'error');
             } finally {
                 btn.innerHTML = originalText;
@@ -974,15 +1031,13 @@
                 const isPending = (o.orderStatus === 'created');
                 
                 let actionButtonsHtml = '';
-                if (isPending && isActiveAdmin) {
+                if (isActiveAdmin && isPending) {
                     actionButtonsHtml = `
                         <div class="action-buttons" onclick="event.stopPropagation()">
                             <button class="action-btn action-complete" onclick="completeOrder('${o.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button>
                             <button class="action-btn action-cancel" onclick="cancelOrder('${o.trx}', event)"><i class="fas fa-ban"></i> ক্যানসেল</button>
                         </div>
                     `;
-                } else if (isPending && !isActiveAdmin) {
-                    actionButtonsHtml = '<span style="color:#888; font-size:12px;">(শুধু অ্যাক্টিভ এডমিন)</span>';
                 } else {
                     actionButtonsHtml = '<span style="color:#888;">—</span>';
                 }
@@ -1037,18 +1092,15 @@
             orderDetailsModal.classList.add('active');
         };
         
-        window.copyToClipboard = function(text) { navigator.clipboard.writeText(text).then(() => showToast('কপি করা হয়েছে!', 'success')).catch(() => showToast('কপি ব্যর্থ', 'error')); };
+        window.copyToClipboard = function(text) {
+            navigator.clipboard.writeText(text).then(() => showToast('কপি করা হয়েছে!', 'success')).catch(() => showToast('কপি ব্যর্থ', 'error'));
+        };
         
         function updateStats(list) {
             totalOrdersEl.textContent = list.length;
             pendingOrdersEl.textContent = list.filter(o => o.orderStatus === 'created').length;
             completedOrdersEl.textContent = list.filter(o => o.orderStatus === 'finished').length;
             cancelledOrdersEl.textContent = list.filter(o => o.orderStatus === 'cancelled' || o.orderStatus === 'fail').length;
-        }
-        
-        function updateSystemInfo() {
-            let activeStatusText = isActiveAdmin ? '✅ সক্রিয় (অ্যাকশন সক্ষম)' : '⛔ নিষ্ক্রিয় (শুধু ভিউ)';
-            systemInfo.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;"><div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div><div><strong>এডমিন ভূমিকা:</strong> ${activeStatusText}</div><div><strong>ডাটা সোর্স:</strong> <span style="color:#4caf50;">Relograde API</span></div><div><strong>স্ট্যাটাস:</strong> অনলাইন</div></div>`;
         }
         
         function showToast(msg, type) {
