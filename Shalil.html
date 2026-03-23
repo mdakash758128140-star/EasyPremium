@@ -668,17 +668,16 @@
 
         let orders = [], currentAdminEmail = null, currentAdminUid = null;
         let onlineStatusInterval = null;
-        let isPrimaryAdmin = false;               // <-- NEW: track if this admin has full access
-        let lockRefreshInterval = null;           // <-- NEW: interval to keep lock alive
-        let reacquireLockInterval = null;         // <-- NEW: for non-primary admins to try to become primary
+        let isPrimaryAdmin = false;
+        let reacquireLockInterval = null;      // for read-only admins to try becoming primary
         
         const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'shahsultanshakil204571@gmail.com', 'allwork204571@gmail.com'];
-        const ACTIVE_ADMIN_TIMEOUT = 2 * 60 * 1000;  // 2 minutes (as per your latest requirement)
-        const LOCK_REFRESH_INTERVAL = 60 * 1000;     // 1 minute
-        const REACQUIRE_INTERVAL = 60 * 1000;        // 1 minute
+        const ACTIVE_TIMEOUT = 2 * 60 * 1000;   // 2 minutes
+        const REFRESH_INTERVAL = 60 * 1000;     // 1 minute
+        const REACQUIRE_INTERVAL = 60 * 1000;   // 1 minute
 
-        // Reference to the lock node
-        const activeAdminLockRef = database.ref('activeAdmin');
+        // Reference to publicAdminInfo
+        const publicAdminInfoRef = database.ref('publicAdminInfo');
 
         // DOM Elements
         const loginScreen = document.getElementById('loginScreen'), adminPanel = document.getElementById('adminPanel');
@@ -706,161 +705,169 @@
             window.onclick = (e) => { if (e.target === orderDetailsModal) orderDetailsModal.classList.remove('active'); };
         }
         
-        // ========== PRIMARY ADMIN LOCK LOGIC ==========
+        // ========== PRIMARY ADMIN LOGIC USING publicAdminInfo ==========
         /**
-         * Attempt to claim the active admin lock.
-         * Uses a transaction to ensure only one admin gets it.
-         * Returns true if lock acquired.
+         * Determine the current primary admin based on recent lastActive timestamps.
+         * Returns an object: { primaryUid, isCurrentPrimary }.
          */
-        async function acquireActiveAdminLock() {
-            return new Promise((resolve) => {
-                activeAdminLockRef.transaction((current) => {
-                    const now = Date.now();
-                    // If no lock or lock is older than timeout, we can take it
-                    if (!current || (now - (current.lastActive || 0) > ACTIVE_ADMIN_TIMEOUT)) {
-                        return { uid: currentAdminUid, lastActive: firebase.database.ServerValue.TIMESTAMP };
+        async function determinePrimaryStatus() {
+            const snapshot = await publicAdminInfoRef.once('value');
+            const admins = snapshot.val() || {};
+            const now = Date.now();
+            let latestUid = null;
+            let latestTimestamp = 0;
+            
+            // Find the most recent timestamp that is still active
+            for (const [uid, info] of Object.entries(admins)) {
+                const lastActive = info.lastActive ? new Date(info.lastActive).getTime() : 0;
+                if (lastActive && (now - lastActive) < ACTIVE_TIMEOUT) {
+                    if (lastActive > latestTimestamp) {
+                        latestTimestamp = lastActive;
+                        latestUid = uid;
                     }
-                    // Lock held by someone else (still fresh)
-                    return; // abort transaction, no change
-                }, (error, committed, snapshot) => {
-                    if (error) {
-                        console.error('Lock transaction error:', error);
-                        resolve(false);
-                    } else if (committed) {
-                        console.log('Lock acquired by', currentAdminUid);
-                        resolve(true);
-                    } else {
-                        console.log('Lock already held by another admin');
-                        resolve(false);
-                    }
-                });
-            });
-        }
-
-        /**
-         * Release the lock if it is currently held by this admin.
-         */
-        async function releaseActiveAdminLock() {
-            return new Promise((resolve) => {
-                activeAdminLockRef.transaction((current) => {
-                    if (current && current.uid === currentAdminUid) {
-                        return null; // remove the lock
-                    }
-                    return; // no change
-                }, (error, committed) => {
-                    if (error) console.error('Release lock error:', error);
-                    resolve(committed);
-                });
-            });
-        }
-
-        /**
-         * Refresh the lock (update lastActive timestamp) – only called by primary admin.
-         */
-        async function refreshActiveAdminLock() {
-            if (!isPrimaryAdmin) return;
-            try {
-                await activeAdminLockRef.update({
-                    uid: currentAdminUid,
-                    lastActive: firebase.database.ServerValue.TIMESTAMP
-                });
-                console.log('Lock refreshed');
-            } catch (err) {
-                console.error('Refresh lock error:', err);
-            }
-        }
-
-        /**
-         * For non-primary admins: periodically check if the lock has expired,
-         * and if so, try to become the new primary.
-         */
-        async function tryToBecomePrimary() {
-            if (isPrimaryAdmin) return; // already primary
-            const snapshot = await activeAdminLockRef.once('value');
-            const lock = snapshot.val();
-            if (!lock || (Date.now() - (lock.lastActive || 0) > ACTIVE_ADMIN_TIMEOUT)) {
-                // Lock is free or stale – try to claim it
-                const acquired = await acquireActiveAdminLock();
-                if (acquired) {
-                    // We are now the primary admin!
-                    becomePrimaryAdmin();
                 }
             }
+            
+            const isCurrentPrimary = (latestUid === currentAdminUid);
+            return { primaryUid: latestUid, isCurrentPrimary };
         }
-
+        
         /**
-         * Switch this session to primary admin mode (enables full access, starts lock refresh).
+         * Update this admin's lastActive in publicAdminInfo.
+         * Only called when we are sure we are the primary.
          */
-        function becomePrimaryAdmin() {
-            isPrimaryAdmin = true;
-            // Stop the re‑acquire loop
-            if (reacquireLockInterval) clearInterval(reacquireLockInterval);
-            reacquireLockInterval = null;
-            // Start lock refresh interval
-            if (lockRefreshInterval) clearInterval(lockRefreshInterval);
-            lockRefreshInterval = setInterval(refreshActiveAdminLock, LOCK_REFRESH_INTERVAL);
-            // Also start the online status updates (adminUsers / publicAdminInfo)
-            startOnlineStatusUpdates(auth.currentUser);
-            // Re‑render the orders to show action buttons
-            filterOrders();
-            showToast('আপনি প্রধান এডমিন হিসেবে সক্রিয় হয়েছেন', 'success');
-            updateSystemInfo(); // update the role display
-        }
-
-        /**
-         * Clean up intervals and release lock (called on logout).
-         */
-        async function cleanupPrimaryStatus() {
-            if (isPrimaryAdmin) {
-                await releaseActiveAdminLock();
+        async function updateMyLastActive() {
+            if (!isPrimaryAdmin) return;
+            try {
+                await publicAdminInfoRef.child(currentAdminUid).update({
+                    lastActive: new Date().toISOString()
+                });
+                console.log('Updated own lastActive');
+            } catch (err) {
+                console.error('Failed to update lastActive:', err);
             }
-            if (lockRefreshInterval) clearInterval(lockRefreshInterval);
-            lockRefreshInterval = null;
-            if (reacquireLockInterval) clearInterval(reacquireLockInterval);
-            reacquireLockInterval = null;
+        }
+        
+        /**
+         * Start periodic updates for primary admin.
+         */
+        function startPrimaryUpdates() {
+            if (onlineStatusInterval) clearInterval(onlineStatusInterval);
+            onlineStatusInterval = setInterval(updateMyLastActive, REFRESH_INTERVAL);
+            // Also do an immediate update
+            updateMyLastActive();
+        }
+        
+        /**
+         * Stop all intervals related to primary status.
+         */
+        function stopAllIntervals() {
             if (onlineStatusInterval) clearInterval(onlineStatusInterval);
             onlineStatusInterval = null;
+            if (reacquireLockInterval) clearInterval(reacquireLockInterval);
+            reacquireLockInterval = null;
         }
-        // ========== END PRIMARY ADMIN LOGIC ==========
         
-        // Admin online status update (only for primary)
-        async function updateOnlineStatus(user) {
-            if (!user || !isPrimaryAdmin) return;
-            const uid = user.uid;
-            try {
-                const adminSnapshot = await database.ref(`adminUsers/${uid}`).once('value');
-                const adminData = adminSnapshot.val();
-                if (adminData && adminData.number) {
-                    const publicInfo = {
-                        name: adminData.name || user.displayName || 'Admin',
-                        number: adminData.number,
-                        lastActive: new Date().toISOString()
-                    };
-                    await database.ref(`publicAdminInfo/${uid}`).set(publicInfo);
-                } else {
-                    await database.ref(`adminUsers/${uid}`).update({
-                        lastActive: firebase.database.ServerValue.TIMESTAMP
-                    });
+        /**
+         * Check if we are primary. If not, try to become primary if the lock is free.
+         * This is called on login and periodically for read-only admins.
+         */
+        async function checkAndSetPrimary() {
+            const { isCurrentPrimary, primaryUid } = await determinePrimaryStatus();
+            if (isCurrentPrimary) {
+                // We are already primary
+                if (!isPrimaryAdmin) {
+                    // Transition to primary
+                    isPrimaryAdmin = true;
+                    startPrimaryUpdates();
+                    showToast('আপনি প্রধান এডমিন হিসেবে সক্রিয় হয়েছেন', 'success');
+                    filterOrders();  // re-render to show action buttons
+                    updateSystemInfo();
                 }
-            } catch (error) {
-                console.error("Update online status failed:", error);
+                // If already primary, do nothing extra
+            } else {
+                // We are not primary
+                if (isPrimaryAdmin) {
+                    // We were primary but lost it (someone else took over)
+                    isPrimaryAdmin = false;
+                    stopAllIntervals();
+                    showToast('অন্য এডমিন প্রধান হয়ে গেছেন। আপনি এখন শুধু দেখতে পারবেন।', 'info');
+                    filterOrders();  // remove action buttons
+                    updateSystemInfo();
+                } else {
+                    // Already read-only, but we can try to become primary if no one is active
+                    if (!primaryUid) {
+                        // No active primary, try to claim
+                        const success = await tryBecomePrimary();
+                        if (success) {
+                            // Now we are primary
+                            isPrimaryAdmin = true;
+                            startPrimaryUpdates();
+                            showToast('আপনি প্রধান এডমিন হিসেবে সক্রিয় হয়েছেন', 'success');
+                            filterOrders();
+                            updateSystemInfo();
+                        }
+                    }
+                }
             }
         }
         
-        function startOnlineStatusUpdates(user) {
-            if (onlineStatusInterval) clearInterval(onlineStatusInterval);
-            if (!isPrimaryAdmin) return;
-            updateOnlineStatus(user);
-            onlineStatusInterval = setInterval(() => {
-                updateOnlineStatus(user);
-            }, 60000);
+        /**
+         * Attempt to become primary by writing our own lastActive,
+         * but only if there is no recent timestamp from anyone else.
+         * This is a simple read-then-write; to reduce race conditions,
+         * we re-check after reading.
+         */
+        async function tryBecomePrimary() {
+            // Re-check to make sure no one else is active
+            const snapshot = await publicAdminInfoRef.once('value');
+            const admins = snapshot.val() || {};
+            const now = Date.now();
+            let activeFound = false;
+            for (const [uid, info] of Object.entries(admins)) {
+                const lastActive = info.lastActive ? new Date(info.lastActive).getTime() : 0;
+                if (lastActive && (now - lastActive) < ACTIVE_TIMEOUT) {
+                    if (uid !== currentAdminUid) {
+                        activeFound = true;
+                        break;
+                    }
+                }
+            }
+            if (activeFound) return false;
+            
+            // No active admin, try to write our timestamp
+            try {
+                await publicAdminInfoRef.child(currentAdminUid).update({
+                    lastActive: new Date().toISOString()
+                });
+                // Double-check after write to ensure we didn't race
+                const recheck = await determinePrimaryStatus();
+                return recheck.isCurrentPrimary;
+            } catch (err) {
+                console.error('Failed to become primary:', err);
+                return false;
+            }
         }
+        
+        /**
+         * Start the re-acquire loop for read-only admins.
+         */
+        function startReacquireLoop() {
+            if (reacquireLockInterval) clearInterval(reacquireLockInterval);
+            reacquireLockInterval = setInterval(() => {
+                if (!isPrimaryAdmin) {
+                    checkAndSetPrimary();
+                }
+            }, REACQUIRE_INTERVAL);
+        }
+        
+        // ========== END PRIMARY ADMIN LOGIC ==========
         
         async function loadAdminData(user) {
             adminName.textContent = user.displayName || user.email;
             adminEmail.textContent = user.email;
             adminAvatar.innerHTML = user.photoURL ? `<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">` : `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
-            // Always save admin info (even for non-primary) – this is just user data, not status
+            // Always save admin basic info (but not lastActive) – lastActive will be updated only by primary
             try {
                 await database.ref(`adminUsers/${user.uid}`).update({
                     email: user.email,
@@ -869,6 +876,14 @@
                     lastLogin: firebase.database.ServerValue.TIMESTAMP,
                     status: 'active'
                 });
+                // Also ensure they have an entry in publicAdminInfo with name and number (if available)
+                const existing = await publicAdminInfoRef.child(user.uid).once('value');
+                if (!existing.exists()) {
+                    await publicAdminInfoRef.child(user.uid).set({
+                        name: user.displayName || 'Admin',
+                        number: '' // will be filled later if needed
+                    });
+                }
             } catch (err) { console.warn("Save admin info failed:", err); }
         }
         
@@ -880,20 +895,18 @@
                     await loadAdminData(user);
                     
                     // Clean up previous intervals
-                    await cleanupPrimaryStatus();
+                    stopAllIntervals();
+                    isPrimaryAdmin = false;
                     
-                    // Try to acquire the active admin lock
-                    const acquired = await acquireActiveAdminLock();
-                    if (acquired) {
+                    // Determine if we are primary
+                    const { isCurrentPrimary } = await determinePrimaryStatus();
+                    if (isCurrentPrimary) {
                         isPrimaryAdmin = true;
-                        // Start lock refresh
-                        lockRefreshInterval = setInterval(refreshActiveAdminLock, LOCK_REFRESH_INTERVAL);
-                        // Start online status updates (only primary does this)
-                        startOnlineStatusUpdates(user);
+                        startPrimaryUpdates();
                     } else {
                         isPrimaryAdmin = false;
-                        // Start a periodic attempt to become primary when lock expires
-                        reacquireLockInterval = setInterval(tryToBecomePrimary, REACQUIRE_INTERVAL);
+                        // Start loop to try becoming primary when lock expires
+                        startReacquireLoop();
                     }
                     
                     showAdminPanel();
@@ -903,7 +916,7 @@
                     showLoginScreen();
                     showToast('এক্সেস নেই', 'error');
                 } else {
-                    await cleanupPrimaryStatus();
+                    stopAllIntervals();
                     showLoginScreen();
                 }
             });
@@ -920,7 +933,8 @@
         }
         
         async function handleLogout() {
-            await cleanupPrimaryStatus();
+            // If we are primary, we should clear our lastActive? Actually, we can leave it; it will expire.
+            stopAllIntervals();
             await auth.signOut();
             showLoginScreen();
             showToast('লগ আউট', 'success');
