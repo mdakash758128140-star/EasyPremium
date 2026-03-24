@@ -88,12 +88,7 @@ function parseOrderReference(orderData) {
     const ref = JSON.parse(orderData.reference);
     return {
       firebaseOrderId: ref.firebaseOrderId,
-      userId: ref.userId,
-      admin: ref.admin,          // admin field from reference
-      email: ref.email,
-      paymentMethod: ref.paymentMethod,
-      phone: ref.phone,
-      txid: ref.txid
+      userId: ref.userId
     };
   } catch (e) {
     console.error('Failed to parse reference:', e);
@@ -171,27 +166,17 @@ export default async function handler(req, res) {
     const timestamp = new Date().toISOString();
     const timestampMs = Date.now();
     
-    // Parse order reference to get local order ID and user ID
+    // Parse order reference to get user ID and local order ID
     const parsedRef = parseOrderReference(orderData);
     const firebaseOrderId = parsedRef?.firebaseOrderId;
     const userId = parsedRef?.userId;
-    const adminFromRef = parsedRef?.admin; // admin info from reference (if any)
     
-    // IMPORTANT: We must have firebaseOrderId. If not present, fail.
+    // CRITICAL: We need firebaseOrderId to avoid creating duplicate entries with trxId
     if (!firebaseOrderId) {
       console.error('❌ firebaseOrderId not found in orderData.reference');
       return res.status(400).json({
         success: false,
-        error: 'Missing firebaseOrderId in orderData.reference. Cannot proceed.'
-      });
-    }
-    
-    // Prevent using invalid keys (like "error") – though this should not happen if reference is correct
-    if (firebaseOrderId === 'error' || firebaseOrderId.includes('undefined')) {
-      console.error('❌ Invalid firebaseOrderId:', firebaseOrderId);
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid firebaseOrderId value'
+        error: 'Missing firebaseOrderId in orderData.reference'
       });
     }
     
@@ -218,12 +203,12 @@ export default async function handler(req, res) {
         console.warn('⚠️ RELOGRADE_API_KEY not configured');
       }
       
-      // ========== STEP 2: Prepare Firebase updates (using firebaseOrderId as key) ==========
+      // ========== STEP 2: Prepare Firebase updates (using firebaseOrderId, NOT trxId) ==========
       const updates = {};
       
-      // 1. CompletedOrders entry - keyed by firebaseOrderId
+      // CompletedOrders entry - keyed by firebaseOrderId (local order ID)
       updates[`completedOrders/${firebaseOrderId}`] = {
-        trxId: trxId,                     // store Relograde trxId as a field
+        trxId: trxId,                     // store the Relograde transaction ID as a field
         status: 'completed',
         completedBy: adminEmail,
         completedAt: timestampMs,
@@ -232,34 +217,28 @@ export default async function handler(req, res) {
         relogradeConfirmStatus: relogradeStatus,
         relogradeConfirmSuccess: relogradeResult?.success || false,
         voucherCodes: voucherCodes,
-        voucherLinks: voucherLinks,
-        admin: adminFromRef || null       // store admin from reference if present
+        voucherLinks: voucherLinks
       };
       
-      // 2. Update transaction under firebaseOrderId (local order ID)
-      const transactionUpdate = {
+      // Update transaction under firebaseOrderId (local order ID)
+      updates[`transactions/${firebaseOrderId}`] = {
         status: 'completed',
         completedAt: timestamp,
         relogradeConfirmStatus: relogradeStatus,
         voucherCodes: voucherCodes,
         voucherLinks: voucherLinks
       };
-      // Add admin field if present in reference
-      if (adminFromRef) transactionUpdate.admin = adminFromRef;
-      updates[`transactions/${firebaseOrderId}`] = transactionUpdate;
       
-      // 3. Update user's order record (if userId exists)
-      if (userId && userId !== 'guest') {
-        const userOrderUpdate = {
-          status: 'completed',
-          completedAt: timestamp,
-          voucherData: {
+      // Update user's order record (if userId exists)
+      if (userId) {
+        updates[`userOrders/${userId}/${firebaseOrderId}/status`] = 'completed';
+        updates[`userOrders/${userId}/${firebaseOrderId}/completedAt`] = timestamp;
+        if (voucherLinks.length > 0) {
+          updates[`userOrders/${userId}/${firebaseOrderId}/voucherData`] = {
             voucherLinks: voucherLinks,
             voucherCodes: voucherCodes
-          }
-        };
-        if (adminFromRef) userOrderUpdate.admin = adminFromRef;
-        updates[`userOrders/${userId}/${firebaseOrderId}`] = userOrderUpdate;
+          };
+        }
       }
       
       // Apply all updates
@@ -287,35 +266,28 @@ export default async function handler(req, res) {
       
       const updates = {};
       
-      // 1. Save to FailOrders - keyed by firebaseOrderId
+      // Save to FailOrders - keyed by firebaseOrderId
       updates[`FailOrders/${firebaseOrderId}`] = {
         trxId: trxId,
         status: 'failed',
         failedBy: adminEmail,
         failedAt: timestampMs,
         failedAtISO: timestamp,
-        orderData: orderData || null,
-        admin: adminFromRef || null
+        orderData: orderData || null
       };
       
-      // 2. Update transaction under firebaseOrderId
-      const transactionUpdate = {
+      // Update transaction under firebaseOrderId
+      updates[`transactions/${firebaseOrderId}`] = {
         status: 'fail',
         orderStatus: 'fail',
         failedAt: timestamp
       };
-      if (adminFromRef) transactionUpdate.admin = adminFromRef;
-      updates[`transactions/${firebaseOrderId}`] = transactionUpdate;
       
-      // 3. Update user's order record (if userId exists)
-      if (userId && userId !== 'guest') {
-        const userOrderUpdate = {
-          status: 'fail',
-          orderStatus: 'fail',
-          failedAt: timestamp
-        };
-        if (adminFromRef) userOrderUpdate.admin = adminFromRef;
-        updates[`userOrders/${userId}/${firebaseOrderId}`] = userOrderUpdate;
+      // Update user's order record (if userId exists)
+      if (userId) {
+        updates[`userOrders/${userId}/${firebaseOrderId}/status`] = 'fail';
+        updates[`userOrders/${userId}/${firebaseOrderId}/orderStatus`] = 'fail';
+        updates[`userOrders/${userId}/${firebaseOrderId}/failedAt`] = timestamp;
       }
       
       // Apply all updates
@@ -337,8 +309,7 @@ export default async function handler(req, res) {
         deletedBy: adminEmail,
         deletedAt: timestampMs,
         deletedAtISO: timestamp,
-        originalData: orderData || null,
-        admin: adminFromRef || null
+        originalData: orderData || null
       };
       
       const backupUrl = `${FIREBASE_DATABASE_URL}/deletedOrders/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
