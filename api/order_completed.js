@@ -1,285 +1,357 @@
-// api/create-order.js
+// api/order_completed.js
+// Admin Order Management API - Complete, Fail & Delete Orders with Relograde Confirm
+
+const RELOGRADE_API_URL = 'https://connect.relograde.com/api/1.02';
+const RELOGRADE_API_KEY = process.env.RELOGRADE_API_KEY;
+
+// Helper function for Relograde API calls
+async function callRelogradeAPI(endpoint, method, data = null) {
+  const url = `${RELOGRADE_API_URL}/${endpoint}`;
+  const options = {
+    method: method,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${RELOGRADE_API_KEY}`,
+      'Accept': 'application/json'
+    }
+  };
+  
+  if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+    options.body = JSON.stringify(data);
+  }
+  
+  console.log(`📤 Relograde API Call: ${method} ${url}`);
+  
+  try {
+    const response = await fetch(url, options);
+    const result = await response.json();
+    
+    console.log(`📥 Response Status: ${response.status}`);
+    console.log(`📥 Response Data:`, JSON.stringify(result, null, 2));
+    
+    if (!response.ok) {
+      throw new Error(result.message || `API error: ${response.status}`);
+    }
+    
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('❌ Relograde API error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// 🔥 Confirm Order Function
+async function confirmRelogradeOrder(trxId) {
+  console.log(`🔔 Confirming Relograde order: ${trxId}`);
+  
+  const confirmResult = await callRelogradeAPI(`order/confirm/${trxId}`, 'PATCH');
+  
+  if (!confirmResult.success) {
+    console.error('❌ Relograde confirm failed:', confirmResult.error);
+    return { success: false, error: confirmResult.error };
+  }
+  
+  const orderData = confirmResult.data;
+  console.log(`✅ Relograde order confirmed! Status: ${orderData.orderStatus}`);
+  
+  // Extract voucher codes if order is finished
+  let voucherCodes = [];
+  let voucherLinks = [];
+  
+  if (orderData.orderStatus === 'finished' && orderData.items) {
+    for (const item of orderData.items) {
+      if (item.orderLines && item.orderLines.length > 0) {
+        for (const line of item.orderLines) {
+          if (line.voucherCode) {
+            voucherCodes.push(line.voucherCode);
+            voucherLinks.push(`https://reward.relograde.com/${line.voucherCode}`);
+            console.log(`🎫 Voucher found: ${line.voucherCode}`);
+          }
+        }
+      }
+    }
+  }
+  
+  return { 
+    success: true, 
+    data: orderData,
+    isFinished: orderData.orderStatus === 'finished',
+    voucherCodes: voucherCodes,
+    voucherLinks: voucherLinks
+  };
+}
+
+// Helper to parse reference JSON and extract order details
+function parseOrderReference(orderData) {
+  if (!orderData || !orderData.reference) return null;
+  try {
+    const ref = JSON.parse(orderData.reference);
+    return {
+      firebaseOrderId: ref.firebaseOrderId,
+      userId: ref.userId
+    };
+  } catch (e) {
+    console.error('Failed to parse reference:', e);
+    return null;
+  }
+}
+
+// Helper to update multiple Firebase paths
+async function updateFirebasePaths(paths, firebaseUrl, secret) {
+  const updates = {};
+  for (const [path, value] of Object.entries(paths)) {
+    updates[path] = value;
+  }
+  const url = `${firebaseUrl}.json?auth=${secret}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates)
+  });
+  if (!res.ok) {
+    const error = await res.text();
+    throw new Error(`Firebase patch failed: ${error}`);
+  }
+  return res.json();
+}
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  // ========== 1. ORDER CREATION (original logic) ==========
-  const apiKey = process.env.RELOGRADE_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
-
-  const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
-  const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
-  const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
-  const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
-
-  const { productSlug, amount, paymentCurrency, reference, faceValue, firebaseOrderId, serviceCharge } = req.body;
-
-  if (!productSlug || !amount || !paymentCurrency) {
-    return res.status(400).json({ error: 'Missing required fields' });
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
-
-  const amountInt = parseInt(amount);
-  if (isNaN(amountInt) || amountInt <= 0) {
-    return res.status(400).json({ error: 'Amount must be a positive integer' });
+  
+  if (req.method !== 'POST') {
+    return res.status(405).json({ 
+      success: false, 
+      error: 'Method not allowed' 
+    });
   }
-
+  
   try {
-    // Parse reference to get phone, txid, userId, email, admin
-    let paymentMethod = 'UNKNOWN';
-    let phone = '', txid = '', userId = '', email = '', admin = '';
-
-    if (reference) {
-      try {
-        const parsedRef = JSON.parse(reference);
-        paymentMethod = parsedRef.method || 'UNKNOWN';
-        phone = parsedRef.phone || '';
-        txid = parsedRef.txid || '';
-        userId = parsedRef.userId || '';
-        email = parsedRef.email || '';
-        admin = parsedRef.admin || '';
-      } catch (e) {
-        console.error('Failed to parse reference JSON, falling back to pipe parsing:', e);
-        const referenceParts = reference.split('|');
-        paymentMethod = referenceParts[0] || 'UNKNOWN';
-        referenceParts.forEach(part => {
-          if (part.startsWith('Phone:')) phone = part.replace('Phone:', '');
-          if (part.startsWith('TXID:')) txid = part.replace('TXID:', '');
-          if (part.startsWith('UserID:')) userId = part.replace('UserID:', '');
-          if (part.startsWith('Email:')) email = part.replace('Email:', '');
-          if (part.startsWith('Admin:')) admin = part.replace('Admin:', '');
-        });
-      }
+    const { trxId, action, adminEmail, orderData } = req.body;
+    
+    console.log('📝 API Called:', { trxId, action, adminEmail });
+    
+    if (!trxId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'trxId is required' 
+      });
     }
-
-    const finalOrderId = firebaseOrderId || 'REL' + Math.random().toString(36).substring(2, 15).toUpperCase();
-    const dummyTimestamp = "2024-01-01T00:00:00.000Z";
-    const dummyFormattedDate = "১ জানুয়ারি ২০২৪";
-
-    const serviceChargeInt = serviceCharge ? parseInt(serviceCharge) : 0;
-    const totalAmount = amountInt + serviceChargeInt;
-
-    const formattedPrice = `${amountInt} ${paymentCurrency}`;
-    const formattedTotalPrice = `${totalAmount} ${paymentCurrency}`;
-    const platformName = productSlug.includes('variable') ? 'Rewarble Visa Variable USD' : productSlug;
-
-    const items = [{ productSlug, amount: 1 }];
-    if (faceValue !== undefined && faceValue !== null) {
-      const faceValueNum = parseFloat(faceValue);
-      if (!isNaN(faceValueNum) && faceValueNum > 0) {
-        items[0].faceValue = faceValueNum;
-      }
+    
+    if (!action || !['complete', 'fail', 'delete'].includes(action)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'action must be complete, fail or delete' 
+      });
     }
-
-    const relogradeReference = JSON.stringify({
-      firebaseOrderId: finalOrderId,
-      paymentMethod,
-      phone,
-      txid,
-      userId,
-      email,
-      admin
-    });
-
-    const requestBody = {
-      items,
-      paymentCurrency: paymentCurrency.toLowerCase(),
-      reference: relogradeReference
-    };
-
-    const response = await fetch('https://connect.relograde.com/api/1.02/order', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Relograde API responded with status ${response.status}: ${errorText}`);
+    
+    // Firebase config
+    const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL;
+    const FIREBASE_SECRET = process.env.FIREBASE_SECRET;
+    
+    if (!FIREBASE_DATABASE_URL || !FIREBASE_SECRET) {
+      console.error('❌ Firebase config missing');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Firebase configuration missing' 
+      });
     }
-
-    const relogradeData = await response.json();
-
-    // ✅ FIX: Get transaction ID from the correct location (data.trx)
-    let relogradeTrx = null;
-    if (relogradeData.data && relogradeData.data.trx) {
-      relogradeTrx = relogradeData.data.trx;
-    } else if (relogradeData.trx) {
-      relogradeTrx = relogradeData.trx; // fallback for older structure
-    }
-    console.log(`✅ Relograde transaction ID: ${relogradeTrx}`);
-
-    // ========== 2. FIREBASE WRITE (NEW) ==========
-    const dbUrl = process.env.FIREBASE_DATABASE_URL;
-    const secret = process.env.FIREBASE_SECRET;
-
-    // Determine order status: if user provided phone+txid, it's "waiting", else "pending"
-    const orderStatus = (phone && txid) ? 'waiting' : 'pending';
-
-    if (dbUrl && secret) {
-      try {
-        // Prepare order data (admin যোগ করা হয়েছে)
-        const firebaseOrder = {
-          orderId: finalOrderId,
-          userId: userId || 'guest',
-          userEmail: email || '',
-          platformId: productSlug,
-          platform: platformName,
-          amount: amountInt,
-          price: amountInt.toString(),
-          serviceCharge: serviceChargeInt,
-          totalAmount: totalAmount,
-          status: orderStatus,
-          phone: phone || null,
-          txid: txid || null,
-          paymentMethod: paymentMethod,
-          orderDate: new Date().toISOString(),
-          timestamp: Date.now(),
-          relogradeTrx: relogradeTrx,
-          admin: admin || null          // 👈 নতুন যোগকৃত ফিল্ড
-        };
-
-        // Write to transactions node (key = orderId)
-        const transactionUrl = `${dbUrl}/transactions/${finalOrderId}.json?auth=${secret}`;
-        await fetch(transactionUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(firebaseOrder)
-        });
-
-        // Write to userOrders node if userId exists
-        if (userId && userId !== 'guest') {
-          const userOrderUrl = `${dbUrl}/userOrders/${userId}/${finalOrderId}.json?auth=${secret}`;
-          await fetch(userOrderUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(firebaseOrder)
-          });
+    
+    const timestamp = new Date().toISOString();
+    const timestampMs = Date.now();
+    
+    // Parse order reference to get user ID and order ID
+    const parsedRef = parseOrderReference(orderData);
+    const firebaseOrderId = parsedRef?.firebaseOrderId;
+    const userId = parsedRef?.userId;
+    
+    if (action === 'complete') {
+      // ========== STEP 1: 🔥 CONFIRM ORDER IN RELOGRADE ==========
+      console.log(`\n🔄 STEP 1: Confirming order ${trxId} in Relograde...`);
+      
+      let relogradeResult = null;
+      let voucherCodes = [];
+      let voucherLinks = [];
+      let relogradeStatus = null;
+      
+      if (RELOGRADE_API_KEY) {
+        relogradeResult = await confirmRelogradeOrder(trxId);
+        if (relogradeResult.success) {
+          relogradeStatus = relogradeResult.data.orderStatus;
+          voucherCodes = relogradeResult.voucherCodes;
+          voucherLinks = relogradeResult.voucherLinks;
+          console.log(`✅ Relograde order confirmed. Status: ${relogradeStatus}`);
+        } else {
+          console.warn(`⚠️ Relograde confirm failed: ${relogradeResult.error}`);
         }
-
-        console.log(`✅ Order written to Firebase with status: ${orderStatus}`);
-      } catch (firebaseError) {
-        console.error('⚠️ Failed to write to Firebase:', firebaseError.message);
-        // Continue – order creation still successful
+      } else {
+        console.warn('⚠️ RELOGRADE_API_KEY not configured');
       }
-    } else {
-      console.warn('⚠️ Firebase config missing, skipping DB write');
-    }
-
-    // ========== 3. EMAIL SENDING (original) ==========
-    const orderLinkData = {
-      OrderId: relogradeTrx || finalOrderId,
-      PaymentMethods: paymentMethod,
-      PaymentNumber: phone || 'N/A',
-      PaymentTrxID: txid || 'N/A',
-      Time: dummyTimestamp,
-      email,
-      platformId: productSlug,
-      uid: userId || 'guest',
-      amount: amountInt,
-      currency: 'BDT',
-      faceValue: faceValue || null,
-      status: orderStatus,
-      serviceCharge: serviceChargeInt,
-      totalAmount: totalAmount
-    };
-    const jsonString = JSON.stringify(orderLinkData);
-    const base64Data = Buffer.from(jsonString).toString('base64');
-    const orderLink = `https://www.easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
-
-    async function sendEmailWithLink() {
-      if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
-        console.log('❌ EmailJS credentials missing');
-        return false;
-      }
-      if (!email) {
-        console.log('❌ No email provided');
-        return false;
-      }
-      try {
-        const emailjsUrl = 'https://api.emailjs.com/api/v1.0/email/send';
-        const templateParams = {
-          to_email: email,
-          to_name: userId || 'Valued Customer',
-          order_id: relogradeTrx || finalOrderId,
-          platform: platformName,
-          order_date: dummyFormattedDate,
-          payment_link: orderLink,
-          payment_method: paymentMethod,
-          payment_number: phone || 'N/A',
-          transaction_id: txid || 'N/A',
-          user_id: userId || 'guest',
-          status: orderStatus,
-          amount: formattedPrice,
-          total_amount: formattedTotalPrice,
-          face_value: faceValue ? `$${faceValue}` : 'N/A',
-          from_name: 'Easy Premium',
-          reply_to: 'support@easy-premium.com'
-        };
-        console.log('📧 Sending email with params:', templateParams);
-        const emailResponse = await fetch(emailjsUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            service_id: EMAILJS_SERVICE_ID,
-            template_id: EMAILJS_TEMPLATE_ID,
-            user_id: EMAILJS_PUBLIC_KEY,
-            template_params: templateParams,
-            accessToken: EMAILJS_PRIVATE_KEY
-          })
-        });
-        const responseText = await emailResponse.text();
-        console.log('📨 EmailJS response:', responseText);
-        if (!emailResponse.ok) {
-          console.error('❌ EmailJS error:', responseText);
-          return false;
+      
+      // ========== STEP 2: Prepare Firebase updates ==========
+      const updates = {};
+      
+      // CompletedOrders entry
+      updates[`completedOrders/${trxId}`] = {
+        trxId: trxId,
+        status: 'completed',
+        completedBy: adminEmail,
+        completedAt: timestampMs,
+        completedAtISO: timestamp,
+        orderData: orderData || null,
+        relogradeConfirmStatus: relogradeStatus,
+        relogradeConfirmSuccess: relogradeResult?.success || false,
+        voucherCodes: voucherCodes,
+        voucherLinks: voucherLinks
+      };
+      
+      // Update transaction under trxId (Relograde key)
+      updates[`transactions/${trxId}`] = {
+        status: 'completed',
+        completedAt: timestamp,
+        relogradeConfirmStatus: relogradeStatus,
+        voucherCodes: voucherCodes,
+        voucherLinks: voucherLinks
+      };
+      
+      // If we have firebaseOrderId and userId, update those nodes too
+      if (firebaseOrderId && userId) {
+        // Update user's order record
+        updates[`userOrders/${userId}/${firebaseOrderId}/status`] = 'completed';
+        updates[`userOrders/${userId}/${firebaseOrderId}/completedAt`] = timestamp;
+        if (voucherLinks.length > 0) {
+          updates[`userOrders/${userId}/${firebaseOrderId}/voucherData`] = {
+            voucherLinks: voucherLinks,
+            voucherCodes: voucherCodes
+          };
         }
-        return true;
-      } catch (emailError) {
-        console.error('❌ Email error:', emailError);
-        return false;
+        // Update transaction under firebaseOrderId
+        updates[`transactions/${firebaseOrderId}/status`] = 'completed';
+        updates[`transactions/${firebaseOrderId}/completedAt`] = timestamp;
+        if (voucherLinks.length > 0) {
+          updates[`transactions/${firebaseOrderId}/voucherData`] = {
+            voucherLinks: voucherLinks,
+            voucherCodes: voucherCodes
+          };
+        }
       }
-    }
-
-    let emailSent = false;
-    if (email) {
-      emailSent = await sendEmailWithLink();
-    }
-
-    return res.status(200).json({
-      success: true,
-      trx: finalOrderId,
-      link: orderLink,
-      emailSent,
-      relogradeResponse: relogradeData,
-      orderData: {
-        orderId: finalOrderId,
-        paymentMethod,
-        paymentNumber: phone,
-        transactionId: txid,
-        time: dummyTimestamp,
-        email,
-        platformId: productSlug,
-        faceValue: faceValue || null,
-        serviceCharge: serviceChargeInt,
-        totalAmount: totalAmount,
-        status: orderStatus,
-        admin: admin || null            // 👈 নতুন যোগকৃত ফিল্ড
+      
+      // Also update the top-level userOrders/${trxId} for consistency
+      updates[`userOrders/${trxId}`] = {
+        status: 'completed',
+        orderStatus: 'completed'
+      };
+      
+      // Apply all updates
+      await updateFirebasePaths(updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
+      
+      console.log(`✅ Order ${trxId} completed by ${adminEmail}`);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Order completed successfully',
+        data: { 
+          trxId, 
+          status: 'completed',
+          relogradeConfirmed: relogradeResult?.success || false,
+          relogradeStatus: relogradeStatus,
+          voucherCodes: voucherCodes,
+          voucherLinks: voucherLinks
+        }
+      });
+      
+    } else if (action === 'fail') {
+      // ========== FAIL ORDER ==========
+      console.log(`\n❌ Failing order ${trxId}...`);
+      
+      const updates = {};
+      
+      // Save to FailOrders
+      updates[`FailOrders/${trxId}`] = {
+        trxId: trxId,
+        status: 'failed',
+        failedBy: adminEmail,
+        failedAt: timestampMs,
+        failedAtISO: timestamp,
+        orderData: orderData || null
+      };
+      
+      // Update transaction under trxId
+      updates[`transactions/${trxId}`] = {
+        status: 'fail',
+        orderStatus: 'fail',
+        failedAt: timestamp
+      };
+      
+      // Update top-level userOrders entry for this trxId
+      updates[`userOrders/${trxId}`] = {
+        status: 'fail',
+        orderStatus: 'fail'
+      };
+      
+      // If we have firebaseOrderId and userId, update those nodes too
+      if (firebaseOrderId && userId) {
+        // Update user's order record
+        updates[`userOrders/${userId}/${firebaseOrderId}/status`] = 'fail';
+        updates[`userOrders/${userId}/${firebaseOrderId}/orderStatus`] = 'fail';
+        updates[`userOrders/${userId}/${firebaseOrderId}/failedAt`] = timestamp;
+        // Update transaction under firebaseOrderId
+        updates[`transactions/${firebaseOrderId}/status`] = 'fail';
+        updates[`transactions/${firebaseOrderId}/orderStatus`] = 'fail';
+        updates[`transactions/${firebaseOrderId}/failedAt`] = timestamp;
       }
-    });
-
+      
+      // Apply all updates
+      await updateFirebasePaths(updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
+      
+      console.log(`✅ Order ${trxId} marked as failed by ${adminEmail}`);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Order marked as failed',
+        data: { trxId, status: 'fail' }
+      });
+      
+    } else if (action === 'delete') {
+      // Delete order - backup and remove
+      const backupData = {
+        trxId: trxId,
+        deletedBy: adminEmail,
+        deletedAt: timestampMs,
+        deletedAtISO: timestamp,
+        originalData: orderData || null
+      };
+      
+      const backupUrl = `${FIREBASE_DATABASE_URL}/deletedOrders/${trxId}.json?auth=${FIREBASE_SECRET}`;
+      await fetch(backupUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(backupData)
+      });
+      
+      const deleteUrl = `${FIREBASE_DATABASE_URL}/completedOrders/${trxId}.json?auth=${FIREBASE_SECRET}`;
+      await fetch(deleteUrl, { method: 'DELETE' });
+      
+      console.log(`✅ Order ${trxId} deleted by ${adminEmail}`);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Order deleted successfully',
+        data: { trxId, deleted: true }
+      });
+    }
+    
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('❌ API Error:', error);
     return res.status(500).json({
-      error: 'Failed to create order',
-      details: error.message
+      success: false,
+      error: error.message || 'Internal server error'
     });
   }
-}
+}                        ডাটাবেস এ কি কি সেন্ড হয় ডাটাবেস আর স্ট্রাকচার দাও
