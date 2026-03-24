@@ -8,10 +8,9 @@
     <link rel="icon" type="image/x-icon" href="https://cdn-icons-png.flaticon.com/512/8701/8701941.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:; style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval';">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="format-detection" content="telephone=no, address=no, email=no">
@@ -20,8 +19,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-
+    
     <style>
+        /* ========== সম্পূর্ণ ডার্ক থিম – কোনো সাদা অংশ থাকবে না ========== */
         * {
             margin: 0;
             padding: 0;
@@ -30,54 +30,38 @@
             -webkit-tap-highlight-color: transparent;
             color: #fff;
         }
-
         html {
+            background: #0a0a1a;
             scroll-behavior: smooth;
             overflow-x: hidden;
             width: 100%;
             height: 100%;
-            background-color: #0a0a1a;
         }
-
         body {
-            background: #0a0a1a;
-            background-attachment: fixed;
+            background: #0a0a1a; /* পুরোপুরি কালো ব্যাকগ্রাউন্ড, গ্রেডিয়েন্ট সরানো হয়েছে */
             min-height: 100vh;
-            color: #fff;
             position: relative;
         }
-
-        /* সব ডার্ক ব্যাকগ্রাউন্ড */
-        .header, .hero, .footer, .drawer, .drawer-overlay, .login-modal, .profile-modal, .loading-overlay, .website-overlay,
-        .login-content, .profile-content, .search-results, .platform-card, .order-card {
-            background-color: #0a0a1a;
-        }
-        .header { background: rgba(10, 10, 26, 0.98); backdrop-filter: blur(10px); }
-        .hero { background: linear-gradient(rgba(10, 10, 26, 0.95), rgba(10, 10, 26, 0.95)), url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80'); background-size: cover; background-position: center; }
-        .footer { background: rgba(10, 10, 26, 0.98); }
-        .drawer { background: rgba(10, 10, 26, 0.98); backdrop-filter: blur(10px); }
-        .login-content, .profile-content { background: rgba(10, 10, 26, 0.98); }
-
-        /* হেডার */
+        /* কোনো হালকা প্রভাব নেই */
+        /* Header */
         .header {
+            background: #0a0a1a; /* সম্পূর্ণ অপেক ডার্ক */
             padding: 12px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
             position: sticky;
             top: 0;
             z-index: 1000;
             width: 100%;
         }
-
         .header-left {
             display: flex;
             align-items: center;
             gap: 15px;
             flex: 1;
         }
-
         .logo {
             display: flex;
             align-items: center;
@@ -85,9 +69,7 @@
             text-decoration: none;
             transition: transform 0.3s;
         }
-
         .logo:hover { transform: scale(1.02); }
-
         .logo-image-container {
             width: 45px;
             height: 45px;
@@ -95,56 +77,45 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
-            transition: all 0.3s;
+            background: white;
             border-radius: 8px;
-            /* 🔥 এখানে সাদা ব্যাকগ্রাউন্ড সরিয়ে ডার্ক করা হয়েছে */
-            background: #0a0a1a;
             padding: 5px;
+            box-shadow: 0 5px 15px rgba(255,152,0,0.3);
         }
-
         .logo-image { width: 100%; height: 100%; object-fit: contain; }
         .logo-text { display: flex; flex-direction: column; line-height: 1; }
-        .logo-main { font-size: 1.3rem; font-weight: 800; color: #ff9800; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap; }
-        .logo-sub { font-size: 0.75rem; font-weight: 600; color: #00bcd4; letter-spacing: 0.3px; margin-top: 2px; white-space: nowrap; }
-
+        .logo-main { font-size: 1.3rem; font-weight: 800; color: #ff9800; text-transform: uppercase; white-space: nowrap; }
+        .logo-sub { font-size: 0.75rem; font-weight: 600; color: #00bcd4; margin-top: 2px; white-space: nowrap; }
         .header-right { display: flex; align-items: center; gap: 10px; }
-
-        .cart-icon-container {
+        .cart-icon-container, .menu-icon-container {
             cursor: pointer;
-            transition: all 0.3s;
             position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
-
-        .cart-modern-icon {
-            position: relative;
+        .cart-modern-icon, .menu-modern-icon {
             width: 45px;
             height: 45px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 10px;
-            background: linear-gradient(145deg, rgba(255, 152, 0, 0.15), rgba(255, 87, 34, 0.1));
-            border: 2px solid rgba(255, 152, 0, 0.3);
+            background: linear-gradient(145deg, rgba(255,152,0,0.15), rgba(255,87,34,0.1));
+            border: 2px solid rgba(255,152,0,0.3);
             transition: all 0.4s;
-            overflow: hidden;
         }
-
-        .cart-modern-icon i { font-size: 1.4rem; color: #ff9800; transition: all 0.4s; position: relative; z-index: 2; }
-        .cart-icon-container:hover .cart-modern-icon { border-color: #ff9800; box-shadow: 0 0 20px rgba(255, 152, 0, 0.4); transform: translateY(-3px); }
-        .cart-icon-container:hover .cart-modern-icon i { color: #fff; transform: scale(1.1); }
-
+        .cart-modern-icon i, .menu-modern-icon i { font-size: 1.4rem; color: #ff9800; }
+        .cart-icon-container:hover .cart-modern-icon,
+        .menu-icon-container:hover .menu-modern-icon {
+            border-color: #ff9800;
+            box-shadow: 0 0 20px rgba(255,152,0,0.4);
+            transform: translateY(-3px);
+        }
+        .cart-icon-container:hover .cart-modern-icon i,
+        .menu-icon-container:hover .menu-modern-icon i { color: #fff; transform: scale(1.1); }
         .cart-badge {
             position: absolute;
             top: -5px;
             right: -5px;
             background: linear-gradient(45deg, #ff5722, #ff9800);
-            color: white;
             border-radius: 50%;
             width: 22px;
             height: 22px;
@@ -153,120 +124,47 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            box-shadow: 0 3px 10px rgba(255, 87, 34, 0.5);
             border: 2px solid #0a0a1a;
             z-index: 10;
             animation: badgePulse 2s infinite;
         }
-
-        @keyframes badgePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-
-        .menu-icon-container {
-            cursor: pointer;
-            transition: all 0.3s;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-left: 10px;
+        /* কার্ট ব্যাজ সম্পূর্ণ লুকান (প্রয়োজন হলে দেখানো হবে) */
+        #cartBadge {
+            display: none !important;
         }
-
-        .menu-modern-icon {
-            position: relative;
-            width: 45px;
-            height: 45px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            background: linear-gradient(145deg, rgba(255, 152, 0, 0.15), rgba(255, 87, 34, 0.1));
-            border: 2px solid rgba(255, 152, 0, 0.3);
-            transition: all 0.4s;
-            overflow: hidden;
-        }
-
-        .menu-modern-icon i { font-size: 1.4rem; color: #ff9800; transition: all 0.4s; position: relative; z-index: 2; }
-        .menu-icon-container:hover .menu-modern-icon { border-color: #ff9800; box-shadow: 0 0 20px rgba(255, 152, 0, 0.4); transform: translateY(-3px); }
-        .menu-icon-container:hover .menu-modern-icon i { color: #fff; transform: scale(1.1); }
-
-        .search-container { display: block; flex: 1; max-width: 300px; margin-left: 20px; }
-        .search-wrapper { position: relative; width: 100%; }
-        .search-input {
-            width: 100%;
-            padding: 12px 40px 12px 15px;
-            border-radius: 25px;
-            border: 2px solid #ff9800;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            font-size: 0.95rem;
-            outline: none;
-            transition: all 0.3s;
-        }
-        .search-input:focus { background: rgba(255, 255, 255, 0.15); box-shadow: 0 0 15px rgba(255, 152, 0, 0.4); }
-        .search-input::placeholder { color: rgba(255, 255, 255, 0.6); }
-        .search-btn {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: transparent;
-            border: none;
-            color: #ff9800;
-            cursor: pointer;
-            font-size: 1.2rem;
-            transition: all 0.3s;
-            padding: 5px;
-        }
-        .search-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: rgba(20, 20, 40, 0.95);
-            border-radius: 10px;
-            margin-top: 5px;
-            max-height: 400px;
-            overflow-y: auto;
-            z-index: 1001;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-            border: 1px solid #ff9800;
-            display: none;
-        }
-        .search-result-item {
-            padding: 12px;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 1px solid rgba(255, 152, 0, 0.2);
-        }
-        .search-result-item:hover { background: rgba(255, 152, 0, 0.1); }
-        .search-result-item:last-child { border-bottom: none; }
-        .search-result-icon { width: 30px; height: 30px; object-fit: contain; }
-        .search-result-content { flex: 1; min-width: 0; }
-        .search-result-name { font-weight: 600; color: #fff; margin-bottom: 3px; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .search-result-desc { font-size: 0.75rem; color: #b0bec5; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .search-result-price { font-weight: 700; color: #ff9800; font-size: 0.95rem; white-space: nowrap; }
-
+        @keyframes badgePulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+        
+        /* Hero section – সম্পূর্ণ ডার্ক */
         .hero {
             text-align: center;
             padding: 40px 20px;
-            min-height: 250px;
+            background: #0a0a1a; /* সরাসরি কালো, কোনো হালকা গ্রেডিয়েন্ট নেই */
+            min-height: 180px;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            width: 100%;
         }
-        .hero h1 { font-size: 2rem; margin-bottom: 15px; color: #ff9800; line-height: 1.3; max-width: 800px; margin-left: auto; margin-right: auto; padding: 0 15px; }
-        .hero p { font-size: 1rem; max-width: 800px; margin: 0 auto; color: #ddd; line-height: 1.6; padding: 0 15px; }
-
-        /* প্রোফাইল কন্টেন্ট */
-        .profile-container {
+        .hero h1 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: #ff9800;
+            line-height: 1.3;
+        }
+        .hero p {
+            font-size: 1rem;
+            max-width: 600px;
+            margin: 0 auto;
+            color: #ddd;
+            line-height: 1.6;
+        }
+        
+        .container {
             max-width: 1200px;
-            margin: 30px auto;
+            margin: 0 auto;
             padding: 20px;
         }
+        
+        /* Profile card */
         .profile-card {
             background: rgba(20,20,40,0.9);
             border-radius: 12px;
@@ -317,7 +215,7 @@
             font-size: 0.95rem;
             word-break: break-word;
         }
-
+        
         /* Orders section */
         .orders-section {
             margin-top: 20px;
@@ -347,6 +245,7 @@
             border-left: 4px solid #ff9800;
             transition: 0.2s;
         }
+        /* Clickable styles for pending orders */
         .order-card.clickable-pending {
             cursor: pointer;
         }
@@ -354,6 +253,7 @@
             background: rgba(255,152,0,0.1);
             border-left-color: #00bcd4;
         }
+        /* Completed orders with voucher link */
         .order-card[data-voucher-link]:not([data-voucher-link=""]) {
             cursor: pointer;
         }
@@ -405,6 +305,8 @@
             color: #dc3545;
             border: 1px solid #dc3545;
         }
+        
+        /* Reorder button */
         .reorder-btn {
             background: linear-gradient(45deg, #ff9800, #ff5722);
             border: none;
@@ -424,7 +326,7 @@
             transform: translateY(-2px);
             box-shadow: 0 3px 10px rgba(255,152,0,0.4);
         }
-
+        
         /* Loading & error */
         .loading {
             text-align: center;
@@ -439,7 +341,10 @@
             animation: spin 1s linear infinite;
             margin: 0 auto 20px;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
         .error {
             text-align: center;
             padding: 30px;
@@ -448,15 +353,13 @@
             border-radius: 16px;
             border: 1px solid #ff6b6b;
         }
-
-        /* Footer */
+        
+        /* Footer (same as main site) */
         .footer {
+            background: rgba(10,10,26,0.95);
             padding: 40px 20px 30px;
             text-align: center;
-            width: 100%;
-            margin-top: 40px;
-            position: relative;
-            z-index: 1;
+            margin-top: 60px;
         }
         .footer-policy-links {
             display: flex;
@@ -469,56 +372,73 @@
             color: #fff;
             text-decoration: none;
             font-size: 0.95rem;
-            font-weight: 500;
             padding: 5px 10px;
             border-radius: 5px;
-            transition: all 0.3s;
+            transition: 0.3s;
             border: 1px solid transparent;
         }
-        .footer-policy-links a:hover { color: #ff9800; background: rgba(255, 152, 0, 0.1); border-color: #ff9800; }
+        .footer-policy-links a:hover {
+            color: #ff9800;
+            background: rgba(255,152,0,0.1);
+            border-color: #ff9800;
+        }
         .social-links {
             display: flex;
             justify-content: center;
             gap: 15px;
             margin: 0 auto 30px;
             flex-wrap: wrap;
-            max-width: 500px;
         }
         .social-link {
             color: #fff;
             font-size: 1.5rem;
-            transition: all 0.3s;
             width: 50px;
             height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.1);
             text-decoration: none;
+            transition: 0.3s;
         }
-        .social-link:hover { color: #ff9800; background: rgba(255, 152, 0, 0.2); transform: translateY(-5px) scale(1.1); }
+        .social-link i {
+            transition: color 0.3s;
+        }
         .social-link:nth-child(1) i { color: #1877F2; }
         .social-link:nth-child(2) i { color: #E4405F; }
         .social-link:nth-child(3) i { color: #FF0000; }
         .social-link:nth-child(4) i { color: #000000; }
         .social-link:nth-child(5) i { color: #25D366; }
         .social-link:nth-child(6) i { color: #0088cc; }
-        .copyright { color: #b0bec5; font-size: 0.85rem; line-height: 1.6; max-width: 800px; margin: 0 auto; }
-
-        /* Drawer */
+        .social-link:hover {
+            background: rgba(255,152,0,0.2);
+            transform: translateY(-5px) scale(1.1);
+        }
+        .social-link:hover i {
+            color: #ff9800 !important;
+        }
+        .copyright {
+            color: #b0bec5;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        /* Drawer (same) */
         .drawer-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
+            background: rgba(0,0,0,0.6);
             backdrop-filter: blur(3px);
             z-index: 2000;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
+            transition: 0.3s;
         }
         .drawer-overlay.active { opacity: 1; visibility: visible; }
         .drawer {
@@ -527,31 +447,30 @@
             right: -350px;
             width: 300px;
             height: 100vh;
+            background: rgba(20,20,40,0.95);
             backdrop-filter: blur(10px);
             border-left: 2px solid #ff9800;
-            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
             z-index: 2001;
             transition: right 0.3s;
             padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
         }
         .drawer.active { right: 0; }
         .drawer-close {
-            align-self: flex-end;
-            background: transparent;
+            background: none;
             border: none;
             font-size: 1.5rem;
             color: #ff9800;
             cursor: pointer;
-            margin-bottom: 20px;
-            transition: transform 0.3s;
+            float: right;
         }
-        .drawer-close:hover { transform: rotate(90deg); color: #ff5722; }
-        .drawer-buttons { display: flex; flex-direction: column; gap: 15px; flex: 1; }
+        .drawer-buttons {
+            margin-top: 50px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
         .drawer-btn {
-            background: rgba(255, 152, 0, 0.1);
+            background: rgba(255,152,0,0.1);
             border: 1px solid #ff9800;
             border-radius: 8px;
             padding: 15px;
@@ -560,17 +479,16 @@
             font-weight: 600;
             color: #fff;
             text-decoration: none;
-            transition: all 0.3s;
-            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
         }
-        .drawer-btn i { color: #ff9800; font-size: 1.2rem; }
-        .drawer-btn:hover { background: #ff9800; color: #000; transform: translateX(-5px); }
-        .drawer-btn:hover i { color: #000; }
-
+        .drawer-btn:hover {
+            background: #ff9800;
+            color: #000;
+        }
+        
         /* Messenger float */
         .messenger-float {
             position: fixed;
@@ -590,132 +508,42 @@
             text-decoration: none;
             animation: messengerPulse 2s infinite;
         }
-        .messenger-float:hover { transform: scale(1.1); box-shadow: 0 15px 30px rgba(0, 132, 255, 0.6); }
-        .messenger-float i { color: white; font-size: 2rem; }
+        .messenger-float:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 30px rgba(0, 132, 255, 0.6);
+        }
+        .messenger-float i {
+            color: white;
+            font-size: 2rem;
+        }
         @keyframes messengerPulse {
             0% { box-shadow: 0 0 0 0 rgba(0, 132, 255, 0.7); }
             70% { box-shadow: 0 0 0 15px rgba(0, 132, 255, 0); }
             100% { box-shadow: 0 0 0 0 rgba(0, 132, 255, 0); }
         }
-
-        /* Login & Profile Modal (প্রয়োজনে) */
-        .login-modal, .profile-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 2000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        .login-content, .profile-content {
-            padding: 30px 25px;
-            border-radius: 15px;
-            text-align: center;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            border: 2px solid #ff9800;
-        }
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(5px);
-            z-index: 10000;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
-        .loading-spinner-big {
-            border: 6px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 6px solid #ff9800;
-            width: 70px;
-            height: 70px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        .website-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(10px);
-            z-index: 9999;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        .overlay-content {
-            max-width: 500px;
-            width: 100%;
-            background: rgba(20, 20, 40, 0.95);
-            padding: 40px 30px;
-            border-radius: 15px;
-            border: 2px solid #ff9800;
-            margin: 20px;
-        }
-        .overlay-message { font-size: 1.1rem; margin-bottom: 20px; line-height: 1.6; }
-        .cookie-link {
-            display: inline-block;
-            color: #00bcd4;
-            text-decoration: underline;
-            text-underline-offset: 4px;
-            margin-bottom: 20px;
-            transition: color 0.3s;
-        }
-        .cookie-link:hover { color: #ff9800; }
-        .accept-btn {
-            padding: 14px 30px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 1rem;
-            width: 100%;
-            max-width: 250px;
-            margin: 0 auto;
-            background: linear-gradient(45deg, #fb00ff, #ff2222);
-            color: white;
-        }
-        .accept-btn:hover { background: linear-gradient(45deg, #ff2222, #0008ff); transform: translateY(-2px); }
-
+        
         @media (max-width: 768px) {
-            .search-container { display: none !important; }
+            .hero h1 { font-size: 1.7rem; }
             .user-info { flex-direction: column; align-items: flex-start; }
             .avatar { width: 60px; height: 60px; }
             .user-name { font-size: 1.3rem; }
-            .drawer { width: 80%; max-width: 300px; }
         }
         @media (max-width: 480px) {
-            .header { padding: 10px 12px; }
-            .logo-image-container { width: 40px; height: 40px; min-width: 40px; }
             .logo-main { font-size: 1.1rem; }
             .logo-sub { font-size: 0.7rem; }
             .cart-modern-icon, .menu-modern-icon { width: 40px; height: 40px; }
             .cart-modern-icon i, .menu-modern-icon i { font-size: 1.2rem; }
-            .profile-container { padding: 15px; }
+            .hero h1 { font-size: 1.5rem; }
+            .messenger-float { width: 50px; height: 50px; bottom: 20px; right: 20px; }
+            .messenger-float i { font-size: 1.6rem; }
         }
     </style>
-
+    
     <noscript>
-        <style> body { display: none !important; } html { background: #000 !important; height: 100% !important; overflow: hidden !important; } </style>
+        <style>
+            body { display: none !important; }
+            html { background: #000 !important; height: 100% !important; overflow: hidden !important; }
+        </style>
         <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:#000;color:#ff0000;display:flex;align-items:center;justify-content:center;z-index:999999;font-family:monospace;text-align:center;flex-direction:column;">
             <div style="animation: pulse 1s infinite;">
                 <h1 style="font-size:120px;margin:0;text-shadow:0 0 20px #ff0000;">🖕</h1>
@@ -725,66 +553,55 @@
                 <p style="font-size:16px;color:#666;margin-top:30px;">Enable JavaScript to access this site</p>
             </div>
         </div>
-        <style> @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } } </style>
+        <style>
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.1); opacity: 0.8; }
+            }
+        </style>
     </noscript>
 </head>
 <body>
-    <div id="websiteOverlay" class="website-overlay">
-        <div class="overlay-content">
-            <div class="overlay-message">এই ওয়েবসাইট ব্যবহার করতে আপনাকে গোপনীয়তা নীতি সম্মতি প্রদান করতে হবে।</div>
-            <a href="https://www.easy-premium.com/privacy-refund-policy-terms-of-service.html" target="_blank" class="cookie-link">গোপনীয়তা নীতি দেখুন</a><br><br>
-            <button id="overlayAcceptBtn" class="accept-btn">সম্মতি দিন</button>
-        </div>
-    </div>
-
-    <div id="loginModal" class="login-modal">
-        <div class="login-content">
-            <div class="login-logo">
-                <div class="login-logo-image-container"><img src="https://cdn-icons-png.flaticon.com/512/8701/8701941.png" alt="Easy Premium Logo" class="login-logo-image"></div>
-                <div class="login-logo-main">EASY PREMIUM</div>
-            </div>
-            <h2 class="login-title">WELCOME</h2>
-            <button id="googleLoginBtn" class="google-login-btn"><i class="fab fa-google"></i> Sign in with Google</button>
-            <button id="closeLoginBtn">Close</button>
-        </div>
-    </div>
-
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="loading-spinner-big"></div>
-        <div class="loading-text">অর্ডার প্রস্তুত হচ্ছে...</div>
-    </div>
-
+    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <a href="https://www.easy-premium.com" class="logo">
-                <div class="logo-image-container"><img src="https://cdn-icons-png.flaticon.com/512/8701/8701941.png" alt="Easy Premium Logo" class="logo-image"></div>
-                <div class="logo-text"><div class="logo-main">EASY PREMIUM</div><div class="logo-sub">Rewarble Voucher Services</div></div>
-            </a>
-            <div class="search-container">
-                <div class="search-wrapper">
-                    <input type="text" id="searchInput" class="search-input" placeholder="সার্চ করুন...">
-                    <button id="searchBtn" class="search-btn"><i class="fas fa-search"></i></button>
-                    <div id="searchResults" class="search-results"></div>
+                <div class="logo-image-container"><img src="https://cdn-icons-png.flaticon.com/512/8701/8701941.png" class="logo-image"></div>
+                <div class="logo-text">
+                    <div class="logo-main">EASY PREMIUM</div>
+                    <div class="logo-sub">Rewarble Voucher Services</div>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="header-right">
-            <div class="cart-icon-container" id="cartIcon"><div class="cart-modern-icon"><i class="fas fa-shopping-cart"></i></div><span class="cart-badge" id="cartBadge" style="display: none;">0</span></div>
-            <div class="menu-icon-container" id="menuIcon"><div class="menu-modern-icon"><i class="fas fa-bars"></i></div></div>
+            <div class="cart-icon-container" id="cartIcon">
+                <div class="cart-modern-icon"><i class="fas fa-shopping-cart"></i></div>
+                <span class="cart-badge" id="cartBadge" style="display: none;">0</span>
+            </div>
+            <div class="menu-icon-container" id="menuIcon">
+                <div class="menu-modern-icon"><i class="fas fa-bars"></i></div>
+            </div>
         </div>
     </header>
 
+    <!-- Drawer -->
     <div id="drawerOverlay" class="drawer-overlay"></div>
     <div id="drawer" class="drawer">
         <button class="drawer-close" id="drawerClose"><i class="fas fa-times"></i></button>
         <div class="drawer-buttons">
-            <a href="https://www.easy-premium.com/Profile.html" class="drawer-btn">প্রোফাইল</a>
+            <a href="https://www.easy-premium.com" class="drawer-btn">ভিসাকার্ড</a>
             <a href="https://www.easy-premium.com/Review.html" class="drawer-btn">ভয়েস রিভিউ</a>
             <a href="https://www.easy-premium.com/AccountDelete.html" class="drawer-btn">অ্যাকাউন্ট ডিলিট</a>
         </div>
     </div>
 
-    <div class="profile-container" id="profileContainer">
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>আমার প্রোফাইল</h1>
+        <p>আপনার অ্যাকাউন্টের তথ্য ও অর্ডার ইতিহাস</p>
+    </section>
+
+    <div class="container">
         <div id="profileContent">
             <div class="loading">
                 <div class="spinner"></div>
@@ -793,6 +610,7 @@
         </div>
     </div>
 
+    <!-- Footer -->
     <footer class="footer">
         <div class="footer-policy-links">
             <a href="https://www.easy-premium.com/privacy-refund-policy-terms-of-service.html?data=PrivacyPolicy">Privacy Policy</a>
@@ -814,12 +632,19 @@
         </div>
     </footer>
 
-    <a href="https://m.me/906635592542978" target="_blank" class="messenger-float" title="মেসেঞ্জারে কথা বলুন"><i class="fab fa-facebook-messenger"></i></a>
+    <!-- Floating Messenger -->
+    <a href="https://m.me/906635592542978" target="_blank" class="messenger-float" title="মেসেঞ্জারে কথা বলুন">
+        <i class="fab fa-facebook-messenger"></i>
+    </a>
 
     <script>
+        // ================== এনকোডেড ফায়ারবেস কনফিগ ==================
         const encodedFirebaseConfig = "ewogICJhcGlLZXkiOiAiQUl6YVN5QnQ5dDZtY2pVdFh4WDJpZ0FKZHNldUlJYzhwUF9RUEV3IiwKICAiYXV0aERvbWFpbiI6ICJlYXN5LXByZW1pdW0uZmlyZWJhc2VhcHAuY29tIiwKICAiZGF0YWJhc2VVUkwiOiAiaHR0cHM6Ly9lYXN5LXByZW1pdW0tZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcCIsCiAgInByb2plY3RJZCI6ICJlYXN5LXByZW1pdW0iLAogICJzdG9yYWdlQnVja2V0IjogImVhc3ktcHJlbWl1bS5maXJlYmFzZXN0b3JhZ2UuYXBwIiwKICAibWVzc2FnaW5nU2VuZGVySWQiOiAiMTU1ODkxMjUyMjY1IiwKICAiYXBwSWQiOiAiMToxNTU4OTEyNTIyNjU6d2ViOjc3YWI0MWRlMjQyMzFlOGU1ZWYwMzgiLAogICJtZWFzdXJlbWVudElkIjogIkctQ0hMODFLOEhSUFgiCn0=";
-
-        function decodeBase64(str) { try { return JSON.parse(atob(str)); } catch(e) { return null; } }
+        
+        function decodeBase64(str) {
+            try { return JSON.parse(atob(str)); } catch(e) { return null; }
+        }
+        
         const firebaseConfig = decodeBase64(encodedFirebaseConfig);
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -827,50 +652,41 @@
 
         const profileContent = document.getElementById('profileContent');
         const cartBadge = document.getElementById('cartBadge');
-        const loadingOverlay = document.getElementById('loadingOverlay');
-
-        // Cookie consent
-        const overlay = document.getElementById('websiteOverlay');
-        const overlayAcceptBtn = document.getElementById('overlayAcceptBtn');
-        function checkCookieConsent() {
-            if (localStorage.getItem('cookieAccepted') === 'true') { overlay.style.display = 'none'; return true; }
-            overlay.style.display = 'flex'; return false;
-        }
-        overlayAcceptBtn.addEventListener('click', function() { localStorage.setItem('cookieAccepted', 'true'); overlay.style.display = 'none'; location.reload(); });
-
+        
         // Drawer logic
         const menuIcon = document.getElementById('menuIcon');
         const drawer = document.getElementById('drawer');
         const drawerOverlay = document.getElementById('drawerOverlay');
         const drawerClose = document.getElementById('drawerClose');
+        
         menuIcon.addEventListener('click', () => { drawer.classList.add('active'); drawerOverlay.classList.add('active'); });
         function closeDrawer() { drawer.classList.remove('active'); drawerOverlay.classList.remove('active'); }
         drawerOverlay.addEventListener('click', closeDrawer);
         drawerClose.addEventListener('click', closeDrawer);
         drawer.addEventListener('click', e => e.stopPropagation());
-
+        
         // Cart icon redirect
         const cartIcon = document.getElementById('cartIcon');
-        cartIcon.addEventListener('click', () => { window.location.href = 'https://www.easy-premium.com/Profile.html'; });
-
-        // Search (inactive for profile page)
-        const searchInput = document.getElementById('searchInput');
-        const searchBtn = document.getElementById('searchBtn');
-        const searchResults = document.getElementById('searchResults');
-        searchInput.addEventListener('input', () => { searchResults.style.display = 'none'; });
-        searchBtn.addEventListener('click', () => { window.location.href = 'https://www.easy-premium.com'; });
-
+        cartIcon.addEventListener('click', () => {
+            window.location.href = 'https://www.easy-premium.com/Profile.html';
+        });
+        
         // Helper functions
         function formatDate(iso) {
             if (!iso) return 'N/A';
-            try { const d = new Date(iso); return d.toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' }) + ' ' + d.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }); } catch { return iso; }
+            try {
+                const d = new Date(iso);
+                return d.toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' }) + ' ' + d.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
+            } catch { return iso; }
         }
+
         function getStatusClass(status) {
             if (status === 'completed') return 'status-completed';
             if (status === 'cancelled') return 'status-cancelled';
             if (status === 'fail' || status === 'failed') return 'status-cancelled';
             return 'status-pending';
         }
+
         function getStatusBangla(status) {
             if (status === 'completed') return 'সম্পন্ন';
             if (status === 'cancelled') return 'বাতিল';
@@ -886,21 +702,27 @@
             else cartBadge.style.display = 'none';
         }
 
-        async function ensurePaymentLink(orderId) {
+        // Fetch payment link from transactions if not present in userOrder
+        async function ensurePaymentLink(orderId, orderData) {
+            if (orderData.paymentLink) return orderData.paymentLink;
             try {
                 const snap = await database.ref(`transactions/${orderId}`).once('value');
                 const trans = snap.val();
                 if (trans && trans.paymentLink) return trans.paymentLink;
-            } catch(e) { console.warn(e); }
+            } catch (e) {
+                console.warn('Could not fetch payment link from transactions', e);
+            }
             return null;
         }
 
+        // Reorder function for failed orders
         async function reorderOrder(orderId, platformId, price, platformName) {
             const mainUrl = `https://www.easy-premium.com?reorder=true&product=${encodeURIComponent(platformId)}&price=${encodeURIComponent(price)}&name=${encodeURIComponent(platformName)}`;
             window.open(mainUrl, '_blank');
             alert('পুনরায় অর্ডার করতে পৃষ্ঠাটি খুলেছে। অনুগ্রহ করে একই পণ্য নির্বাচন করুন।');
         }
 
+        // Attach click handlers for both completed (voucher) and pending (payment link)
         function attachClickHandlers() {
             // Completed orders (voucher link)
             document.querySelectorAll('.order-card[data-voucher-link]:not([data-voucher-link=""])').forEach(card => {
@@ -913,6 +735,7 @@
                     if (link) window.open(link, '_blank');
                 });
             });
+
             // Pending orders (payment link)
             document.querySelectorAll('.order-card.clickable-pending').forEach(card => {
                 const newCard = card.cloneNode(true);
@@ -922,13 +745,21 @@
                     let link = newCard.dataset.paymentLink;
                     if (!link) {
                         const orderId = newCard.dataset.orderId;
-                        if (orderId) link = await ensurePaymentLink(orderId);
+                        if (orderId) {
+                            const snap = await database.ref(`transactions/${orderId}`).once('value');
+                            const trans = snap.val();
+                            if (trans && trans.paymentLink) link = trans.paymentLink;
+                        }
                     }
-                    if (link) window.location.href = link;
-                    else alert('পেমেন্ট লিংক পাওয়া যায়নি। সাপোর্টে যোগাযোগ করুন।');
+                    if (link) {
+                        window.location.href = link;
+                    } else {
+                        alert('পেমেন্ট লিংক পাওয়া যায়নি। অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।');
+                    }
                 });
             });
-            // Reorder buttons
+
+            // Reorder buttons for failed orders
             document.querySelectorAll('.reorder-btn').forEach(btn => {
                 btn.removeEventListener('click', btn._reorderHandler);
                 btn._reorderHandler = (e) => {
@@ -942,12 +773,16 @@
                 btn.addEventListener('click', btn._reorderHandler);
             });
         }
-
+        
         async function renderProfile(user, orders) {
-            const avatarHtml = user.photoURL ? `<img src="${user.photoURL}" alt="avatar">` : `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
+            const avatarHtml = user.photoURL 
+                ? `<img src="${user.photoURL}" alt="avatar">`
+                : `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
+
             let ordersHtml = '';
-            if (orders.length === 0) ordersHtml = '<div class="no-orders">কোন অর্ডার নেই</div>';
-            else {
+            if (orders.length === 0) {
+                ordersHtml = '<div class="no-orders">কোন অর্ডার নেই</div>';
+            } else {
                 ordersHtml = '<div class="orders-cards">';
                 for (const order of orders) {
                     const status = order.status || 'pending';
@@ -955,44 +790,64 @@
                     const statusBangla = getStatusBangla(status);
                     const voucherLink = (status === 'completed' && order.voucherData?.voucherLink) ? order.voucherData.voucherLink : '';
                     let paymentLink = (status === 'pending' && order.paymentLink) ? order.paymentLink : '';
-                    if (status === 'pending' && !paymentLink && order.orderId) paymentLink = await ensurePaymentLink(order.orderId);
+                    
+                    // If it's pending and no paymentLink yet, try to fetch it now (async)
+                    if (status === 'pending' && !paymentLink && order.orderId) {
+                        paymentLink = await ensurePaymentLink(order.orderId, order);
+                    }
+                    
                     const isClickablePending = (status === 'pending' && paymentLink);
                     const isClickableCompleted = (status === 'completed' && voucherLink);
+                    
                     const clickablePendingClass = isClickablePending ? 'clickable-pending' : '';
                     const voucherAttr = (isClickableCompleted && voucherLink) ? `data-voucher-link="${voucherLink}"` : '';
                     const paymentAttr = (isClickablePending && paymentLink) ? `data-payment-link="${paymentLink}"` : '';
                     const orderIdAttr = order.orderId ? `data-order-id="${order.orderId}"` : '';
+                    
+                    // Reorder button only for failed orders
                     let reorderButton = '';
                     if (status === 'fail' || status === 'failed') {
                         const platformId = order.platformId || '';
                         const price = order.price || '';
                         const platformName = order.platform || '';
-                        reorderButton = `<div class="order-row" style="justify-content: flex-end;"><button class="reorder-btn" data-order-id="${order.orderId || ''}" data-platform-id="${platformId}" data-price="${price}" data-platform-name="${platformName}"><i class="fas fa-redo-alt"></i> পুনরায় অর্ডার করুন</button></div>`;
+                        reorderButton = `
+                            <div class="order-row" style="justify-content: flex-end;">
+                                <button class="reorder-btn" data-order-id="${order.orderId || ''}" data-platform-id="${platformId}" data-price="${price}" data-platform-name="${platformName}">
+                                    <i class="fas fa-redo-alt"></i> পুনরায় অর্ডার করুন
+                                </button>
+                            </div>
+                        `;
                     }
-                    ordersHtml += `<div class="order-card ${clickablePendingClass}" ${voucherAttr} ${paymentAttr} ${orderIdAttr}>
-                        <div class="order-row"><span class="order-label">প্ল্যাটফর্ম</span><span class="order-value">${order.platform || '—'}</span></div>
-                        <div class="order-row"><span class="order-label">মূল্য</span><span class="order-value">${order.price || '—'}</span></div>
-                        <div class="order-row"><span class="order-label">অর্ডার আইডি</span><span class="order-value">${order.orderId || order.id || '—'}</span></div>
-                        <div class="order-row"><span class="order-label">তারিখ</span><span class="order-value">${formatDate(order.orderDate)}</span></div>
-                        <div class="order-row"><span class="order-label">স্ট্যাটাস</span><span class="order-value"><span class="status-badge ${statusClass}">${statusBangla}</span></span></div>
-                        ${reorderButton}
-                    </div>`;
+                    
+                    ordersHtml += `
+                        <div class="order-card ${clickablePendingClass}" ${voucherAttr} ${paymentAttr} ${orderIdAttr}>
+                            <div class="order-row"><span class="order-label">প্ল্যাটফর্ম</span><span class="order-value">${order.platform || '—'}</span></div>
+                            <div class="order-row"><span class="order-label">মূল্য</span><span class="order-value">${order.price || '—'}</span></div>
+                            <div class="order-row"><span class="order-label">অর্ডার আইডি</span><span class="order-value">${order.orderId || order.id || '—'}</span></div>
+                            <div class="order-row"><span class="order-label">তারিখ</span><span class="order-value">${formatDate(order.orderDate)}</span></div>
+                            <div class="order-row"><span class="order-label">স্ট্যাটাস</span><span class="order-value"><span class="status-badge ${statusClass}">${statusBangla}</span></span></div>
+                            ${reorderButton}
+                        </div>
+                    `;
                 }
                 ordersHtml += '</div>';
             }
-            return `<div class="profile-card">
-                <div class="user-info">
-                    <div class="avatar">${avatarHtml}</div>
-                    <div class="user-details">
-                        <div class="user-name">${user.displayName || 'ব্যবহারকারী'}</div>
-                        <div class="user-email">${user.email}</div>
+
+            return `
+                <div class="profile-card">
+                    <div class="user-info">
+                        <div class="avatar">${avatarHtml}</div>
+                        <div class="user-details">
+                            <div class="user-name">${user.displayName || 'ব্যবহারকারী'}</div>
+                            <div class="user-email">${user.email}</div>
+                        </div>
+                    </div>
+                    <div class="orders-section">
+                        <div class="section-title">আপনার অর্ডার সমূহ</div>
+                        ${ordersHtml}
                     </div>
                 </div>
-                <div class="orders-section">
-                    <div class="section-title">আপনার অর্ডার সমূহ</div>
-                    ${ordersHtml}
-                </div>
-            </div>`;
+            `;
         }
 
         auth.onAuthStateChanged(async (user) => {
@@ -1000,42 +855,48 @@
                 window.location.href = 'https://www.easy-premium.com';
                 return;
             }
+
             try {
                 const snapshot = await database.ref(`userOrders/${user.uid}`).once('value');
                 const orders = [];
-                snapshot.forEach(child => orders.push({ id: child.key, ...child.val() }));
-                orders.sort((a,b) => (b.orderDate || '').localeCompare(a.orderDate || ''));
+                snapshot.forEach(child => {
+                    orders.push({ id: child.key, ...child.val() });
+                });
+                orders.sort((a, b) => (b.orderDate || '').localeCompare(a.orderDate || ''));
+                
                 profileContent.innerHTML = await renderProfile(user, orders);
                 attachClickHandlers();
                 await updateCartBadge(user.uid);
-            } catch(error) {
+            } catch (error) {
                 profileContent.innerHTML = `<div class="error"><i class="fas fa-exclamation-triangle"></i> তথ্য লোড করতে সমস্যা হয়েছে: ${error.message}</div>`;
             }
         });
-
-        checkCookieConsent();
     </script>
 
+    <!-- ================== উন্নত নিরাপত্তা স্ক্রিপ্ট (DevTools detection, rate limiting, session timeout) ================== -->
     <script>
     (function() {
         'use strict';
 
-        const CONFIG = {
-            SESSION_TIMEOUT: 30 * 60 * 1000, 
-            MAX_ATTEMPTS: 5, 
-            RATE_LIMIT_WINDOW: 15 * 60 * 1000, 
-            ALERT_ON_DEVTOOLS: false,
-            ENABLE_ACTIVITY_LOG: false, 
-            ENFORCE_HTTPS: true,
-            REDIRECT_URL: 'https://www.easy-premium.com/privacy-refund-policy-terms-of-service.html'
+        const SECURITY_CONFIG = {
+            SESSION_TIMEOUT: 30 * 60 * 1000,
+            MAX_ATTEMPTS: 5,
+            RATE_LIMIT_WINDOW: 15 * 60 * 1000,
+            REDIRECT_URL: 'https://easy-premium.com/privacy-refund-policy-terms-of-service.html',
+            ENFORCE_HTTPS: true
         };
 
-        if (CONFIG.ENFORCE_HTTPS && location.protocol !== 'https:' && location.hostname !== 'localhost' && !location.hostname.includes('127.0.0.1')) {
+        if (SECURITY_CONFIG.ENFORCE_HTTPS && location.protocol !== 'https:' && location.hostname !== 'localhost' && !location.hostname.includes('127.0.0.1')) {
             location.replace('https://' + location.host + location.pathname + location.search);
         }
 
         if (self !== top) {
-            try { top.location.href = self.location.href; } catch(e) { document.body.innerHTML = '<h1 style="color:red;text-align:center;padding:50px;">Access Denied</h1>'; throw new Error('Clickjacking protection'); }
+            try {
+                top.location.href = self.location.href;
+            } catch (e) {
+                document.body.innerHTML = '<h1 style="color:red;text-align:center;padding:50px;">Access Denied</h1>';
+                throw new Error('Clickjacking protection');
+            }
         }
 
         let devToolsOpened = false;
@@ -1045,7 +906,7 @@
             const end = performance.now();
             if (end - start > 100 && !devToolsOpened) {
                 devToolsOpened = true;
-                window.location.href = CONFIG.REDIRECT_URL;
+                window.location.href = SECURITY_CONFIG.REDIRECT_URL;
             }
             return false;
         }
@@ -1061,9 +922,9 @@
                 return { allowed: false, message: `অনেক চেষ্টা করেছেন। ${remaining} মিনিট পরে আবার চেষ্টা করুন।` };
             }
             if (!window._rateLimitStore.attempts[key]) window._rateLimitStore.attempts[key] = [];
-            window._rateLimitStore.attempts[key] = window._rateLimitStore.attempts[key].filter(t => t > now - CONFIG.RATE_LIMIT_WINDOW);
-            if (window._rateLimitStore.attempts[key].length >= CONFIG.MAX_ATTEMPTS) {
-                window._rateLimitStore.blockUntil[key] = now + CONFIG.RATE_LIMIT_WINDOW;
+            window._rateLimitStore.attempts[key] = window._rateLimitStore.attempts[key].filter(t => t > now - SECURITY_CONFIG.RATE_LIMIT_WINDOW);
+            if (window._rateLimitStore.attempts[key].length >= SECURITY_CONFIG.MAX_ATTEMPTS) {
+                window._rateLimitStore.blockUntil[key] = now + SECURITY_CONFIG.RATE_LIMIT_WINDOW;
                 return { allowed: false, message: 'অনেক চেষ্টা করেছেন। ১৫ মিনিট পরে আবার চেষ্টা করুন।' };
             }
             window._rateLimitStore.attempts[key].push(now);
@@ -1075,42 +936,63 @@
             if (sessionTimer) clearTimeout(sessionTimer);
             sessionTimer = setTimeout(() => {
                 if (firebase && firebase.auth() && firebase.auth().currentUser) {
-                    if (confirm('আপনার সেশন শেষ হয়ে গেছে। আবার লগইন করবেন?')) firebase.auth().signOut().then(() => location.reload());
-                    else firebase.auth().signOut();
+                    if (confirm('আপনার সেশন শেষ হয়ে গেছে। আবার লগইন করবেন?')) {
+                        firebase.auth().signOut();
+                        window.location.reload();
+                    } else {
+                        firebase.auth().signOut();
+                    }
                 }
-            }, CONFIG.SESSION_TIMEOUT);
+            }, SECURITY_CONFIG.SESSION_TIMEOUT);
         }
-        ['click', 'keypress', 'scroll', 'mousemove', 'touchstart'].forEach(event => document.addEventListener(event, resetSessionTimer, { passive: true }));
+        ['click', 'keypress', 'scroll', 'mousemove', 'touchstart'].forEach(event => {
+            document.addEventListener(event, resetSessionTimer, { passive: true });
+        });
 
         function sanitizeInput(input) {
             if (typeof input !== 'string') return input;
             return input.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/\//g, '&#x2F;').replace(/\\/g, '&#x5C;').replace(/`/g, '&#96;').replace(/=/g, '&#61;');
         }
+
         function setupFormProtection() {
             document.querySelectorAll('form').forEach(form => {
                 if (form._protected) return;
                 form._protected = true;
                 form.addEventListener('submit', function() {
-                    this.querySelectorAll('input[type="text"], input[type="tel"], input[type="email"], textarea').forEach(input => {
-                        if (input.value && typeof input.value === 'string' && /[<>"'`=]/.test(input.value)) console.warn('সতর্কতা: ইনপুটে বিপজ্জনক ক্যারেক্টার পাওয়া গেছে');
+                    const textInputs = this.querySelectorAll('input[type="text"], input[type="tel"], input[type="email"], textarea');
+                    textInputs.forEach(input => {
+                        if (input.value && typeof input.value === 'string' && /[<>"'`=]/.test(input.value)) {
+                            console.warn('সতর্কতা: ইনপুটে বিপজ্জনক ক্যারেক্টার পাওয়া গেছে');
+                        }
                     });
                 }, true);
             });
         }
-        const formObserver = new MutationObserver(() => setupFormProtection());
-        formObserver.observe(document.body, { childList: true, subtree: true });
+        const mutationObserver = new MutationObserver(() => setupFormProtection());
+        mutationObserver.observe(document.body, { childList: true, subtree: true });
 
-        const originalSetItem = localStorage.setItem, originalGetItem = localStorage.getItem;
+        const originalSetItem = localStorage.setItem;
+        const originalGetItem = localStorage.getItem;
         const sensitiveKeys = ['user', 'session', 'token', 'auth'];
         localStorage.setItem = function(key, value) {
             if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
-                try { const encoded = btoa(encodeURIComponent(value)); return originalSetItem.call(this, `_sec_${key}`, encoded); } catch(e) { console.warn('LocalStorage encoding error'); }
+                try {
+                    const encoded = btoa(encodeURIComponent(value));
+                    return originalSetItem.call(this, `_sec_${key}`, encoded);
+                } catch (e) {
+                    console.warn('LocalStorage encoding error');
+                }
             }
             return originalSetItem.call(this, key, value);
         };
         localStorage.getItem = function(key) {
             if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
-                try { const encoded = originalGetItem.call(this, `_sec_${key}`); if (encoded) return decodeURIComponent(atob(encoded)); } catch(e) { console.warn('LocalStorage decoding error'); }
+                try {
+                    const encoded = originalGetItem.call(this, `_sec_${key}`);
+                    if (encoded) return decodeURIComponent(atob(encoded));
+                } catch (e) {
+                    console.warn('LocalStorage decoding error');
+                }
             }
             return originalGetItem.call(this, key);
         };
@@ -1127,10 +1009,27 @@
         document.addEventListener('touchstart', function(e) {
             let touchTimer;
             const handleTouchEnd = function() { clearTimeout(touchTimer); document.removeEventListener('touchend', handleTouchEnd); };
-            if (e.touches.length === 1) { touchTimer = setTimeout(() => e.preventDefault(), 500); document.addEventListener('touchend', handleTouchEnd, { once: true }); }
+            if (e.touches.length === 1) {
+                touchTimer = setTimeout(function() { e.preventDefault(); }, 500);
+                document.addEventListener('touchend', handleTouchEnd, { once: true });
+            }
         }, { passive: false });
 
-        console.log('%c🔒 Easy Premium - প্রোফাইল পৃষ্ঠা সুরক্ষিত (সম্পূর্ণ ডার্ক থিম)', 'color: #4caf50; font-size: 14px; font-weight: bold;');
+        if (window.purchaseForm) {
+            const form = window.purchaseForm;
+            const originalHandler = form.onsubmit;
+            form.onsubmit = async function(e) {
+                e.preventDefault();
+                if (firebase && firebase.auth() && firebase.auth().currentUser) {
+                    const rateCheck = window.checkRateLimit('purchase', firebase.auth().currentUser.uid);
+                    if (!rateCheck.allowed) { alert(rateCheck.message); return false; }
+                }
+                if (originalHandler) return originalHandler.call(this, e);
+                return false;
+            };
+        }
+
+        console.log('%c🔒 Easy Premium - প্রোফাইল পৃষ্ঠা সুরক্ষিত মোড সক্রিয় (পুরোপুরি ডার্ক থিম)', 'color: #4caf50; font-size: 14px; font-weight: bold;');
     })();
     </script>
 </body>
