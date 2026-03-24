@@ -354,4 +354,4 @@ export default async function handler(req, res) {
       error: error.message || 'Internal server error'
     });
   }
-}                        ডাটাবেস এ কি কি সেন্ড হয় ডাটাবেস আর স্ট্রাকচার দাও
+}
