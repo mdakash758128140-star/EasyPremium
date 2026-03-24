@@ -166,10 +166,19 @@ export default async function handler(req, res) {
     const timestamp = new Date().toISOString();
     const timestampMs = Date.now();
     
-    // Parse order reference to get user ID and order ID
+    // Parse order reference to get user ID and local order ID
     const parsedRef = parseOrderReference(orderData);
     const firebaseOrderId = parsedRef?.firebaseOrderId;
     const userId = parsedRef?.userId;
+    
+    // We need firebaseOrderId to avoid creating duplicate entries with trxId
+    if (!firebaseOrderId) {
+      console.error('❌ firebaseOrderId not found in orderData.reference');
+      return res.status(400).json({
+        success: false,
+        error: 'Missing firebaseOrderId in orderData.reference'
+      });
+    }
     
     if (action === 'complete') {
       // ========== STEP 1: 🔥 CONFIRM ORDER IN RELOGRADE ==========
@@ -194,12 +203,12 @@ export default async function handler(req, res) {
         console.warn('⚠️ RELOGRADE_API_KEY not configured');
       }
       
-      // ========== STEP 2: Prepare Firebase updates ==========
+      // ========== STEP 2: Prepare Firebase updates (using firebaseOrderId, NOT trxId) ==========
       const updates = {};
       
-      // CompletedOrders entry
-      updates[`completedOrders/${trxId}`] = {
-        trxId: trxId,
+      // CompletedOrders entry - keyed by firebaseOrderId (local order ID)
+      updates[`completedOrders/${firebaseOrderId}`] = {
+        trxId: trxId,                     // store the Relograde transaction ID as a field
         status: 'completed',
         completedBy: adminEmail,
         completedAt: timestampMs,
@@ -211,8 +220,8 @@ export default async function handler(req, res) {
         voucherLinks: voucherLinks
       };
       
-      // Update transaction under trxId (Relograde key)
-      updates[`transactions/${trxId}`] = {
+      // Update transaction under firebaseOrderId (local order ID)
+      updates[`transactions/${firebaseOrderId}`] = {
         status: 'completed',
         completedAt: timestamp,
         relogradeConfirmStatus: relogradeStatus,
@@ -220,9 +229,8 @@ export default async function handler(req, res) {
         voucherLinks: voucherLinks
       };
       
-      // If we have firebaseOrderId and userId, update those nodes too
-      if (firebaseOrderId && userId) {
-        // Update user's order record
+      // Update user's order record (if userId exists)
+      if (userId) {
         updates[`userOrders/${userId}/${firebaseOrderId}/status`] = 'completed';
         updates[`userOrders/${userId}/${firebaseOrderId}/completedAt`] = timestamp;
         if (voucherLinks.length > 0) {
@@ -231,33 +239,19 @@ export default async function handler(req, res) {
             voucherCodes: voucherCodes
           };
         }
-        // Update transaction under firebaseOrderId
-        updates[`transactions/${firebaseOrderId}/status`] = 'completed';
-        updates[`transactions/${firebaseOrderId}/completedAt`] = timestamp;
-        if (voucherLinks.length > 0) {
-          updates[`transactions/${firebaseOrderId}/voucherData`] = {
-            voucherLinks: voucherLinks,
-            voucherCodes: voucherCodes
-          };
-        }
       }
-      
-      // Also update the top-level userOrders/${trxId} for consistency
-      updates[`userOrders/${trxId}`] = {
-        status: 'completed',
-        orderStatus: 'completed'
-      };
       
       // Apply all updates
       await updateFirebasePaths(updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
       
-      console.log(`✅ Order ${trxId} completed by ${adminEmail}`);
+      console.log(`✅ Order ${firebaseOrderId} (Relograde trx: ${trxId}) completed by ${adminEmail}`);
       
       return res.status(200).json({
         success: true,
         message: 'Order completed successfully',
         data: { 
-          trxId, 
+          orderId: firebaseOrderId,
+          trxId: trxId,
           status: 'completed',
           relogradeConfirmed: relogradeResult?.success || false,
           relogradeStatus: relogradeStatus,
@@ -272,8 +266,8 @@ export default async function handler(req, res) {
       
       const updates = {};
       
-      // Save to FailOrders
-      updates[`FailOrders/${trxId}`] = {
+      // Save to FailOrders - keyed by firebaseOrderId
+      updates[`FailOrders/${firebaseOrderId}`] = {
         trxId: trxId,
         status: 'failed',
         failedBy: adminEmail,
@@ -282,44 +276,34 @@ export default async function handler(req, res) {
         orderData: orderData || null
       };
       
-      // Update transaction under trxId
-      updates[`transactions/${trxId}`] = {
+      // Update transaction under firebaseOrderId
+      updates[`transactions/${firebaseOrderId}`] = {
         status: 'fail',
         orderStatus: 'fail',
         failedAt: timestamp
       };
       
-      // Update top-level userOrders entry for this trxId
-      updates[`userOrders/${trxId}`] = {
-        status: 'fail',
-        orderStatus: 'fail'
-      };
-      
-      // If we have firebaseOrderId and userId, update those nodes too
-      if (firebaseOrderId && userId) {
-        // Update user's order record
+      // Update user's order record (if userId exists)
+      if (userId) {
         updates[`userOrders/${userId}/${firebaseOrderId}/status`] = 'fail';
         updates[`userOrders/${userId}/${firebaseOrderId}/orderStatus`] = 'fail';
         updates[`userOrders/${userId}/${firebaseOrderId}/failedAt`] = timestamp;
-        // Update transaction under firebaseOrderId
-        updates[`transactions/${firebaseOrderId}/status`] = 'fail';
-        updates[`transactions/${firebaseOrderId}/orderStatus`] = 'fail';
-        updates[`transactions/${firebaseOrderId}/failedAt`] = timestamp;
       }
       
       // Apply all updates
       await updateFirebasePaths(updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
       
-      console.log(`✅ Order ${trxId} marked as failed by ${adminEmail}`);
+      console.log(`✅ Order ${firebaseOrderId} (Relograde trx: ${trxId}) marked as failed by ${adminEmail}`);
       
       return res.status(200).json({
         success: true,
         message: 'Order marked as failed',
-        data: { trxId, status: 'fail' }
+        data: { orderId: firebaseOrderId, trxId: trxId, status: 'fail' }
       });
       
     } else if (action === 'delete') {
-      // Delete order - backup and remove
+      // ========== DELETE ORDER ==========
+      // Backup the order before deletion - keyed by firebaseOrderId
       const backupData = {
         trxId: trxId,
         deletedBy: adminEmail,
@@ -328,22 +312,23 @@ export default async function handler(req, res) {
         originalData: orderData || null
       };
       
-      const backupUrl = `${FIREBASE_DATABASE_URL}/deletedOrders/${trxId}.json?auth=${FIREBASE_SECRET}`;
+      const backupUrl = `${FIREBASE_DATABASE_URL}/deletedOrders/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
       await fetch(backupUrl, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(backupData)
       });
       
-      const deleteUrl = `${FIREBASE_DATABASE_URL}/completedOrders/${trxId}.json?auth=${FIREBASE_SECRET}`;
+      // Delete from completedOrders (if it exists there)
+      const deleteUrl = `${FIREBASE_DATABASE_URL}/completedOrders/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
       await fetch(deleteUrl, { method: 'DELETE' });
       
-      console.log(`✅ Order ${trxId} deleted by ${adminEmail}`);
+      console.log(`✅ Order ${firebaseOrderId} (Relograde trx: ${trxId}) deleted by ${adminEmail}`);
       
       return res.status(200).json({
         success: true,
         message: 'Order deleted successfully',
-        data: { trxId, deleted: true }
+        data: { orderId: firebaseOrderId, trxId: trxId, deleted: true }
       });
     }
     
