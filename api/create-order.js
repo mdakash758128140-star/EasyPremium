@@ -29,7 +29,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Parse reference to get phone, txid, userId, email
+    // Parse reference to get phone, txid, userId, email, admin
     let paymentMethod = 'UNKNOWN';
     let phone = '', txid = '', userId = '', email = '', admin = '';
 
@@ -125,7 +125,7 @@ export default async function handler(req, res) {
 
     if (dbUrl && secret) {
       try {
-        // Prepare order data
+        // Prepare order data (admin যোগ করা হয়েছে)
         const firebaseOrder = {
           orderId: finalOrderId,
           userId: userId || 'guest',
@@ -142,7 +142,8 @@ export default async function handler(req, res) {
           paymentMethod: paymentMethod,
           orderDate: new Date().toISOString(),
           timestamp: Date.now(),
-          relogradeTrx: relogradeTrx
+          relogradeTrx: relogradeTrx,
+          admin: admin || null          // 👈 নতুন যোগকৃত ফিল্ড
         };
 
         // Write to transactions node (key = orderId)
@@ -269,7 +270,8 @@ export default async function handler(req, res) {
         faceValue: faceValue || null,
         serviceCharge: serviceChargeInt,
         totalAmount: totalAmount,
-        status: orderStatus
+        status: orderStatus,
+        admin: admin || null            // 👈 নতুন যোগকৃত ফিল্ড
       }
     });
 
