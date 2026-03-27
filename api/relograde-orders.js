@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   try {
     const { trx } = req.query;
 
-    // If a specific transaction ID is requested, fetch only that one
+    // If a specific transaction ID is requested, fetch only that one (no filtering)
     if (trx) {
       const url = `https://connect.relograde.com/api/1.02/order?trx=${encodeURIComponent(trx)}`;
       const response = await fetch(url, {
@@ -97,7 +97,28 @@ export default async function handler(req, res) {
     console.log(`Total orders fetched from Relograde: ${allOrders.length}`);
 
     // ---------- Enrich each order with Firebase status ----------
-    const enrichedOrders = await Promise.all(allOrders.map(order => enrichOrderWithFirebaseStatus(order)));
+    let enrichedOrders = await Promise.all(allOrders.map(order => enrichOrderWithFirebaseStatus(order)));
+
+    // ---------- Apply filtering: exclude finished, fail, and orders older than 24 hours ----------
+    enrichedOrders = enrichedOrders.filter(order => {
+      // Exclude finished orders
+      if (order.orderStatus === 'finished') return false;
+      // Exclude fail orders
+      if (order.orderStatus === 'fail') return false;
+
+      // Check if order is older than 24 hours
+      const orderDateString = order.orderDate || order.createdAt || order.date;
+      if (orderDateString) {
+        const orderDate = new Date(orderDateString);
+        const now = new Date();
+        const hoursDiff = (now - orderDate) / (1000 * 60 * 60);
+        if (hoursDiff > 24) return false;
+      }
+      // If no date field, we keep the order (could log a warning)
+      return true;
+    });
+
+    console.log(`Orders after filtering: ${enrichedOrders.length}`);
 
     res.status(200).json({ success: true, count: enrichedOrders.length, data: enrichedOrders });
 
