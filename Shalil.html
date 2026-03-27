@@ -568,7 +568,7 @@
                 </div>
             </div>
 
-            <!-- Transactions Section (modified: only E-IDs and admin number column) -->
+            <!-- Transactions section (real‑time) -->
             <div class="section">
                 <h2 class="section-title">লেনদেন তালিকা (Transactions) <span id="transactionCount"></span></h2>
                 <div class="info-note">
@@ -621,6 +621,10 @@
         let primaryUpdateInterval = null;
         let recheckInterval = null;
 
+        // Real‑time transactions variables
+        let transactionsListenerRef = null;     // reference to the Firebase listener
+        let currentTransactions = [];            // store filtered transactions
+
         const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'mdsojib138888@gmail.com', 'allwork204571@gmail.com'];
         const ACTIVE_WINDOW = 60 * 1000;     // 1 minute
         const UPDATE_INTERVAL = 60 * 1000;    // 1 minute
@@ -638,7 +642,6 @@
         const closeDetailsModalBtn = document.getElementById('closeDetailsModalBtn');
         const orderInfoGrid = document.getElementById('orderInfoGrid');
         const referenceContainer = document.getElementById('referenceContainer');
-        // New transactions elements
         const transactionsTable = document.getElementById('transactionsTable');
         const transactionCountSpan = document.getElementById('transactionCount');
 
@@ -647,7 +650,11 @@
         function setupEventListeners() {
             googleLoginBtn.onclick = handleGoogleLogin;
             logoutBtn.onclick = handleLogout;
-            refreshOrdersBtn.onclick = () => { showToast('রিফ্রেশ...', 'info'); loadOrders(); loadTransactions(); };
+            refreshOrdersBtn.onclick = () => { 
+                showToast('রিফ্রেশ...', 'info'); 
+                loadOrders();               // reload orders (non‑real‑time)
+                refreshTransactions();      // just re‑display currentTransactions (no extra fetch)
+            };
             orderFilter.onchange = filterOrders;
             orderSearch.oninput = filterOrders;
             dateFilter.onchange = filterOrders;
@@ -795,8 +802,8 @@
                     startRecheckLoop();
                     
                     showAdminPanel();
-                    loadOrders();
-                    loadTransactions();   // load transactions from Firebase
+                    loadOrders();                 // load orders (non‑real‑time)
+                    setupTransactionsListener();  // set up real‑time listener for transactions
                 } else if (user) {
                     await auth.signOut();
                     showLoginScreen();
@@ -820,6 +827,11 @@
         
         async function handleLogout() {
             stopAllIntervals();
+            // Detach transactions listener
+            if (transactionsListenerRef) {
+                transactionsListenerRef.off();
+                transactionsListenerRef = null;
+            }
             await auth.signOut();
             showLoginScreen();
             showToast('লগ আউট', 'success');
@@ -927,27 +939,31 @@
             ordersTable.innerHTML = html;
         }
         
-        // ---------- MODIFIED Transactions Function: only E-IDs and admin number column ----------
-        async function loadTransactions() {
+        // ---------- Real‑time Transactions ----------
+        function setupTransactionsListener() {
+            // Remove any existing listener
+            if (transactionsListenerRef) {
+                transactionsListenerRef.off();
+                transactionsListenerRef = null;
+            }
+            // Show loading state
             transactionsTable.innerHTML = `<tr><td colspan="9" class="loading-spinner"><div class="spinner"></div><p>লেনদেন লোড হচ্ছে...</p></td></tr>`;
-            try {
-                const snapshot = await database.ref('transactions').once('value');
+            // Attach listener
+            transactionsListenerRef = database.ref('transactions').on('value', (snapshot) => {
                 const data = snapshot.val() || {};
                 const transactionList = Object.values(data);
-                
-                // ফিল্টার: শুধুমাত্র যেসব লেনদেনের orderId শুরু হয় "E" অক্ষর দিয়ে
-                const filteredTransactions = transactionList.filter(tx => {
+                // Filter only those with orderId starting with 'E'
+                const filtered = transactionList.filter(tx => {
                     const orderId = tx.orderId || tx.id || '';
                     return orderId.toString().startsWith('E');
                 });
-                
-                transactionCountSpan.textContent = `(${filteredTransactions.length}টি)`;
-                displayTransactions(filteredTransactions);
-                showToast(`${filteredTransactions.length}টি লেনদেন লোড হয়েছে (শুধুমাত্র E-আইডি)`, 'success');
-            } catch (err) {
-                console.error('Failed to load transactions:', err);
-                transactionsTable.innerHTML = `<tr><td colspan="9" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>লেনদেন লোড করতে ব্যর্থ: ${err.message}</p></td></tr>`;
-            }
+                currentTransactions = filtered;  // store for manual refresh
+                displayTransactions(filtered);
+                transactionCountSpan.textContent = `(${filtered.length}টি)`;
+            }, (error) => {
+                console.error('Transaction listener error:', error);
+                transactionsTable.innerHTML = `<tr><td colspan="9" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>লেনদেন লোড করতে ব্যর্থ: ${error.message}</p></td></tr>`;
+            });
         }
 
         function displayTransactions(transactions) {
@@ -983,7 +999,7 @@
                 const phone = tx.phone || '—';
                 const txid = tx.txid || tx.transactionId || '—';
                 const relogradeTrx = tx.relogradeTrx || '—';
-                const adminNumber = tx.admin || '—';  // এডমিন ফোন নম্বর
+                const adminNumber = tx.admin || '—';
                 const timestamp = tx.timestamp ? new Date(tx.timestamp).toLocaleString('bn-BD') : (tx.orderDate ? new Date(tx.orderDate).toLocaleString('bn-BD') : '—');
                 
                 html += `<tr>
@@ -1000,8 +1016,15 @@
             });
             transactionsTable.innerHTML = html;
         }
-        // ---------- End Transactions ----------
+
+        // Manual refresh for transactions (just re‑display current data)
+        function refreshTransactions() {
+            displayTransactions(currentTransactions);
+            transactionCountSpan.textContent = `(${currentTransactions.length}টি)`;
+            showToast('লেনদেন তালিকা রিফ্রেশ করা হয়েছে', 'info');
+        }
         
+        // ---------- Order Actions (unchanged) ----------
         async function completeOrder(trxId, event) {
             if (!isPrimaryAdmin) {
                 showToast('শুধু প্রধান এডমিন অর্ডার সম্পন্ন করতে পারেন', 'error');
@@ -1172,7 +1195,7 @@
         window.cancelOrder = cancelOrder;
         window.showOrderDetails = showOrderDetails;
         window.loadOrders = loadOrders;
-        window.loadTransactions = loadTransactions;
+        window.refreshTransactions = refreshTransactions;
         window.copyToClipboard = copyToClipboard;
     </script>
 </body>
