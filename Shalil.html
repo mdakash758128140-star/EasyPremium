@@ -564,11 +564,11 @@
                         <thead>
                             <tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>এডমিন নম্বর</th><th>কারেন্সি</th><th>অ্যাকশন</th> </thead>
                         <tbody id="ordersTable"></tbody>
-                     </table>
+                    </table>
                 </div>
             </div>
 
-            <!-- MODIFIED: Transactions Section - শুধুমাত্র E দিয়ে শুরু অর্ডার আইডি দেখাবে এবং এডমিন নম্বর কলাম যোগ করা হয়েছে -->
+            <!-- Transactions Section (modified: only E-IDs and admin number column) -->
             <div class="section">
                 <h2 class="section-title">লেনদেন তালিকা (Transactions) <span id="transactionCount"></span></h2>
                 <div class="info-note">
@@ -579,7 +579,7 @@
                         <thead>
                             <tr><th>অর্ডার আইডি</th><th>পরিমাণ (BDT)</th><th>স্ট্যাটাস</th><th>পেমেন্ট পদ্ধতি</th><th>ফোন</th><th>TXID</th><th>Relograde TRX</th><th>এডমিন নম্বর</th><th>তারিখ</th> </thead>
                         <tbody id="transactionsTable"></tbody>
-                     </table>
+                    </table>
                 </div>
             </div>
         </div>
@@ -866,6 +866,21 @@
             updateStats(filtered);
         }
         
+        // Helper: extract admin phone number from reference JSON
+        function extractAdminNumber(reference) {
+            if (!reference) return '—';
+            try {
+                const parsed = JSON.parse(reference);
+                if (parsed && parsed.admin) {
+                    return parsed.admin;
+                }
+            } catch (e) {
+                // not JSON, ignore
+            }
+            // fallback: show truncated reference
+            return reference.length > 30 ? reference.substring(0,30)+'...' : reference;
+        }
+        
         function displayOrders(list) {
             if (!list.length) {
                 ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার নেই</td></tr>';
@@ -883,7 +898,7 @@
                 const items = (o.items || []).map(i => `${i.product?.name || i.productSlug} x${i.amount}`).join('<br>') || '—';
                 const total = o.priceInclVat || o.priceAmount || 0;
                 const currency = o.priceCurrency || 'USD';
-                const adminNumber = o.reference || '—';
+                const adminNumber = extractAdminNumber(o.reference);
                 const isPending = (o.orderStatus === 'created');
                 
                 let actionButtonsHtml = '';
@@ -904,15 +919,15 @@
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
                     <td style="color:#00bcd4;">${total} ${currency}</td>
-                    <td><div style="max-width:150px;font-size:0.9rem; font-weight:500;" title="${adminNumber}">${adminNumber.substring(0,30)}${adminNumber.length>30?'...':''}</div></td>
+                    <td><div style="max-width:150px;font-size:0.9rem; font-weight:500;" title="${(o.reference || '—').replace(/"/g, '&quot;')}">${adminNumber}</div></td>
                     <td>${o.paymentCurrency || currency}</td>
                     <td>${actionButtonsHtml}</td>
-                 </tr>`;
+                </tr>`;
             });
             ordersTable.innerHTML = html;
         }
         
-        // ---------- MODIFIED Transactions Function: শুধুমাত্র "E" দিয়ে শুরু অর্ডার আইডি দেখাবে এবং এডমিন নম্বর কলাম ----------
+        // ---------- MODIFIED Transactions Function: only E-IDs and admin number column ----------
         async function loadTransactions() {
             transactionsTable.innerHTML = `<tr><td colspan="9" class="loading-spinner"><div class="spinner"></div><p>লেনদেন লোড হচ্ছে...</p></td></tr>`;
             try {
@@ -981,7 +996,7 @@
                     <td style="font-family:monospace;">${relogradeTrx}</td>
                     <td>${adminNumber}</td>
                     <td>${timestamp}</td>
-                 </tr>`;
+                </tr>`;
             });
             transactionsTable.innerHTML = html;
         }
