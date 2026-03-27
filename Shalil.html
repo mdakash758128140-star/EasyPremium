@@ -568,7 +568,7 @@
                 </div>
             </div>
 
-            <!-- MODIFIED: Transactions Section - শুধুমাত্র E দিয়ে শুরু অর্ডার আইডি দেখাবে -->
+            <!-- MODIFIED: Transactions Section - শুধুমাত্র E দিয়ে শুরু অর্ডার আইডি দেখাবে এবং এডমিন নম্বর কলাম যোগ করা হয়েছে -->
             <div class="section">
                 <h2 class="section-title">লেনদেন তালিকা (Transactions) <span id="transactionCount"></span></h2>
                 <div class="info-note">
@@ -577,7 +577,7 @@
                 <div style="overflow-x: auto;">
                     <table class="transactions-table">
                         <thead>
-                            <tr><th>অর্ডার আইডি</th><th>পরিমাণ (BDT)</th><th>স্ট্যাটাস</th><th>পেমেন্ট পদ্ধতি</th><th>ফোন</th><th>TXID</th><th>Relograde TRX</th><th>তারিখ</th> </thead>
+                            <tr><th>অর্ডার আইডি</th><th>পরিমাণ (BDT)</th><th>স্ট্যাটাস</th><th>পেমেন্ট পদ্ধতি</th><th>ফোন</th><th>TXID</th><th>Relograde TRX</th><th>এডমিন নম্বর</th><th>তারিখ</th> </thead>
                         <tbody id="transactionsTable"></tbody>
                      </table>
                 </div>
@@ -830,7 +830,7 @@
         
         // ---------- Orders (unchanged) ----------
         async function loadOrders() {
-            ordersTable.innerHTML = ` <td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>  </td>`;
+            ordersTable.innerHTML = `<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></td></tr>`;
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -840,7 +840,7 @@
                 filterOrders();
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
             } catch(e) {
-                ordersTable.innerHTML = ` <td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button>  </td>`;
+                ordersTable.innerHTML = `<tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
             }
         }
         
@@ -868,7 +868,7 @@
         
         function displayOrders(list) {
             if (!list.length) {
-                ordersTable.innerHTML = ' <td colspan="8" class="no-data">কোন অর্ডার নেই  </td>';
+                ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার নেই</td></tr>';
                 return;
             }
             let html = '';
@@ -912,9 +912,9 @@
             ordersTable.innerHTML = html;
         }
         
-        // ---------- MODIFIED Transactions Function: শুধুমাত্র "E" দিয়ে শুরু অর্ডার আইডি দেখাবে ----------
+        // ---------- MODIFIED Transactions Function: শুধুমাত্র "E" দিয়ে শুরু অর্ডার আইডি দেখাবে এবং এডমিন নম্বর কলাম ----------
         async function loadTransactions() {
-            transactionsTable.innerHTML = ` <td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লেনদেন লোড হচ্ছে...</p>  </td>`;
+            transactionsTable.innerHTML = `<tr><td colspan="9" class="loading-spinner"><div class="spinner"></div><p>লেনদেন লোড হচ্ছে...</p></td></tr>`;
             try {
                 const snapshot = await database.ref('transactions').once('value');
                 const data = snapshot.val() || {};
@@ -931,13 +931,13 @@
                 showToast(`${filteredTransactions.length}টি লেনদেন লোড হয়েছে (শুধুমাত্র E-আইডি)`, 'success');
             } catch (err) {
                 console.error('Failed to load transactions:', err);
-                transactionsTable.innerHTML = ` <td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>লেনদেন লোড করতে ব্যর্থ: ${err.message}</p> </td>`;
+                transactionsTable.innerHTML = `<tr><td colspan="9" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>লেনদেন লোড করতে ব্যর্থ: ${err.message}</p></td></tr>`;
             }
         }
 
         function displayTransactions(transactions) {
             if (!transactions.length) {
-                transactionsTable.innerHTML = ' <td colspan="8" class="no-data">কোনো লেনদেন নেই (E-আইডি সংবলিত)</td>';
+                transactionsTable.innerHTML = '<tr><td colspan="9" class="no-data">কোনো লেনদেন নেই (E-আইডি সংবলিত)</td></tr>';
                 return;
             }
             let html = '';
@@ -968,6 +968,7 @@
                 const phone = tx.phone || '—';
                 const txid = tx.txid || tx.transactionId || '—';
                 const relogradeTrx = tx.relogradeTrx || '—';
+                const adminNumber = tx.admin || '—';  // এডমিন ফোন নম্বর
                 const timestamp = tx.timestamp ? new Date(tx.timestamp).toLocaleString('bn-BD') : (tx.orderDate ? new Date(tx.orderDate).toLocaleString('bn-BD') : '—');
                 
                 html += `<tr>
@@ -978,6 +979,7 @@
                     <td>${phone}</td>
                     <td style="font-family:monospace;">${txid}</td>
                     <td style="font-family:monospace;">${relogradeTrx}</td>
+                    <td>${adminNumber}</td>
                     <td>${timestamp}</td>
                  </tr>`;
             });
