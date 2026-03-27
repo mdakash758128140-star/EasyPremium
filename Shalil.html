@@ -500,18 +500,31 @@
         </header>
         
         <div class="main-content">
-            <!-- Existing Orders Section -->
+            <!-- NEW: Transactions Dashboard (stats cards) -->
             <div class="section">
-                <h2 class="section-title">Relograde অর্ডার ড্যাশবোর্ড</h2>
+                <h2 class="section-title">Transactions অর্ডার ড্যাশবোর্ড</h2>
                 <div class="form-row">
-                    <div class="stats-card"><div class="stat-value" id="totalOrders">0</div><div class="stat-label">মোট অর্ডার</div></div>
-                    <div class="stats-card"><div class="stat-value" id="pendingOrders">0</div><div class="stat-label">পেন্ডিং</div></div>
-                    <div class="stats-card"><div class="stat-value" id="completedOrders">0</div><div class="stat-label">সম্পূর্ণ</div></div>
-                    <div class="stats-card"><div class="stat-value" id="cancelledOrders">0</div><div class="stat-label">ক্যানসেল / ফেল</div></div>
+                    <div class="stats-card">
+                        <div class="stat-value" id="totalTransactionsCount">0</div>
+                        <div class="stat-label">মোট লেনদেন</div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stat-value" id="totalAmountSum">0</div>
+                        <div class="stat-label">মোট পরিমাণ (BDT)</div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stat-value" id="completedTransactionsCount">0</div>
+                        <div class="stat-label">সম্পূর্ণ লেনদেন</div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stat-value" id="pendingTransactionsCount">0</div>
+                        <div class="stat-label">পেন্ডিং লেনদেন</div>
+                    </div>
                 </div>
                 <div class="system-info" id="systemInfo"></div>
             </div>
             
+            <!-- Orders Table Section (unchanged) -->
             <div class="section">
                 <h2 class="section-title">Relograde অর্ডার তালিকা <span id="orderCount"></span></h2>
                 <!-- filter-section removed -->
@@ -524,7 +537,7 @@
                 </div>
             </div>
 
-            <!-- Transactions section (real‑time) -->
+            <!-- Transactions Table Section (real‑time) -->
             <div class="section">
                 <h2 class="section-title">লেনদেন তালিকা (Transactions) <span id="transactionCount"></span></h2>
                 <div 
@@ -589,7 +602,12 @@
         const loginScreen = document.getElementById('loginScreen'), adminPanel = document.getElementById('adminPanel');
         const googleLoginBtn = document.getElementById('googleLoginBtn'), logoutBtn = document.getElementById('logoutBtn'), refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
         const adminName = document.getElementById('adminName'), adminEmail = document.getElementById('adminEmail'), adminAvatar = document.getElementById('adminAvatar');
-        const totalOrdersEl = document.getElementById('totalOrders'), pendingOrdersEl = document.getElementById('pendingOrders'), completedOrdersEl = document.getElementById('completedOrders'), cancelledOrdersEl = document.getElementById('cancelledOrders');
+        // New transaction stats elements
+        const totalTransactionsCountEl = document.getElementById('totalTransactionsCount');
+        const totalAmountSumEl = document.getElementById('totalAmountSum');
+        const completedTransactionsCountEl = document.getElementById('completedTransactionsCount');
+        const pendingTransactionsCountEl = document.getElementById('pendingTransactionsCount');
+        
         const orderCountEl = document.getElementById('orderCount'), systemInfo = document.getElementById('systemInfo'), ordersTable = document.getElementById('ordersTable');
         const orderDetailsModal = document.getElementById('orderDetailsModal');
         const closeDetailsModalBtn = document.getElementById('closeDetailsModalBtn');
@@ -799,17 +817,16 @@
                 if (!res.ok || !result.success) throw new Error(result.error);
                 orders = result.data || [];
                 orderCountEl.textContent = `(${orders.length}টি)`;
-                refreshOrdersDisplay();   // display all orders and update stats
+                refreshOrdersDisplay();   // display all orders
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
             } catch(e) {
                 ordersTable.innerHTML = `<tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
             }
         }
         
-        // New function to display all orders and update stats (no filtering)
+        // Display orders (no stats update)
         function refreshOrdersDisplay() {
             displayOrders(orders);
-            updateStats(orders);
         }
         
         // Helper: extract admin phone number from reference JSON
@@ -894,10 +911,37 @@
                 currentTransactions = filtered;  // store for manual refresh
                 displayTransactions(filtered);
                 transactionCountSpan.textContent = `(${filtered.length}টি)`;
+                // Update transaction dashboard stats
+                updateTransactionStats(filtered);
             }, (error) => {
                 console.error('Transaction listener error:', error);
                 transactionsTable.innerHTML = `<tr><td colspan="9" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>লেনদেন লোড করতে ব্যর্থ: ${error.message}</p></td></tr>`;
             });
+        }
+
+        function updateTransactionStats(transactions) {
+            const total = transactions.length;
+            let totalAmount = 0;
+            let completed = 0;
+            let pending = 0;
+            
+            transactions.forEach(tx => {
+                const amount = parseFloat(tx.amount || tx.totalAmount || 0);
+                if (!isNaN(amount)) totalAmount += amount;
+                
+                const status = (tx.status || tx.orderStatus || '').toLowerCase();
+                if (status === 'completed' || status === 'success') {
+                    completed++;
+                } else if (status === 'pending' || status === 'created') {
+                    pending++;
+                }
+                // ignore failed or others for now
+            });
+            
+            totalTransactionsCountEl.textContent = total;
+            totalAmountSumEl.textContent = totalAmount.toFixed(2);
+            completedTransactionsCountEl.textContent = completed;
+            pendingTransactionsCountEl.textContent = pending;
         }
 
         function displayTransactions(transactions) {
@@ -955,6 +999,7 @@
         function refreshTransactions() {
             displayTransactions(currentTransactions);
             transactionCountSpan.textContent = `(${currentTransactions.length}টি)`;
+            updateTransactionStats(currentTransactions);
             showToast('লেনদেন তালিকা রিফ্রেশ করা হয়েছে', 'info');
         }
         
@@ -1093,13 +1138,6 @@
                 showToast('কপি ব্যর্থ', 'error');
             });
         };
-        
-        function updateStats(list) {
-            totalOrdersEl.textContent = list.length;
-            pendingOrdersEl.textContent = list.filter(o => o.orderStatus === 'created').length;
-            completedOrdersEl.textContent = list.filter(o => o.orderStatus === 'finished').length;
-            cancelledOrdersEl.textContent = list.filter(o => o.orderStatus === 'cancelled' || o.orderStatus === 'fail').length;
-        }
         
         function updateSystemInfo() {
             const roleText = isPrimaryAdmin ? '<span style="color:#4caf50;">প্রধান এডমিন (সম্পূর্ণ অ্যাক্সেস)</span>' : '<span style="color:#ff9800;">শুধু দেখার (রিড-অনলি)</span>';
