@@ -1141,7 +1141,7 @@
         function updateSystemInfo() {
             const roleText = isPrimaryAdmin ? '<span style="color:#4caf50;">প্রধান এডমিন (সম্পূর্ণ অ্যাক্সেস)</span>' : '<span style="color:#ff9800;">শুধু দেখার (রিড-অনলি)</span>';
             systemInfo.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap;">
-                <div><strong>বর্তমান সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div>
+                <div><strong>লগইন সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div>
                 <div><strong>এডমিন:</strong> ${currentAdminEmail || 'N/A'}</div>
                 <div><strong>স্ট্যাটাস:</strong> অনলাইন</div>
                 <div><strong>রোল:</strong> ${roleText}</div>
