@@ -1,7 +1,9 @@
+// api/order_completed.js
+// Admin Order Management API - Complete, Fail & Delete Orders with Relograde Confirm
 
 const RELOGRADE_API_URL = 'https://connect.relograde.com/api/1.02';
 const RELOGRADE_API_KEY = process.env.RELOGRADE_API_KEY;
-const ADMIN_PASSWORD = process.env.PASSWORD || process.env.ADMIN_PASSWORD; // Password for completing orders
+const ADMIN_PASSWORD = process.env.PASSWORD || process.env.ADMIN_PASSWORD; // Password for completing/failing orders
 
 // Helper function for Relograde API calls
 async function callRelogradeAPI(endpoint, method, data = null) {
@@ -150,12 +152,12 @@ export default async function handler(req, res) {
       });
     }
     
-    // 🔐 Password verification for complete action
-    if (action === 'complete') {
+    // 🔐 Password verification for complete and fail actions
+    if (action === 'complete' || action === 'fail') {
       if (!password) {
         return res.status(401).json({
           success: false,
-          error: 'Password is required to complete an order'
+          error: `Password is required to ${action} an order`
         });
       }
       
