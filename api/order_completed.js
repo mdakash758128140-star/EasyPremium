@@ -3,6 +3,7 @@
 
 const RELOGRADE_API_URL = 'https://connect.relograde.com/api/1.02';
 const RELOGRADE_API_KEY = process.env.RELOGRADE_API_KEY;
+const ADMIN_PASSWORD = process.env.PASSWORD || process.env.ADMIN_PASSWORD; // Password for completing orders
 
 // Helper function for Relograde API calls
 async function callRelogradeAPI(endpoint, method, data = null) {
@@ -133,7 +134,7 @@ export default async function handler(req, res) {
   }
   
   try {
-    const { trxId, action, adminEmail, orderData } = req.body;
+    const { trxId, action, adminEmail, orderData, password } = req.body;
     
     console.log('📝 API Called:', { trxId, action, adminEmail });
     
@@ -149,6 +150,23 @@ export default async function handler(req, res) {
         success: false, 
         error: 'action must be complete, fail or delete' 
       });
+    }
+    
+    // 🔐 Password verification for complete action
+    if (action === 'complete') {
+      if (!password) {
+        return res.status(401).json({
+          success: false,
+          error: 'Password is required to complete an order'
+        });
+      }
+      
+      if (password !== ADMIN_PASSWORD) {
+        return res.status(403).json({
+          success: false,
+          error: 'Invalid password'
+        });
+      }
     }
     
     // Firebase config
