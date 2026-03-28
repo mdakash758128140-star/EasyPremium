@@ -8,9 +8,20 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
+  // 🔐 Password verification
+  const adminPassword = process.env.PASSWORD || process.env.ADMIN_PASSWORD;
+  const providedPassword = req.query.password;
+
+  if (!providedPassword) {
+    return res.status(401).json({ success: false, error: 'Password is required to fetch orders' });
+  }
+  if (providedPassword !== adminPassword) {
+    return res.status(403).json({ success: false, error: 'Invalid password' });
+  }
+
   const apiKey = process.env.RELOGRADE_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured in Vercel' });
+    return res.status(500).json({ error: 'RELOGRADE_API_KEY not configured' });
   }
 
   try {
@@ -49,7 +60,7 @@ export default async function handler(req, res) {
     }
 
     // ---------- Fetch ALL orders from Relograde (pagination) ----------
-    const limit = 100;        // Number of orders per page
+    const limit = 100;
     let offset = 0;
     let allOrders = [];
     let hasMore = true;
@@ -74,7 +85,6 @@ export default async function handler(req, res) {
 
       const result = await response.json();
 
-      // Extract orders from response (handle different possible structures)
       let pageOrders = [];
       if (Array.isArray(result)) pageOrders = result;
       else if (result.data && Array.isArray(result.data)) pageOrders = result.data;
@@ -82,31 +92,26 @@ export default async function handler(req, res) {
       else pageOrders = [result];
 
       if (pageOrders.length === 0) {
-        hasMore = false;  // No more orders
+        hasMore = false;
       } else {
         allOrders = allOrders.concat(pageOrders);
         offset += limit;
-        // If we received less than the limit, assume it's the last page
         if (pageOrders.length < limit) hasMore = false;
       }
 
-      // Safety: prevent infinite loop in case of API bug
+      // Safety: prevent infinite loop
       if (offset > 10000) hasMore = false;
     }
 
     console.log(`Total orders fetched from Relograde: ${allOrders.length}`);
 
-    // ---------- Enrich each order with Firebase status ----------
     let enrichedOrders = await Promise.all(allOrders.map(order => enrichOrderWithFirebaseStatus(order)));
 
-    // ---------- Apply filtering: exclude finished, fail, and orders older than 24 hours ----------
+    // Apply filtering: exclude finished, fail, and orders older than 24 hours
     enrichedOrders = enrichedOrders.filter(order => {
-      // Exclude finished orders
       if (order.orderStatus === 'finished') return false;
-      // Exclude fail orders
       if (order.orderStatus === 'fail') return false;
 
-      // Check if order is older than 24 hours
       const orderDateString = order.orderDate || order.createdAt || order.date;
       if (orderDateString) {
         const orderDate = new Date(orderDateString);
@@ -114,7 +119,6 @@ export default async function handler(req, res) {
         const hoursDiff = (now - orderDate) / (1000 * 60 * 60);
         if (hoursDiff > 24) return false;
       }
-      // If no date field, we keep the order (could log a warning)
       return true;
     });
 
@@ -143,7 +147,6 @@ async function enrichOrderWithFirebaseStatus(order) {
   const firebaseUrl = process.env.FIREBASE_DATABASE_URL;
   const firebaseSecret = process.env.FIREBASE_SECRET;
 
-  // If Firebase is not configured, return original order
   if (!firebaseUrl || !firebaseSecret) {
     console.warn('Firebase configuration missing, skipping status enrichment');
     return order;
@@ -174,10 +177,9 @@ async function enrichOrderWithFirebaseStatus(order) {
       }
     }
 
-    // No override, keep original status
     return order;
   } catch (err) {
     console.error(`Error checking Firebase for order ${order.trx}:`, err.message);
-    return order; // fallback
+    return order;
   }
 }
