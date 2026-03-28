@@ -536,13 +536,14 @@
         </header>
         
         <div class="main-content">
-            <!-- Transactions Dashboard (stats cards) - UPDATED: pending replaced with Relograde balance -->
+            <!-- Transactions Dashboard (stats cards) - UPDATED: first card now shows admin total from completedOrders -->
             <div class="section">
                 <h2 class="section-title">Transactions অর্ডার ড্যাশবোর্ড</h2>
                 <div class="form-row">
+                    <!-- New card: Admin total from completedOrders -->
                     <div class="stats-card">
-                        <div class="stat-value" id="totalTransactionsCount">0</div>
-                        <div class="stat-label">মোট লেনদেন</div>
+                        <div class="stat-value" id="adminTotalAmount">0.00</div>
+                        <div class="stat-label">আপনার মোট সম্পন্ন (USD)</div>
                     </div>
                     <div class="stats-card">
                         <div class="stat-value" id="totalAmountSum">0</div>
@@ -568,7 +569,7 @@
                         <thead>
                             <tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>এডমিন নম্বর</th><th>কারেন্সি</th><th>অ্যাকশন</th> </thead>
                         <tbody id="ordersTable"></tbody>
-                     </table>
+                      </table>
                 </div>
             </div>
 
@@ -580,7 +581,7 @@
                         <thead>
                             <tr><th>অর্ডার আইডি</th><th>পরিমাণ (BDT)</th><th>স্ট্যাটাস</th><th>পেমেন্ট পদ্ধতি</th><th>ফোন</th><th>TXID</th><th>Relograde TRX</th><th>এডমিন নম্বর</th><th>তারিখ</th> </thead>
                         <tbody id="transactionsTable"></tbody>
-                     </table>
+                      </table>
                 </div>
             </div>
         </div>
@@ -661,9 +662,9 @@
         const loginScreen = document.getElementById('loginScreen'), adminPanel = document.getElementById('adminPanel');
         const googleLoginBtn = document.getElementById('googleLoginBtn'), logoutBtn = document.getElementById('logoutBtn'), refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
         const adminName = document.getElementById('adminName'), adminEmail = document.getElementById('adminEmail'), adminAvatar = document.getElementById('adminAvatar');
-        const totalTransactionsCountEl = document.getElementById('totalTransactionsCount');
         const totalAmountSumEl = document.getElementById('totalAmountSum');
         const completedTransactionsCountEl = document.getElementById('completedTransactionsCount');
+        const adminTotalAmountEl = document.getElementById('adminTotalAmount'); // new element
         // Balance element
         const relogradeBalanceEl = document.getElementById('relogradeBalance');
         
@@ -692,6 +693,31 @@
 
         // Global stored password (after first successful verification)
         let globalAdminPassword = null;
+
+        // ---------- Admin Completed Total (from completedOrders) ----------
+        async function fetchAdminCompletedTotal() {
+            if (!currentAdminEmail) return;
+            try {
+                const snapshot = await database.ref('completedOrders').once('value');
+                const completedOrders = snapshot.val() || {};
+                let total = 0;
+                for (const trxId in completedOrders) {
+                    const order = completedOrders[trxId];
+                    if (order.completedBy === currentAdminEmail) {
+                        const priceAmount = order.orderData?.priceAmount;
+                        if (typeof priceAmount === 'number') {
+                            total += priceAmount;
+                        }
+                    }
+                }
+                adminTotalAmountEl.textContent = total.toFixed(2);
+                adminTotalAmountEl.style.color = '#4caf50';
+            } catch (err) {
+                console.error('Error fetching admin completed total:', err);
+                adminTotalAmountEl.textContent = 'ত্রুটি';
+                adminTotalAmountEl.style.color = '#dc3545';
+            }
+        }
 
         // ---------- Relograde Balance Fetch ----------
         async function fetchRelogradeBalance() {
@@ -728,6 +754,7 @@
                 loadOrders();
                 refreshTransactions();
                 fetchRelogradeBalance(); // also refresh balance manually
+                fetchAdminCompletedTotal(); // refresh admin total
             };
             closeDetailsModalBtn.onclick = () => orderDetailsModal.classList.remove('active');
             window.onclick = (e) => { if (e.target === orderDetailsModal) orderDetailsModal.classList.remove('active'); };
@@ -849,6 +876,7 @@
                     if (idx !== -1) orders[idx].orderStatus = 'finished';
                     refreshOrdersDisplay();
                     showToast('✅ অর্ডার সম্পন্ন হয়েছে', 'success');
+                    fetchAdminCompletedTotal(); // update admin total after completion
                 } else {
                     throw new Error(result.error || 'API failed');
                 }
@@ -1054,6 +1082,7 @@
                     showAdminPanel();
                     loadOrders();
                     setupTransactionsListener();
+                    fetchAdminCompletedTotal(); // load admin total after login
                 } else if (user) {
                     await auth.signOut();
                     showLoginScreen();
@@ -1225,7 +1254,6 @@
                 if (status === 'completed' || status === 'success') completed++;
             });
             
-            totalTransactionsCountEl.textContent = total;
             totalAmountSumEl.textContent = totalAmount.toFixed(2);
             completedTransactionsCountEl.textContent = completed;
         }
