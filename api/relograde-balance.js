@@ -24,7 +24,6 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Correct endpoint: GET /api/1.02/account
         const url = `${RELOGRADE_API_URL}/account`;
         const options = {
             method: 'GET',
