@@ -1149,7 +1149,7 @@
                 transactionsListenerRef.off();
                 transactionsListenerRef = null;
             }
-            transactionsTable.innerHTML = `|<td colspan="9" class="loading-spinner"><div class="spinner"></div><p>লেনদেন লোড হচ্ছে...</p>|`;
+            transactionsTable.innerHTML = `<td colspan="9" class="loading-spinner"><div class="spinner"></div><p>লেনদেন লোড হচ্ছে...</p>`;
             transactionsListenerRef = database.ref('transactions').on('value', (snapshot) => {
                 const data = snapshot.val() || {};
                 const transactionList = Object.values(data);
