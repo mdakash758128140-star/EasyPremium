@@ -536,7 +536,7 @@
         </header>
         
         <div class="main-content">
-            <!-- Transactions Dashboard (stats cards) -->
+            <!-- Transactions Dashboard (stats cards) - UPDATED: pending replaced with Relograde balance -->
             <div class="section">
                 <h2 class="section-title">Transactions অর্ডার ড্যাশবোর্ড</h2>
                 <div class="form-row">
@@ -568,7 +568,7 @@
                         <thead>
                             <tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>এডমিন নম্বর</th><th>কারেন্সি</th><th>অ্যাকশন</th> </thead>
                         <tbody id="ordersTable"></tbody>
-                    </table>
+                     </table>
                 </div>
             </div>
 
@@ -580,7 +580,7 @@
                         <thead>
                             <tr><th>অর্ডার আইডি</th><th>পরিমাণ (BDT)</th><th>স্ট্যাটাস</th><th>পেমেন্ট পদ্ধতি</th><th>ফোন</th><th>TXID</th><th>Relograde TRX</th><th>এডমিন নম্বর</th><th>তারিখ</th> </thead>
                         <tbody id="transactionsTable"></tbody>
-                    </table>
+                     </table>
                 </div>
             </div>
         </div>
@@ -602,13 +602,14 @@
         </div>
     </div>
 
-    <!-- Password Modal (reused for both order actions and initial fetch) -->
+    <!-- Password Modal for Complete & Fail -->
     <div class="modal password-modal" id="passwordModal">
         <div class="modal-content">
             <button class="modal-close" id="closePasswordModalBtn">&times;</button>
             <h2 class="modal-title" id="passwordModalTitle">পাসওয়ার্ড দিন</h2>
             <div class="modal-section">
                 <p id="passwordModalMessage">অর্ডার সম্পন্ন করতে পাসওয়ার্ড প্রয়োজন।</p>
+                <!-- Password input with full protection against copy/paste, right-click, and browser password manager -->
                 <input type="password" id="adminPasswordInput" class="password-input" 
                        placeholder="পাসওয়ার্ড লিখুন" 
                        autocomplete="new-password" 
@@ -663,6 +664,7 @@
         const totalTransactionsCountEl = document.getElementById('totalTransactionsCount');
         const totalAmountSumEl = document.getElementById('totalAmountSum');
         const completedTransactionsCountEl = document.getElementById('completedTransactionsCount');
+        // Balance element
         const relogradeBalanceEl = document.getElementById('relogradeBalance');
         
         const orderCountEl = document.getElementById('orderCount'), systemInfo = document.getElementById('systemInfo'), ordersTable = document.getElementById('ordersTable');
@@ -683,12 +685,13 @@
         const passwordModalMessage = document.getElementById('passwordModalMessage');
 
         // Store pending action data
-        let pendingAction = null; // 'complete' or 'fail'
+        let pendingAction = null; // 'complete' or 'fail' or 'orders'
         let pendingTrxId = null;
         let pendingEvent = null;
+        let pendingOrdersCallback = null; // function to call after password verification for orders
 
-        // Store password for API calls
-        let storedPassword = null;
+        // Global stored password (after first successful verification)
+        let globalAdminPassword = null;
 
         // ---------- Relograde Balance Fetch ----------
         async function fetchRelogradeBalance() {
@@ -709,88 +712,32 @@
             }
         }
 
+        // Fetch balance every 30 seconds
         setInterval(fetchRelogradeBalance, 30000);
+        // Also fetch on page load
         fetchRelogradeBalance();
 
-        // ---------- Load Orders with password ----------
-        async function loadOrders() {
-            if (!storedPassword) {
-                // Show password prompt with a callback that will retry loading
-                showPasswordPrompt('অর্ডার তালিকা দেখতে পাসওয়ার্ড প্রয়োজন', async (password) => {
-                    storedPassword = password;
-                    await loadOrders(); // retry
-                });
-                return;
-            }
-            ordersTable.innerHTML = `<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>`;
-            try {
-                const res = await fetch(`/api/relograde-orders?password=${encodeURIComponent(storedPassword)}`);
-                const result = await res.json();
-                if (!res.ok || !result.success) throw new Error(result.error || 'Failed to fetch orders');
-                orders = result.data || [];
-                orderCountEl.textContent = `(${orders.length}টি)`;
-                refreshOrdersDisplay();
-                showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
-            } catch(e) {
-                console.error('Load orders error:', e);
-                ordersTable.innerHTML = `<td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button>`;
-                // If password is invalid, clear stored password so user can re-enter
-                if (e.message.includes('Invalid password') || e.message.includes('Password is required')) {
-                    storedPassword = null;
-                }
-            }
-        }
-
-        // Show password modal with a custom message and a success callback
-        function showPasswordPrompt(message, onSuccess) {
-            // Save original submit handler to restore later
-            const originalSubmit = submitPasswordBtn.onclick;
-            const originalClose = closePasswordModalBtn.onclick;
-            
-            passwordModalTitle.textContent = 'পাসওয়ার্ড প্রয়োজন';
-            passwordModalMessage.textContent = message;
-            
-            // Override submit button for this one‑time use
-            submitPasswordBtn.onclick = async () => {
-                const password = adminPasswordInput.value.trim();
-                if (!password) {
-                    passwordErrorMsg.textContent = 'পাসওয়ার্ড দিন';
-                    return;
-                }
-                submitPasswordBtn.disabled = true;
-                submitPasswordBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> যাচাই...';
-                try {
-                    // Verify password with a test call (we'll just use the orders endpoint with the password)
-                    const testRes = await fetch(`/api/relograde-orders?password=${encodeURIComponent(password)}`);
-                    const testData = await testRes.json();
-                    if (!testRes.ok || !testData.success) {
-                        throw new Error(testData.error || 'ভুল পাসওয়ার্ড');
-                    }
-                    // Password valid
-                    storedPassword = password;
-                    // Restore original handlers before closing
-                    submitPasswordBtn.onclick = originalSubmit;
-                    closePasswordModalBtn.onclick = originalClose;
-                    closePasswordModal();
-                    if (onSuccess) onSuccess(password);
-                } catch (err) {
-                    passwordErrorMsg.textContent = err.message || 'ভুল পাসওয়ার্ড';
-                    adminPasswordInput.value = '';
-                } finally {
-                    submitPasswordBtn.disabled = false;
-                    submitPasswordBtn.innerHTML = '<i class="fas fa-lock"></i> যাচাই করুন';
-                }
+        // ---------- Existing code (unchanged) ----------
+        document.addEventListener('DOMContentLoaded', () => { setupEventListeners(); checkAdminAuth(); });
+        
+        function setupEventListeners() {
+            googleLoginBtn.onclick = handleGoogleLogin;
+            logoutBtn.onclick = handleLogout;
+            refreshOrdersBtn.onclick = () => { 
+                showToast('রিফ্রেশ...', 'info'); 
+                loadOrders();
+                refreshTransactions();
+                fetchRelogradeBalance(); // also refresh balance manually
             };
+            closeDetailsModalBtn.onclick = () => orderDetailsModal.classList.remove('active');
+            window.onclick = (e) => { if (e.target === orderDetailsModal) orderDetailsModal.classList.remove('active'); };
             
-            // Also override close to restore original handlers
-            closePasswordModalBtn.onclick = () => {
-                submitPasswordBtn.onclick = originalSubmit;
-                closePasswordModalBtn.onclick = originalClose;
-                closePasswordModal();
-            };
-            
-            passwordModal.classList.add('active');
-            adminPasswordInput.focus();
+            // Password modal listeners
+            closePasswordModalBtn.onclick = () => closePasswordModal();
+            submitPasswordBtn.onclick = () => verifyAndPerformAction();
+            adminPasswordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') verifyAndPerformAction();
+            });
         }
 
         function closePasswordModal() {
@@ -800,9 +747,35 @@
             pendingAction = null;
             pendingTrxId = null;
             pendingEvent = null;
+            pendingOrdersCallback = null;
         }
 
-        // Modified for order actions: also store password on success
+        function showPasswordModalForOrders(callback) {
+            pendingOrdersCallback = callback;
+            pendingAction = 'orders';
+            passwordModalTitle.textContent = 'অর্ডার দেখতে পাসওয়ার্ড';
+            passwordModalMessage.textContent = 'অর্ডার তালিকা লোড করতে পাসওয়ার্ড প্রয়োজন।';
+            passwordModal.classList.add('active');
+            adminPasswordInput.focus();
+        }
+
+        function showPasswordModal(action, trxId, event) {
+            pendingAction = action;
+            pendingTrxId = trxId;
+            pendingEvent = event;
+            
+            if (action === 'complete') {
+                passwordModalTitle.textContent = 'অর্ডার সম্পন্ন করতে পাসওয়ার্ড';
+                passwordModalMessage.textContent = 'অর্ডার সম্পন্ন করতে পাসওয়ার্ড প্রয়োজন।';
+            } else if (action === 'fail') {
+                passwordModalTitle.textContent = 'অর্ডার ফেল করতে পাসওয়ার্ড';
+                passwordModalMessage.textContent = 'অর্ডার ফেল (বাতিল) করতে পাসওয়ার্ড প্রয়োজন।';
+            }
+            
+            passwordModal.classList.add('active');
+            adminPasswordInput.focus();
+        }
+
         async function verifyAndPerformAction() {
             const password = adminPasswordInput.value.trim();
             if (!password) {
@@ -814,25 +787,32 @@
             submitPasswordBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> যাচাই...';
             
             try {
+                // First, verify the password with the API (optional but good)
+                // For simplicity, we rely on the API endpoints to verify.
+                // Store globally for future use
+                globalAdminPassword = password;
+
                 if (pendingAction === 'complete') {
                     await performCompleteOrder(pendingTrxId, password, pendingEvent);
                 } else if (pendingAction === 'fail') {
                     await performFailOrder(pendingTrxId, password, pendingEvent);
+                } else if (pendingAction === 'orders' && pendingOrdersCallback) {
+                    pendingOrdersCallback(password);
                 }
-                // If we get here, password was valid (backend didn't reject)
-                storedPassword = password;
                 closePasswordModal();
             } catch (error) {
                 passwordErrorMsg.textContent = error.message || 'ভুল পাসওয়ার্ড';
                 adminPasswordInput.value = '';
                 adminPasswordInput.focus();
+                // In case of error, clear stored password
+                globalAdminPassword = null;
             } finally {
                 submitPasswordBtn.disabled = false;
                 submitPasswordBtn.innerHTML = '<i class="fas fa-lock"></i> যাচাই করুন';
             }
         }
 
-        // completeOrder function – shows modal
+        // Modified completeOrder function
         async function completeOrder(trxId, event) {
             if (!isPrimaryAdmin) {
                 showToast('শুধু প্রধান এডমিন অর্ডার সম্পন্ন করতে পারেন', 'error');
@@ -840,13 +820,7 @@
             }
             event.stopPropagation();
             if (!confirm('এই অর্ডারটি কি সম্পন্ন করতে চান?')) return;
-            pendingAction = 'complete';
-            pendingTrxId = trxId;
-            pendingEvent = event;
-            passwordModalTitle.textContent = 'অর্ডার সম্পন্ন করতে পাসওয়ার্ড';
-            passwordModalMessage.textContent = 'অর্ডার সম্পন্ন করতে পাসওয়ার্ড প্রয়োজন।';
-            passwordModal.classList.add('active');
-            adminPasswordInput.focus();
+            showPasswordModal('complete', trxId, event);
         }
 
         async function performCompleteOrder(trxId, password, event) {
@@ -862,7 +836,11 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        trxId, action: 'complete', adminEmail: currentAdminEmail, orderData, password
+                        trxId: trxId, 
+                        action: 'complete', 
+                        adminEmail: currentAdminEmail, 
+                        orderData: orderData,
+                        password: password
                     })
                 });
                 const result = await response.json();
@@ -884,7 +862,7 @@
             }
         }
 
-        // cancelOrder function
+        // Modified cancelOrder function
         async function cancelOrder(trxId, event) {
             if (!isPrimaryAdmin) {
                 showToast('শুধু প্রধান এডমিন অর্ডার বাতিল করতে পারেন', 'error');
@@ -892,13 +870,7 @@
             }
             event.stopPropagation();
             if (!confirm('এই অর্ডারটি কি বাতিল (ফেল) করতে চান? স্ট্যাটাস "fail" এ সেট হবে।')) return;
-            pendingAction = 'fail';
-            pendingTrxId = trxId;
-            pendingEvent = event;
-            passwordModalTitle.textContent = 'অর্ডার ফেল করতে পাসওয়ার্ড';
-            passwordModalMessage.textContent = 'অর্ডার ফেল (বাতিল) করতে পাসওয়ার্ড প্রয়োজন।';
-            passwordModal.classList.add('active');
-            adminPasswordInput.focus();
+            showPasswordModal('fail', trxId, event);
         }
 
         async function performFailOrder(trxId, password, event) {
@@ -914,7 +886,11 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        trxId, action: 'fail', adminEmail: currentAdminEmail, orderData, password
+                        trxId: trxId, 
+                        action: 'fail', 
+                        adminEmail: currentAdminEmail, 
+                        orderData: orderData,
+                        password: password
                     })
                 });
                 const result = await response.json();
@@ -1038,6 +1014,7 @@
                 evaluatePrimaryStatus();
             }, UPDATE_INTERVAL);
         }
+        // ---------- End Primary Admin Logic ----------
 
         async function loadAdminData(user) {
             adminName.textContent = user.displayName || user.email;
@@ -1075,11 +1052,7 @@
                     startRecheckLoop();
                     
                     showAdminPanel();
-                    // Ask for password before loading orders
-                    showPasswordPrompt('অর্ডার তালিকা দেখতে পাসওয়ার্ড প্রয়োজন', async (password) => {
-                        storedPassword = password;
-                        await loadOrders();
-                    });
+                    loadOrders();
                     setupTransactionsListener();
                 } else if (user) {
                     await auth.signOut();
@@ -1108,7 +1081,6 @@
                 transactionsListenerRef.off();
                 transactionsListenerRef = null;
             }
-            storedPassword = null;
             await auth.signOut();
             showLoginScreen();
             showToast('লগ আউট', 'success');
@@ -1116,6 +1088,45 @@
         
         function showLoginScreen() { loginScreen.style.display = 'flex'; adminPanel.style.display = 'none'; }
         function showAdminPanel() { loginScreen.style.display = 'none'; adminPanel.style.display = 'block'; updateSystemInfo(); }
+        
+        // ---------- Orders (with password handling) ----------
+        async function loadOrders() {
+            // If we already have a stored password, use it
+            if (globalAdminPassword) {
+                await fetchOrdersWithPassword(globalAdminPassword);
+            } else {
+                // Ask for password to load orders
+                showPasswordModalForOrders(async (password) => {
+                    await fetchOrdersWithPassword(password);
+                });
+            }
+        }
+
+        async function fetchOrdersWithPassword(password) {
+            ordersTable.innerHTML = `<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>`;
+            try {
+                const url = `/api/relograde-orders?password=${encodeURIComponent(password)}`;
+                const res = await fetch(url);
+                const result = await res.json();
+                if (!res.ok || !result.success) {
+                    if (res.status === 401 || res.status === 403) {
+                        // Password invalid, clear stored password and retry
+                        globalAdminPassword = null;
+                        showToast('পাসওয়ার্ড ভুল, আবার চেষ্টা করুন', 'error');
+                        loadOrders(); // recursive call to ask again
+                        return;
+                    }
+                    throw new Error(result.error || 'Failed to fetch orders');
+                }
+                orders = result.data || [];
+                orderCountEl.textContent = `(${orders.length}টি)`;
+                refreshOrdersDisplay();
+                showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
+            } catch(e) {
+                ordersTable.innerHTML = `<td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button>`;
+                showToast(`অর্ডার লোড করতে ব্যর্থ: ${e.message}`, 'error');
+            }
+        }
         
         function refreshOrdersDisplay() {
             displayOrders(orders);
@@ -1369,29 +1380,6 @@
         window.loadOrders = loadOrders;
         window.refreshTransactions = refreshTransactions;
         window.copyToClipboard = copyToClipboard;
-
-        // Override refresh button to use stored password or prompt
-        refreshOrdersBtn.onclick = () => {
-            if (storedPassword) {
-                showToast('রিফ্রেশ...', 'info');
-                loadOrders();
-                refreshTransactions();
-                fetchRelogradeBalance();
-            } else {
-                showPasswordPrompt('অর্ডার তালিকা দেখতে পাসওয়ার্ড প্রয়োজন', (password) => {
-                    storedPassword = password;
-                    loadOrders();
-                });
-            }
-        };
-        
-        // Set up default event listeners for password modal (overridden when needed)
-        function setupDefaultPasswordModalHandlers() {
-            // These will be overwritten when custom prompts are used, but we need initial ones
-            submitPasswordBtn.onclick = verifyAndPerformAction;
-            closePasswordModalBtn.onclick = closePasswordModal;
-        }
-        setupDefaultPasswordModalHandlers();
     </script>
 </body>
 </html>
