@@ -536,11 +536,10 @@
         </header>
         
         <div class="main-content">
-            <!-- Transactions Dashboard (stats cards) - UPDATED: first card now shows admin total from completedOrders -->
+            <!-- Transactions Dashboard (stats cards) -->
             <div class="section">
                 <h2 class="section-title">Transactions অর্ডার ড্যাশবোর্ড</h2>
                 <div class="form-row">
-                    <!-- New card: Admin total from completedOrders -->
                     <div class="stats-card">
                         <div class="stat-value" id="adminTotalAmount">0.00</div>
                         <div class="stat-label">আপনার মোট সম্পন্ন (USD)</div>
@@ -569,7 +568,7 @@
                         <thead>
                             <tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>এডমিন নম্বর</th><th>কারেন্সি</th><th>অ্যাকশন</th> </thead>
                         <tbody id="ordersTable"></tbody>
-                      </table>
+                       </table>
                 </div>
             </div>
 
@@ -581,7 +580,7 @@
                         <thead>
                             <tr><th>অর্ডার আইডি</th><th>পরিমাণ (BDT)</th><th>স্ট্যাটাস</th><th>পেমেন্ট পদ্ধতি</th><th>ফোন</th><th>TXID</th><th>Relograde TRX</th><th>এডমিন নম্বর</th><th>তারিখ</th> </thead>
                         <tbody id="transactionsTable"></tbody>
-                      </table>
+                       </table>
                 </div>
             </div>
         </div>
@@ -610,7 +609,6 @@
             <h2 class="modal-title" id="passwordModalTitle">পাসওয়ার্ড দিন</h2>
             <div class="modal-section">
                 <p id="passwordModalMessage">অর্ডার সম্পন্ন করতে পাসওয়ার্ড প্রয়োজন।</p>
-                <!-- Password input with full protection against copy/paste, right-click, and browser password manager -->
                 <input type="password" id="adminPasswordInput" class="password-input" 
                        placeholder="পাসওয়ার্ড লিখুন" 
                        autocomplete="new-password" 
@@ -664,8 +662,7 @@
         const adminName = document.getElementById('adminName'), adminEmail = document.getElementById('adminEmail'), adminAvatar = document.getElementById('adminAvatar');
         const totalAmountSumEl = document.getElementById('totalAmountSum');
         const completedTransactionsCountEl = document.getElementById('completedTransactionsCount');
-        const adminTotalAmountEl = document.getElementById('adminTotalAmount'); // new element
-        // Balance element
+        const adminTotalAmountEl = document.getElementById('adminTotalAmount');
         const relogradeBalanceEl = document.getElementById('relogradeBalance');
         
         const orderCountEl = document.getElementById('orderCount'), systemInfo = document.getElementById('systemInfo'), ordersTable = document.getElementById('ordersTable');
@@ -689,12 +686,12 @@
         let pendingAction = null; // 'complete' or 'fail' or 'orders'
         let pendingTrxId = null;
         let pendingEvent = null;
-        let pendingOrdersCallback = null; // function to call after password verification for orders
+        let pendingOrdersCallback = null;
 
         // Global stored password (after first successful verification)
         let globalAdminPassword = null;
 
-        // ---------- Admin Completed Total (from completedOrders) ----------
+        // ---------- Admin Completed Total (from completedOrders) with fallback ----------
         async function fetchAdminCompletedTotal() {
             if (!currentAdminEmail) return;
             try {
@@ -714,8 +711,15 @@
                 adminTotalAmountEl.style.color = '#4caf50';
             } catch (err) {
                 console.error('Error fetching admin completed total:', err);
-                adminTotalAmountEl.textContent = 'ত্রুটি';
-                adminTotalAmountEl.style.color = '#dc3545';
+                // If permission denied, show 0.00 and a friendly message
+                if (err.code === 'PERMISSION_DENIED') {
+                    adminTotalAmountEl.textContent = '0.00';
+                    adminTotalAmountEl.style.color = '#ff9800';
+                    showToast('আপনার সম্পন্ন অর্ডার পড়ার অনুমতি নেই। এডমিন হিসেবে যুক্ত হন।', 'error');
+                } else {
+                    adminTotalAmountEl.textContent = 'ত্রুটি';
+                    adminTotalAmountEl.style.color = '#dc3545';
+                }
             }
         }
 
@@ -738,12 +742,9 @@
             }
         }
 
-        // Fetch balance every 30 seconds
         setInterval(fetchRelogradeBalance, 30000);
-        // Also fetch on page load
         fetchRelogradeBalance();
 
-        // ---------- Existing code (unchanged) ----------
         document.addEventListener('DOMContentLoaded', () => { setupEventListeners(); checkAdminAuth(); });
         
         function setupEventListeners() {
@@ -753,13 +754,12 @@
                 showToast('রিফ্রেশ...', 'info'); 
                 loadOrders();
                 refreshTransactions();
-                fetchRelogradeBalance(); // also refresh balance manually
-                fetchAdminCompletedTotal(); // refresh admin total
+                fetchRelogradeBalance();
+                fetchAdminCompletedTotal();
             };
             closeDetailsModalBtn.onclick = () => orderDetailsModal.classList.remove('active');
             window.onclick = (e) => { if (e.target === orderDetailsModal) orderDetailsModal.classList.remove('active'); };
             
-            // Password modal listeners
             closePasswordModalBtn.onclick = () => closePasswordModal();
             submitPasswordBtn.onclick = () => verifyAndPerformAction();
             adminPasswordInput.addEventListener('keypress', (e) => {
@@ -814,9 +814,6 @@
             submitPasswordBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> যাচাই...';
             
             try {
-                // First, verify the password with the API (optional but good)
-                // For simplicity, we rely on the API endpoints to verify.
-                // Store globally for future use
                 globalAdminPassword = password;
 
                 if (pendingAction === 'complete') {
@@ -831,7 +828,6 @@
                 passwordErrorMsg.textContent = error.message || 'ভুল পাসওয়ার্ড';
                 adminPasswordInput.value = '';
                 adminPasswordInput.focus();
-                // In case of error, clear stored password
                 globalAdminPassword = null;
             } finally {
                 submitPasswordBtn.disabled = false;
@@ -839,7 +835,6 @@
             }
         }
 
-        // Modified completeOrder function
         async function completeOrder(trxId, event) {
             if (!isPrimaryAdmin) {
                 showToast('শুধু প্রধান এডমিন অর্ডার সম্পন্ন করতে পারেন', 'error');
@@ -876,7 +871,7 @@
                     if (idx !== -1) orders[idx].orderStatus = 'finished';
                     refreshOrdersDisplay();
                     showToast('✅ অর্ডার সম্পন্ন হয়েছে', 'success');
-                    fetchAdminCompletedTotal(); // update admin total after completion
+                    fetchAdminCompletedTotal();
                 } else {
                     throw new Error(result.error || 'API failed');
                 }
@@ -890,7 +885,6 @@
             }
         }
 
-        // Modified cancelOrder function
         async function cancelOrder(trxId, event) {
             if (!isPrimaryAdmin) {
                 showToast('শুধু প্রধান এডমিন অর্ডার বাতিল করতে পারেন', 'error');
@@ -1049,6 +1043,7 @@
             adminEmail.textContent = user.email;
             adminAvatar.innerHTML = user.photoURL ? `<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">` : `<span>${(user.displayName || user.email).charAt(0).toUpperCase()}</span>`;
             try {
+                // Try to add the admin to adminUsers (now allowed with updated rules)
                 await database.ref(`adminUsers/${user.uid}`).update({
                     email: user.email,
                     name: user.displayName || '',
@@ -1082,7 +1077,7 @@
                     showAdminPanel();
                     loadOrders();
                     setupTransactionsListener();
-                    fetchAdminCompletedTotal(); // load admin total after login
+                    fetchAdminCompletedTotal();
                 } else if (user) {
                     await auth.signOut();
                     showLoginScreen();
@@ -1120,11 +1115,9 @@
         
         // ---------- Orders (with password handling) ----------
         async function loadOrders() {
-            // If we already have a stored password, use it
             if (globalAdminPassword) {
                 await fetchOrdersWithPassword(globalAdminPassword);
             } else {
-                // Ask for password to load orders
                 showPasswordModalForOrders(async (password) => {
                     await fetchOrdersWithPassword(password);
                 });
@@ -1139,10 +1132,9 @@
                 const result = await res.json();
                 if (!res.ok || !result.success) {
                     if (res.status === 401 || res.status === 403) {
-                        // Password invalid, clear stored password and retry
                         globalAdminPassword = null;
                         showToast('পাসওয়ার্ড ভুল, আবার চেষ্টা করুন', 'error');
-                        loadOrders(); // recursive call to ask again
+                        loadOrders();
                         return;
                     }
                     throw new Error(result.error || 'Failed to fetch orders');
@@ -1205,7 +1197,7 @@
                 }
                 
                 html += `<tr onclick="showOrderDetails('${o.trx}')" style="cursor:pointer;">
-                    <td style="font-family:monospace;">${o.trx || 'N/A'}  </td>
+                    <td style="font-family:monospace;">${o.trx || 'N/A'}   </td>
                     <td>${date}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
@@ -1401,7 +1393,6 @@
             }, 3000);
         }
         
-        // Expose functions globally
         window.completeOrder = completeOrder;
         window.cancelOrder = cancelOrder;
         window.showOrderDetails = showOrderDetails;
