@@ -465,6 +465,43 @@
             border-radius: 6px;
             color: #b0e0ff;
         }
+        /* Password Modal Styles */
+        .password-modal .modal-content {
+            max-width: 400px;
+            text-align: center;
+        }
+        .password-input {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #ff9800;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+        }
+        .password-input:focus {
+            outline: none;
+            border-color: #ff5722;
+        }
+        .password-submit {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .password-submit:hover {
+            background: #45a049;
+        }
+        .password-error {
+            color: #ff6b6b;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -526,7 +563,6 @@
             <!-- Orders Table Section (unchanged) -->
             <div class="section">
                 <h2 class="section-title">Relograde অর্ডার তালিকা <span id="orderCount"></span></h2>
-                <!-- filter-section removed -->
                 <div style="overflow-x: auto;">
                     <table class="orders-table">
                         <thead>
@@ -539,7 +575,6 @@
             <!-- Transactions Table Section (real‑time) -->
             <div class="section">
                 <h2 class="section-title">লেনদেন তালিকা Transactions <span id="transactionCount"></span></h2>
-                <div 
                 <div style="overflow-x: auto;">
                     <table class="transactions-table">
                         <thead>
@@ -563,6 +598,20 @@
             <div class="modal-section">
                 <div class="modal-section-title">রেফারেন্স তথ্য <i class="fas fa-copy" style="font-size:0.8rem; margin-left:5px;"></i> <span style="font-size:0.75rem;">(ক্লিক করে কপি করুন)</span></div>
                 <div id="referenceContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Modal for Complete Order -->
+    <div class="modal password-modal" id="passwordModal">
+        <div class="modal-content">
+            <button class="modal-close" id="closePasswordModalBtn">&times;</button>
+            <h2 class="modal-title">পাসওয়ার্ড দিন</h2>
+            <div class="modal-section">
+                <p style="margin-bottom: 15px;">অর্ডার সম্পন্ন করতে পাসওয়ার্ড প্রয়োজন।</p>
+                <input type="password" id="adminPasswordInput" class="password-input" placeholder="পাসওয়ার্ড লিখুন" autocomplete="off">
+                <button id="submitPasswordBtn" class="password-submit"><i class="fas fa-lock"></i> যাচাই করুন</button>
+                <div id="passwordErrorMsg" class="password-error"></div>
             </div>
         </div>
     </div>
@@ -615,6 +664,17 @@
         const transactionsTable = document.getElementById('transactionsTable');
         const transactionCountSpan = document.getElementById('transactionCount');
 
+        // Password modal elements
+        const passwordModal = document.getElementById('passwordModal');
+        const closePasswordModalBtn = document.getElementById('closePasswordModalBtn');
+        const adminPasswordInput = document.getElementById('adminPasswordInput');
+        const submitPasswordBtn = document.getElementById('submitPasswordBtn');
+        const passwordErrorMsg = document.getElementById('passwordErrorMsg');
+
+        // Store current pending complete order data
+        let pendingCompleteTrxId = null;
+        let pendingCompleteEvent = null;
+
         document.addEventListener('DOMContentLoaded', () => { setupEventListeners(); checkAdminAuth(); });
         
         function setupEventListeners() {
@@ -627,8 +687,142 @@
             };
             closeDetailsModalBtn.onclick = () => orderDetailsModal.classList.remove('active');
             window.onclick = (e) => { if (e.target === orderDetailsModal) orderDetailsModal.classList.remove('active'); };
+            
+            // Password modal listeners
+            closePasswordModalBtn.onclick = () => closePasswordModal();
+            submitPasswordBtn.onclick = () => verifyAndCompleteOrder();
+            adminPasswordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') verifyAndCompleteOrder();
+            });
         }
 
+        function closePasswordModal() {
+            passwordModal.classList.remove('active');
+            adminPasswordInput.value = '';
+            passwordErrorMsg.textContent = '';
+            pendingCompleteTrxId = null;
+            pendingCompleteEvent = null;
+        }
+
+        function showPasswordModal(trxId, event) {
+            pendingCompleteTrxId = trxId;
+            pendingCompleteEvent = event;
+            passwordModal.classList.add('active');
+            adminPasswordInput.focus();
+        }
+
+        async function verifyAndCompleteOrder() {
+            const password = adminPasswordInput.value.trim();
+            if (!password) {
+                passwordErrorMsg.textContent = 'পাসওয়ার্ড দিন';
+                return;
+            }
+            
+            // Disable submit button while processing
+            submitPasswordBtn.disabled = true;
+            submitPasswordBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> যাচাই...';
+            
+            try {
+                // Call the actual complete function with password
+                await performCompleteOrder(pendingCompleteTrxId, password, pendingCompleteEvent);
+                closePasswordModal();
+            } catch (error) {
+                passwordErrorMsg.textContent = error.message || 'ভুল পাসওয়ার্ড';
+                adminPasswordInput.value = '';
+                adminPasswordInput.focus();
+            } finally {
+                submitPasswordBtn.disabled = false;
+                submitPasswordBtn.innerHTML = '<i class="fas fa-lock"></i> যাচাই করুন';
+            }
+        }
+
+        // Modified completeOrder function that shows password modal
+        async function completeOrder(trxId, event) {
+            if (!isPrimaryAdmin) {
+                showToast('শুধু প্রধান এডমিন অর্ডার সম্পন্ন করতে পারেন', 'error');
+                return;
+            }
+            event.stopPropagation();
+            if (!confirm('এই অর্ডারটি কি সম্পন্ন করতে চান?')) return;
+            
+            // Show password modal instead of directly calling API
+            showPasswordModal(trxId, event);
+        }
+
+        async function performCompleteOrder(trxId, password, event) {
+            const btn = event.target.closest('.action-complete');
+            if (!btn) return;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>...';
+            btn.disabled = true;
+            try {
+                showToast('অর্ডার সম্পন্ন করা হচ্ছে...', 'info');
+                const orderData = orders.find(o => o.trx === trxId);
+                const response = await fetch('/api/order_completed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        trxId: trxId, 
+                        action: 'complete', 
+                        adminEmail: currentAdminEmail, 
+                        orderData: orderData,
+                        password: password   // include password
+                    })
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    const idx = orders.findIndex(o => o.trx === trxId);
+                    if (idx !== -1) orders[idx].orderStatus = 'finished';
+                    refreshOrdersDisplay();
+                    showToast('✅ অর্ডার সম্পন্ন হয়েছে', 'success');
+                } else {
+                    throw new Error(result.error || 'API failed');
+                }
+            } catch(e) {
+                console.error('Complete error:', e);
+                showToast('সম্পন্ন করতে ব্যর্থ: ' + e.message, 'error');
+                throw e; // Re-throw to be caught by password modal
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+        
+        async function cancelOrder(trxId, event) {
+            if (!isPrimaryAdmin) {
+                showToast('শুধু প্রধান এডমিন অর্ডার বাতিল করতে পারেন', 'error');
+                return;
+            }
+            event.stopPropagation();
+            if (!confirm('এই অর্ডারটি কি বাতিল (ফেল) করতে চান? স্ট্যাটাস "fail" এ সেট হবে।')) return;
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>...';
+            btn.disabled = true;
+            try {
+                showToast('অর্ডার ফেল হিসেবে আপডেট করা হচ্ছে...', 'info');
+                const orderData = orders.find(o => o.trx === trxId);
+                const response = await fetch('/api/order_completed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trxId: trxId, action: 'fail', adminEmail: currentAdminEmail, orderData: orderData })
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    const idx = orders.findIndex(o => o.trx === trxId);
+                    if (idx !== -1) orders[idx].orderStatus = 'fail';
+                    refreshOrdersDisplay();
+                    showToast('✅ অর্ডার ফেল করা হয়েছে', 'success');
+                } else throw new Error(result.error || 'API failed');
+            } catch(e) {
+                console.error('Cancel error:', e);
+                showToast('অর্ডার ফেল করতে ব্যর্থ: ' + e.message, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+        
         // ---------- Primary Admin Logic (unchanged) ----------
         async function getPrimaryAdmin() {
             const snapshot = await publicAdminInfoRef.once('value');
@@ -1003,76 +1197,6 @@
         }
         
         // ---------- Order Actions (unchanged) ----------
-        async function completeOrder(trxId, event) {
-            if (!isPrimaryAdmin) {
-                showToast('শুধু প্রধান এডমিন অর্ডার সম্পন্ন করতে পারেন', 'error');
-                return;
-            }
-            event.stopPropagation();
-            if (!confirm('এই অর্ডারটি কি সম্পন্ন করতে চান?')) return;
-            const btn = event.target;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>...';
-            btn.disabled = true;
-            try {
-                showToast('অর্ডার সম্পন্ন করা হচ্ছে...', 'info');
-                const orderData = orders.find(o => o.trx === trxId);
-                const response = await fetch('/api/order_completed', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ trxId: trxId, action: 'complete', adminEmail: currentAdminEmail, orderData: orderData })
-                });
-                const result = await response.json();
-                if (response.ok && result.success) {
-                    const idx = orders.findIndex(o => o.trx === trxId);
-                    if (idx !== -1) orders[idx].orderStatus = 'finished';
-                    refreshOrdersDisplay();
-                    showToast('✅ অর্ডার সম্পন্ন হয়েছে', 'success');
-                } else throw new Error(result.error || 'API failed');
-            } catch(e) {
-                console.error('Complete error:', e);
-                showToast('সম্পন্ন করতে ব্যর্থ: ' + e.message, 'error');
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-        
-        async function cancelOrder(trxId, event) {
-            if (!isPrimaryAdmin) {
-                showToast('শুধু প্রধান এডমিন অর্ডার বাতিল করতে পারেন', 'error');
-                return;
-            }
-            event.stopPropagation();
-            if (!confirm('এই অর্ডারটি কি বাতিল (ফেল) করতে চান? স্ট্যাটাস "fail" এ সেট হবে।')) return;
-            const btn = event.target;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>...';
-            btn.disabled = true;
-            try {
-                showToast('অর্ডার ফেল হিসেবে আপডেট করা হচ্ছে...', 'info');
-                const orderData = orders.find(o => o.trx === trxId);
-                const response = await fetch('/api/order_completed', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ trxId: trxId, action: 'fail', adminEmail: currentAdminEmail, orderData: orderData })
-                });
-                const result = await response.json();
-                if (response.ok && result.success) {
-                    const idx = orders.findIndex(o => o.trx === trxId);
-                    if (idx !== -1) orders[idx].orderStatus = 'fail';
-                    refreshOrdersDisplay();
-                    showToast('✅ অর্ডার ফেল করা হয়েছে', 'success');
-                } else throw new Error(result.error || 'API failed');
-            } catch(e) {
-                console.error('Cancel error:', e);
-                showToast('অর্ডার ফেল করতে ব্যর্থ: ' + e.message, 'error');
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-        
         window.showOrderDetails = function(trxId) {
             const order = orders.find(o => o.trx === trxId);
             if (!order) { showToast('অর্ডার পাওয়া যায়নি', 'error'); return; }
