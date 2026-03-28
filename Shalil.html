@@ -1068,7 +1068,7 @@
         
         // ---------- Orders ----------
         async function loadOrders() {
-            ordersTable.innerHTML = `|<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>|`;
+            ordersTable.innerHTML = `<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>`;
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
