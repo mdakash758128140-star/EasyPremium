@@ -1,5 +1,3 @@
-// api/order_completed.js
-// Admin Order Management API - Complete, Fail & Delete Orders with Relograde Confirm
 
 const RELOGRADE_API_URL = 'https://connect.relograde.com/api/1.02';
 const RELOGRADE_API_KEY = process.env.RELOGRADE_API_KEY;
