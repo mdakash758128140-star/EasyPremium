@@ -536,7 +536,7 @@
         </header>
         
         <div class="main-content">
-            <!-- Transactions Dashboard (stats cards) -->
+            <!-- Transactions Dashboard (stats cards) - UPDATED: pending replaced with Relograde balance -->
             <div class="section">
                 <h2 class="section-title">Transactions অর্ডার ড্যাশবোর্ড</h2>
                 <div class="form-row">
@@ -553,8 +553,8 @@
                         <div class="stat-label">সম্পূর্ণ লেনদেন</div>
                     </div>
                     <div class="stats-card">
-                        <div class="stat-value" id="pendingTransactionsCount">0</div>
-                        <div class="stat-label">পেন্ডিং লেনদেন</div>
+                        <div class="stat-value" id="relogradeBalance">—</div>
+                        <div class="stat-label">Relograde ব্যালেন্স (USD)</div>
                     </div>
                 </div>
                 <div class="system-info" id="systemInfo"></div>
@@ -586,7 +586,7 @@
         </div>
     </div>
 
-    <!-- Order Details Modal (unchanged) -->
+    <!-- Order Details Modal -->
     <div class="modal" id="orderDetailsModal">
         <div class="modal-content">
             <button class="modal-close" id="closeDetailsModalBtn">&times;</button>
@@ -664,7 +664,8 @@
         const totalTransactionsCountEl = document.getElementById('totalTransactionsCount');
         const totalAmountSumEl = document.getElementById('totalAmountSum');
         const completedTransactionsCountEl = document.getElementById('completedTransactionsCount');
-        const pendingTransactionsCountEl = document.getElementById('pendingTransactionsCount');
+        // Balance element
+        const relogradeBalanceEl = document.getElementById('relogradeBalance');
         
         const orderCountEl = document.getElementById('orderCount'), systemInfo = document.getElementById('systemInfo'), ordersTable = document.getElementById('ordersTable');
         const orderDetailsModal = document.getElementById('orderDetailsModal');
@@ -688,6 +689,31 @@
         let pendingTrxId = null;
         let pendingEvent = null;
 
+        // ---------- Relograde Balance Fetch ----------
+        async function fetchRelogradeBalance() {
+            try {
+                const res = await fetch('/api/relograde-balance');
+                const data = await res.json();
+                if (data.success && data.balance !== undefined) {
+                    relogradeBalanceEl.textContent = `$${data.balance.toFixed(2)}`;
+                    relogradeBalanceEl.style.color = '#4caf50';
+                } else {
+                    relogradeBalanceEl.textContent = '—';
+                    relogradeBalanceEl.style.color = '#ff9800';
+                }
+            } catch (err) {
+                console.error('Balance fetch error:', err);
+                relogradeBalanceEl.textContent = 'ত্রুটি';
+                relogradeBalanceEl.style.color = '#dc3545';
+            }
+        }
+
+        // Fetch balance every 30 seconds
+        setInterval(fetchRelogradeBalance, 30000);
+        // Also fetch on page load
+        fetchRelogradeBalance();
+
+        // ---------- Existing code (unchanged) ----------
         document.addEventListener('DOMContentLoaded', () => { setupEventListeners(); checkAdminAuth(); });
         
         function setupEventListeners() {
@@ -697,6 +723,7 @@
                 showToast('রিফ্রেশ...', 'info'); 
                 loadOrders();
                 refreshTransactions();
+                fetchRelogradeBalance(); // also refresh balance manually
             };
             closeDetailsModalBtn.onclick = () => orderDetailsModal.classList.remove('active');
             window.onclick = (e) => { if (e.target === orderDetailsModal) orderDetailsModal.classList.remove('active'); };
@@ -840,7 +867,7 @@
                         action: 'fail', 
                         adminEmail: currentAdminEmail, 
                         orderData: orderData,
-                        password: password   // send password for fail
+                        password: password
                     })
                 });
                 const result = await response.json();
@@ -1041,7 +1068,7 @@
         
         // ---------- Orders ----------
         async function loadOrders() {
-            ordersTable.innerHTML = `<tr><td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p></td></tr>`;
+            ordersTable.innerHTML = `|<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>|`;
             try {
                 const res = await fetch('/api/relograde-orders');
                 const result = await res.json();
@@ -1051,7 +1078,7 @@
                 refreshOrdersDisplay();
                 showToast(`${orders.length}টি অর্ডার লোড হয়েছে`, 'success');
             } catch(e) {
-                ordersTable.innerHTML = `<tr><td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button></td></tr>`;
+                ordersTable.innerHTML = `|<td colspan="8" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p><button onclick="location.reload()" class="refresh-btn">আবার চেষ্টা</button>|`;
             }
         }
         
@@ -1072,7 +1099,7 @@
         
         function displayOrders(list) {
             if (!list.length) {
-                ordersTable.innerHTML = '<tr><td colspan="8" class="no-data">কোন অর্ডার নেই</td></tr>';
+                ordersTable.innerHTML = '|<td colspan="8" class="no-data">কোন অর্ডার নেই|';
                 return;
             }
             let html = '';
@@ -1103,7 +1130,7 @@
                 }
                 
                 html += `<tr onclick="showOrderDetails('${o.trx}')" style="cursor:pointer;">
-                    <td style="font-family:monospace;">${o.trx || 'N/A'}</td>
+                    <td style="font-family:monospace;">${o.trx || 'N/A'} </td>
                     <td>${date}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td>
@@ -1122,7 +1149,7 @@
                 transactionsListenerRef.off();
                 transactionsListenerRef = null;
             }
-            transactionsTable.innerHTML = `<tr><td colspan="9" class="loading-spinner"><div class="spinner"></div><p>লেনদেন লোড হচ্ছে...</p></td></tr>`;
+            transactionsTable.innerHTML = `|<td colspan="9" class="loading-spinner"><div class="spinner"></div><p>লেনদেন লোড হচ্ছে...</p>|`;
             transactionsListenerRef = database.ref('transactions').on('value', (snapshot) => {
                 const data = snapshot.val() || {};
                 const transactionList = Object.values(data);
@@ -1136,7 +1163,7 @@
                 updateTransactionStats(filtered);
             }, (error) => {
                 console.error('Transaction listener error:', error);
-                transactionsTable.innerHTML = `<tr><td colspan="9" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>লেনদেন লোড করতে ব্যর্থ: ${error.message}</p></td></tr>`;
+                transactionsTable.innerHTML = `|<td colspan="9" class="no-data"><i class="fas fa-exclamation-triangle"></i><p>লেনদেন লোড করতে ব্যর্থ: ${error.message}</p>|`;
             });
         }
 
@@ -1144,25 +1171,23 @@
             const total = transactions.length;
             let totalAmount = 0;
             let completed = 0;
-            let pending = 0;
             
             transactions.forEach(tx => {
                 const amount = parseFloat(tx.amount || tx.totalAmount || 0);
                 if (!isNaN(amount)) totalAmount += amount;
                 const status = (tx.status || tx.orderStatus || '').toLowerCase();
                 if (status === 'completed' || status === 'success') completed++;
-                else if (status === 'pending' || status === 'created') pending++;
             });
             
             totalTransactionsCountEl.textContent = total;
             totalAmountSumEl.textContent = totalAmount.toFixed(2);
             completedTransactionsCountEl.textContent = completed;
-            pendingTransactionsCountEl.textContent = pending;
+            // pending removed; no update needed
         }
 
         function displayTransactions(transactions) {
             if (!transactions.length) {
-                transactionsTable.innerHTML = '<tr><td colspan="9" class="no-data">কোনো লেনদেন নেই (E-আইডি সংবলিত)</td></tr>';
+                transactionsTable.innerHTML = '|<td colspan="9" class="no-data">কোনো লেনদেন নেই (E-আইডি সংবলিত)|';
                 return;
             }
             let html = '';
