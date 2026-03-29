@@ -74,30 +74,26 @@
     const participantGrid = document.getElementById('participantGrid');
 
     // Voice call state
-    const currentRoomId = "easy-premium-group";
+    const ROOM_ID = "easy-premium-group";
     let currentUserId = null;
     let localStream = null;
-    let peerConnections = new Map();  // userId -> RTCPeerConnection
+    let peerConnections = new Map();     // userId -> RTCPeerConnection
+    let remoteAudios = new Map();        // userId -> HTMLAudioElement
     let roomUsersRef = null;
-    let remoteAudios = new Map();      // userId -> HTMLAudioElement
-    let localAnalyser = null, animFrame = null;
     let audioContext = null;
+    let localAnalyser = null;
+    let animationFrame = null;
     let iceServers = [];
     let isInCall = false;
-    let reconnectTimer = null;
 
-    // Helper logs
+    // Helper logging
     function addLog(msg, isErr = false) {
         const time = new Date().toLocaleTimeString();
         if (isErr) console.error(`[${time}] ${msg}`);
         else console.log(`[${time}] ${msg}`);
     }
 
-    function showStatus(msg, isErr = false) {
-        addLog(msg, isErr);
-    }
-
-    // Load TURN/STUN servers
+    // Load TURN/STUN servers (prefer STUN first, fallback to TURN)
     async function loadIceServers() {
         try {
             addLog("Loading TURN credentials...");
@@ -120,16 +116,16 @@
         return id.replace(/[.#$\[\]\/]/g, '_').substring(0, 30);
     }
 
-    // Force play all remote audio (user click on any circle)
+    // Force play all remote audio (triggered by clicking any circle)
     window.forcePlayAllAudios = function() {
-        for (let [userId, audio] of remoteAudios) {
+        remoteAudios.forEach((audio, userId) => {
             if (audio && audio.paused) {
-                audio.play().catch(e => addLog(`⚠️ play error ${userId}: ${e.message}`, true));
+                audio.play().catch(e => addLog(`⚠️ Cannot play audio for ${userId}: ${e.message}`, true));
             }
-        }
+        });
     };
 
-    // Update UI with list of participants
+    // Update participant grid UI
     function updateParticipantsList(usersList) {
         if (!usersList || usersList.length === 0) {
             participantGrid.innerHTML = '<div style="color:gray; text-align:center;">কেউ নেই</div>';
@@ -138,8 +134,8 @@
         let html = '';
         for (let uid of usersList) {
             const isMe = (uid === currentUserId);
-            const hasConnection = peerConnections.has(uid);
-            const badgeClass = hasConnection ? 'badge-connected' : 'badge-disconnected';
+            const isConnected = peerConnections.has(uid);
+            const badgeClass = isConnected ? 'badge-connected' : 'badge-disconnected';
             html += `
                 <div class="participant-circle" onclick="window.forcePlayAllAudios()">
                     <div class="circle" id="circle-${uid}"><span style="font-size:28px;">${isMe ? '🎤' : '👤'}</span></div>
@@ -153,17 +149,8 @@
         participantGrid.innerHTML = html;
     }
 
-    function updateCircleSpeaking(userId, isSpeaking) {
-        const circle = document.getElementById(`circle-${userId}`);
-        if (circle) {
-            if (isSpeaking) circle.classList.add('speaking');
-            else circle.classList.remove('speaking');
-        }
-    }
-
-    // Local microphone volume detection
+    // Animate speaking circle based on local microphone volume
     function setupLocalVolumeDetection(stream) {
-        if (localAnalyser && animFrame) cancelAnimationFrame(animFrame);
         if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const source = audioContext.createMediaStreamSource(stream);
         const analyser = audioContext.createAnalyser();
@@ -171,42 +158,52 @@
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
         source.connect(analyser);
         localAnalyser = analyser;
-        audioContext.resume().then(() => {
-            function update() {
-                if (!localAnalyser || !currentUserId) return;
-                localAnalyser.getByteFrequencyData(dataArray);
-                let sum = 0;
-                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-                let avg = sum / dataArray.length;
-                let isSpeakingNow = avg > 20;
-                updateCircleSpeaking(currentUserId, isSpeakingNow);
-                animFrame = requestAnimationFrame(update);
+        audioContext.resume().catch(e => addLog(`AudioContext resume error: ${e.message}`, true));
+        
+        function detectSpeaking() {
+            if (!localAnalyser || !currentUserId) return;
+            localAnalyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+            let avg = sum / dataArray.length;
+            let isSpeaking = avg > 20;
+            const circle = document.getElementById(`circle-${currentUserId}`);
+            if (circle) {
+                if (isSpeaking) circle.classList.add('speaking');
+                else circle.classList.remove('speaking');
             }
-            update();
-        }).catch(e => addLog(`AudioContext error: ${e.message}`, true));
+            animationFrame = requestAnimationFrame(detectSpeaking);
+        }
+        detectSpeaking();
     }
 
-    // Create a peer connection for a remote user
+    // Create RTCPeerConnection for a remote user
     async function createPeerConnection(targetUserId) {
         if (peerConnections.has(targetUserId)) return peerConnections.get(targetUserId);
         addLog(`Creating connection to ${targetUserId}`);
-        const pc = new RTCPeerConnection({ iceServers: iceServers });  // no forced relay
+        const pc = new RTCPeerConnection({ iceServers: iceServers });
         
+        // Add local tracks
         if (localStream) {
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            localStream.getTracks().forEach(track => {
+                pc.addTrack(track, localStream);
+                addLog(`➕ Added ${track.kind} track to ${targetUserId}`);
+            });
         }
         
+        // ICE candidate handling
         pc.onicecandidate = (event) => {
             if (event.candidate) {
-                db.ref(`voice_rooms/${currentRoomId}/candidates/${targetUserId}`).push({
+                db.ref(`voice_rooms/${ROOM_ID}/candidates/${targetUserId}`).push({
                     from: currentUserId,
                     candidate: event.candidate
-                }).catch(e => addLog(`ICE save error: ${e.message}`, true));
+                }).catch(e => addLog(`ICE candidate save error: ${e.message}`, true));
             }
         };
         
+        // Remote track received
         pc.ontrack = (event) => {
-            addLog(`Received remote track from ${targetUserId}`);
+            addLog(`📡 Received audio track from ${targetUserId}`);
             let audio = remoteAudios.get(targetUserId);
             if (!audio) {
                 audio = new Audio();
@@ -216,70 +213,74 @@
                 remoteAudios.set(targetUserId, audio);
             }
             audio.srcObject = event.streams[0];
-            audio.play().catch(e => addLog(`Auto-play blocked for ${targetUserId}`, true));
+            // Attempt to play immediately (may be blocked by browser policy)
+            audio.play().catch(e => addLog(`⚠️ Autoplay blocked for ${targetUserId}. Click on any avatar to play.`, true));
         };
         
         pc.onconnectionstatechange = () => {
-            addLog(`Connection state ${targetUserId}: ${pc.connectionState}`);
+            addLog(`Connection state with ${targetUserId}: ${pc.connectionState}`);
             if (pc.connectionState === 'connected') {
                 updateParticipantsList(Array.from(peerConnections.keys()).concat([currentUserId]));
             } else if (pc.connectionState === 'failed') {
-                addLog(`Connection failed to ${targetUserId}, will retry`, true);
+                addLog(`Connection failed with ${targetUserId}, will retry later`, true);
                 peerConnections.delete(targetUserId);
+                // Retry after 3 seconds
                 setTimeout(() => {
                     if (isInCall && currentUserId) callUser(targetUserId);
-                }, 2000);
+                }, 3000);
             }
         };
         
         peerConnections.set(targetUserId, pc);
         return pc;
     }
-
-    // Initiate a call to a remote user
+    
+    // Initiate call to a remote user
     async function callUser(targetUserId) {
         if (targetUserId === currentUserId) return;
         if (peerConnections.has(targetUserId)) return;
-        addLog(`Calling ${targetUserId}`);
+        addLog(`📞 Calling ${targetUserId}`);
         try {
             const pc = await createPeerConnection(targetUserId);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            await db.ref(`voice_rooms/${currentRoomId}/offers/${targetUserId}`).push({
+            await db.ref(`voice_rooms/${ROOM_ID}/offers/${targetUserId}`).push({
                 from: currentUserId,
                 offer: { type: offer.type, sdp: offer.sdp }
             });
-        } catch (e) {
-            addLog(`Offer failed for ${targetUserId}: ${e.message}`, true);
+        } catch (err) {
+            addLog(`Failed to call ${targetUserId}: ${err.message}`, true);
         }
     }
-
-    // Set up Firebase listeners for signaling
-    function setupSignalingListeners() {
+    
+    // Setup signaling listeners (offers, answers, ICE candidates)
+    function setupSignaling() {
         // Offers
-        const offerRef = db.ref(`voice_rooms/${currentRoomId}/offers/${currentUserId}`);
+        const offerRef = db.ref(`voice_rooms/${ROOM_ID}/offers/${currentUserId}`);
         offerRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
             if (!data || data.from === currentUserId) return;
-            addLog(`Received offer from ${data.from}`);
+            addLog(`📨 Received offer from ${data.from}`);
             try {
                 let pc = peerConnections.get(data.from);
                 if (!pc) pc = await createPeerConnection(data.from);
-                if (pc.signalingState !== 'stable') {
+                if (pc.signalingState === 'stable') {
                     await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
-                    await db.ref(`voice_rooms/${currentRoomId}/answers/${data.from}`).push({
+                    await db.ref(`voice_rooms/${ROOM_ID}/answers/${data.from}`).push({
                         from: currentUserId,
                         answer: { type: answer.type, sdp: answer.sdp }
                     });
                 }
                 await snapshot.ref.remove();
-            } catch(e) { addLog(`Offer handling error: ${e.message}`, true); }
+            } catch (err) {
+                addLog(`Error handling offer from ${data.from}: ${err.message}`, true);
+            }
         });
         
         // Answers
-        const answerRef = db.ref(`voice_rooms/${currentRoomId}/answers/${currentUserId}`);
+        const answerRef = db.ref(`voice_rooms/${ROOM_ID}/answers/${currentUserId}`);
         answerRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
             if (!data || data.from === currentUserId) return;
@@ -288,12 +289,14 @@
                 try {
                     await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
                     await snapshot.ref.remove();
-                } catch(e) { addLog(`Answer error: ${e.message}`, true); }
+                } catch (err) {
+                    addLog(`Error setting answer from ${data.from}: ${err.message}`, true);
+                }
             }
         });
         
         // ICE candidates
-        const candidateRef = db.ref(`voice_rooms/${currentRoomId}/candidates/${currentUserId}`);
+        const candidateRef = db.ref(`voice_rooms/${ROOM_ID}/candidates/${currentUserId}`);
         candidateRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
             if (!data || data.from === currentUserId) return;
@@ -302,11 +305,13 @@
                 try {
                     await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
                     await snapshot.ref.remove();
-                } catch(e) { addLog(`ICE add error: ${e.message}`, true); }
+                } catch (err) {
+                    addLog(`Error adding ICE candidate from ${data.from}: ${err.message}`, true);
+                }
             }
         });
     }
-
+    
     // Join the voice room
     async function joinCall() {
         if (!currentUserId) return;
@@ -314,45 +319,45 @@
             await leaveCall(false);
         }
         isInCall = true;
-        showStatus("Requesting microphone...");
+        addLog("Requesting microphone access...");
         if (!iceServers.length) await loadIceServers();
         
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            addLog("✅ Microphone access granted");
             setupLocalVolumeDetection(localStream);
             
             // Register user in Firebase
-            await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).set({
+            await db.ref(`voice_rooms/${ROOM_ID}/users/${currentUserId}`).set({
                 joined: Date.now(),
                 name: currentUserId
             });
             
-            setupSignalingListeners();
+            setupSignaling();
             
-            // Get existing users and call them
-            const usersSnapshot = await db.ref(`voice_rooms/${currentRoomId}/users`).once('value');
+            // Fetch existing users and call them
+            const usersSnapshot = await db.ref(`voice_rooms/${ROOM_ID}/users`).once('value');
             const users = usersSnapshot.val() || {};
-            const otherUsers = Object.keys(users).filter(uid => uid !== currentUserId);
-            for (let uid of otherUsers) {
+            const existingUsers = Object.keys(users).filter(uid => uid !== currentUserId);
+            for (let uid of existingUsers) {
                 setTimeout(() => callUser(uid), 500);
             }
             
             // Listen for new users joining
-            const usersRef = db.ref(`voice_rooms/${currentRoomId}/users`);
+            const usersRef = db.ref(`voice_rooms/${ROOM_ID}/users`);
             usersRef.on('child_added', (snap) => {
                 const uid = snap.key;
                 if (uid !== currentUserId && !peerConnections.has(uid)) {
-                    addLog(`New user joined: ${uid}`);
+                    addLog(`🆕 New user joined: ${uid}`);
                     callUser(uid);
                 }
-                // Update participant list
                 const allUsers = Array.from(peerConnections.keys()).concat([currentUserId]);
                 updateParticipantsList(allUsers);
             });
             
             usersRef.on('child_removed', (snap) => {
                 const uid = snap.key;
-                addLog(`User left: ${uid}`);
+                addLog(`🚪 User left: ${uid}`);
                 if (peerConnections.has(uid)) {
                     peerConnections.get(uid).close();
                     peerConnections.delete(uid);
@@ -366,12 +371,10 @@
             });
             
             roomUsersRef = usersRef;
-            updateParticipantsList(otherUsers.concat([currentUserId]));
-            showStatus("Connected to voice room");
-            
+            updateParticipantsList(existingUsers.concat([currentUserId]));
+            addLog("✅ Successfully joined voice room");
         } catch (err) {
-            addLog(`Join failed: ${err.message}`, true);
-            showStatus("Microphone permission needed", true);
+            addLog(`❌ Failed to join: ${err.message}`, true);
             isInCall = false;
         }
     }
@@ -379,7 +382,7 @@
     async function leaveCall(removeFromFirebase = true) {
         if (!currentUserId) return;
         addLog("Leaving call...");
-        if (animFrame) cancelAnimationFrame(animFrame);
+        if (animationFrame) cancelAnimationFrame(animationFrame);
         for (let [uid, pc] of peerConnections) {
             pc.close();
         }
@@ -391,33 +394,33 @@
             localStream = null;
         }
         if (roomUsersRef && removeFromFirebase) {
-            await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).remove();
+            await db.ref(`voice_rooms/${ROOM_ID}/users/${currentUserId}`).remove();
             roomUsersRef.off();
         }
         isInCall = false;
         participantGrid.innerHTML = '<div style="color:gray;">কল ছেড়েছেন</div>';
     }
-
-    // Google Sign-In
+    
+    // Google login
     googleLoginBtn.onclick = async () => {
         googleLoginBtn.disabled = true;
         googleLoginBtn.innerText = "লগইন হচ্ছে...";
         try {
             const result = await auth.signInWithPopup(provider);
             const user = result.user;
-            addLog(`Logged in: ${user.displayName}`);
+            addLog(`✅ Logged in as ${user.displayName}`);
             authStatus.innerHTML = `✅ স্বাগতম, ${user.displayName}!`;
             authStatus.style.background = "#c6f6d5";
-        } catch (error) {
-            addLog(`Login failed: ${error.message}`, true);
-            authStatus.innerHTML = `❌ লগইন ব্যর্থ: ${error.message}`;
+        } catch (err) {
+            addLog(`❌ Login failed: ${err.message}`, true);
+            authStatus.innerHTML = `❌ লগইন ব্যর্থ: ${err.message}`;
             authStatus.style.background = "#fed7d7";
             googleLoginBtn.disabled = false;
             googleLoginBtn.innerText = "গুগল অ্যাকাউন্ট দিয়ে লগইন করুন";
         }
     };
     
-    // Auth state change
+    // Auth state observer
     auth.onAuthStateChanged(async (user) => {
         if (user) {
             authSection.classList.add('hidden');
