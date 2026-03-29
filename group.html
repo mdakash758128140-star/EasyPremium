@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Easy Premium - গ্রুপ ভয়েস কল (সম্পূর্ণ সমাধান)</title>
+    <title>Easy Premium - গ্রুপ ভয়েস কল (অডিও ফিক্সড)</title>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -127,24 +127,22 @@
 
     let currentRoomId = null, currentUserId = null;
     let localStream = null, isMicActive = false;
-    let peerConnections = new Map(); // targetUserId -> RTCPeerConnection
+    let peerConnections = new Map();
     let roomUsersRef = null, activeListeners = [];
     const remoteAudios = new Map();
     const remoteVolumeLevels = new Map();
     let localAnalyser = null, animFrame = null;
 
-    // উন্নত ICE সার্ভার (STUN + একাধিক ফ্রি TURN)
+    // একাধিক TURN সার্ভার (ফ্রি ওপেন রিলে + গুগল STUN)
     const iceServers = [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
         { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
         { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
         { urls: 'turn:freeturn.net:3478', username: 'free', credential: 'free' },
         { urls: 'turn:freeturn.net:5349', username: 'free', credential: 'free' }
     ];
 
-    // ইউজার আইডি পরিষ্কার করা (অবৈধ ক্যারেক্টার সরানো)
     function sanitizeUserId(id) {
         return id.replace(/[.#$\[\]]/g, '_');
     }
@@ -264,18 +262,29 @@
                 audio.autoplay = false;
                 audio.style.display = 'none';
                 audio.volume = 1.0;
+                // ব্রাউজার অটোপ্লে বাইপাসের জন্য muted সেট করে play() তারপর আনমিউট
+                audio.muted = true;
                 document.body.appendChild(audio);
                 remoteAudios.set(targetUserId, audio);
                 setupRemoteVolumeDetection(audio, targetUserId);
             }
             audio.srcObject = event.streams[0];
-            audio.play().then(() => addLog(`অডিও প্লে শুরু: ${targetUserId}`))
-                .catch(e => addLog(`অডিও প্লে ব্যর্থ ${targetUserId}: ${e.message}`, true));
+            audio.play().then(() => {
+                addLog(`অডিও প্লে শুরু: ${targetUserId}`);
+                audio.muted = false;  // আনমিউট
+            }).catch(e => {
+                addLog(`অডিও প্লে ব্যর্থ ${targetUserId}: ${e.message}`, true);
+                // Fallback: ইউজারকে ম্যানুয়ালি প্লে করতে বলুন
+                showStatus(`${targetUserId} এর অডিও বাজাতে সমস্যা। ব্রাউজার সেটিংস চেক করুন।`, true);
+            });
         };
         pc.onconnectionstatechange = () => {
             addLog(`সংযোগ স্টেট ${targetUserId}: ${pc.connectionState}`);
             if (pc.connectionState === 'connected') {
                 showStatus(`${targetUserId} সংযুক্ত`);
+                // সংযোগ স্থাপিত হলে সব রিমোট অডিও আনমিউট করুন (নিশ্চিত)
+                const audio = remoteAudios.get(targetUserId);
+                if (audio) audio.muted = false;
             }
             if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
                 addLog(`সংযোগ বন্ধ বা ব্যর্থ ${targetUserId}, পুনরায় চেষ্টা করা হবে`, true);
@@ -286,7 +295,6 @@
                 }
                 remoteVolumeLevels.delete(targetUserId);
                 updateParticipantsList();
-                // পুনরায় কল করার চেষ্টা
                 setTimeout(() => {
                     if (localStream && currentRoomId && !peerConnections.has(targetUserId)) {
                         startCallWith(targetUserId);
@@ -296,6 +304,9 @@
         };
         pc.oniceconnectionstatechange = () => {
             addLog(`ICE স্টেট ${targetUserId}: ${pc.iceConnectionState}`);
+            if (pc.iceConnectionState === 'failed') {
+                addLog(`ICE failed for ${targetUserId} - TURN সার্ভার প্রয়োজন হতে পারে`, true);
+            }
         };
         peerConnections.set(targetUserId, pc);
         return pc;
@@ -440,7 +451,6 @@
             userId = "User_" + Math.floor(Math.random()*10000);
             userIdInput.value = userId;
         }
-        // অবৈধ ক্যারেক্টার সরানো
         userId = sanitizeUserId(userId);
         currentRoomId = room;
         currentUserId = userId;
@@ -455,10 +465,12 @@
             micToggleBtn.innerText = '🔇 মাইক বন্ধ';
             addLog("মাইক্রোফোন অনুমতি প্রাপ্ত");
             setupLocalVolumeDetection(stream);
-            // সাইলেন্ট অডিও আনলক (ব্রাউজার অটোপ্লে পলিসির জন্য)
+            
+            // সাইলেন্ট অডিও আনলক
             const silent = new Audio();
             silent.src = "data:audio/wav;base64,U3RlYWx0aCBpcyB0aGUgc291bmQgb2Ygc2lsZW5jZS4=";
-            silent.play().catch(e => addLog("সাইলেন্ট অডিও প্লে ব্যর্থ (কিন্তু সমস্যা নেই)", false));
+            silent.play().catch(e => addLog("সাইলেন্ট অডিও প্লে ব্যর্থ", false));
+            
             await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).set(true);
             addLog("Firebase এ নিজের উপস্থিতি নিবন্ধিত");
             setupSignalingListeners();
