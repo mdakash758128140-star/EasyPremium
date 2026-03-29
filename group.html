@@ -28,7 +28,6 @@
         .flex-btns { display: flex; gap: 12px; }
         .hidden { display: none; }
         .mic-btn { background: #f59e0b; width: auto; padding: 5px 15px; }
-        .debug-log { font-family: monospace; font-size: 0.7rem; background: rgba(0,0,0,0.5); border-radius: 16px; padding: 8px; margin-top: 15px; max-height: 150px; overflow-y: auto; color: #ccc; }
         .test-btn { background: #3b82f6; width: auto; padding: 5px 10px; font-size: 0.8rem; margin-top: 5px; }
         .audio-test { background: #f59e0b; width: auto; padding: 5px 10px; font-size: 0.8rem; margin-left: 5px; }
         .connection-badge { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
@@ -65,7 +64,7 @@
                 <button id="forcePlayBtn" class="test-btn hidden">🔊 অডিও চালু করুন</button>
             </div>
         </div>
-        <div id="statusArea" class="status">⚡ সংযোগ শুরু হয়নি</div>
+        <!-- statusArea element removed as requested -->
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <strong>👥 সদস্য (<span id="participantCount">0</span>)</strong>
@@ -73,10 +72,7 @@
             </div>
             <div id="participantGrid" class="participants-grid"><div style="color:gray;">কেউ নেই</div></div>
         </div>
-        <div class="debug-log" id="debugLog"></div>
-        <div class="footer" style="text-align: center; color: #aaa; margin-top: 10px;">
-            🎧 কথা বললে বৃত্ত ঘুরবে | 🔊 অডিও না শুনলে "অডিও চালু করুন" বাটনে ক্লিক করুন
-        </div>
+        <!-- footer element removed as requested -->
     </div>
 </div>
 
@@ -107,11 +103,10 @@
     const userIdInput = document.getElementById('userId');
     const joinBtn = document.getElementById('joinBtn');
     const leaveBtn = document.getElementById('leaveBtn');
-    const statusDiv = document.getElementById('statusArea');
+    // statusDiv removed - no longer exists in DOM
     const participantGrid = document.getElementById('participantGrid');
     const participantCountSpan = document.getElementById('participantCount');
     const micToggleBtn = document.getElementById('micToggle');
-    const debugLogDiv = document.getElementById('debugLog');
     const testMicBtn = document.getElementById('testMicBtn');
     const forcePlayBtn = document.getElementById('forcePlayBtn');
 
@@ -123,8 +118,18 @@
     let localAnalyser = null, animFrame = null;
     let audioContext = null;
 
-    // ✅ Dynamic TURN Credentials (এখানে হার্ডকোড করা হয়নি)
+    // ICE servers (dynamic TURN)
     let iceServers = [];
+
+    // Logging function: only console output (UI debug log removed)
+    function addLog(msg, isErr = false) {
+        const time = new Date().toLocaleTimeString();
+        if (isErr) {
+            console.error(`[${time}] ${msg}`);
+        } else {
+            console.log(`[${time}] ${msg}`);
+        }
+    }
 
     async function loadIceServers() {
         try {
@@ -138,7 +143,6 @@
             
             const data = await response.json();
             
-            // API কখনো array সরাসরি দেয়, কখনো {iceServers: [...]} দেয় — দুটোই হ্যান্ডেল করা হলো
             iceServers = Array.isArray(data) ? data : (data.iceServers || data);
             
             if (!iceServers || iceServers.length === 0) {
@@ -157,22 +161,9 @@
         }
     }
 
-    function addLog(msg, isErr = false) {
-        const div = document.createElement('div');
-        const time = new Date().toLocaleTimeString();
-        div.textContent = `[${time}] ${msg}`;
-        div.style.color = isErr ? '#f87171' : '#86efac';
-        div.style.marginBottom = '3px';
-        div.style.fontSize = '0.7rem';
-        debugLogDiv.appendChild(div);
-        debugLogDiv.scrollTop = debugLogDiv.scrollHeight;
-        while (debugLogDiv.children.length > 100) debugLogDiv.removeChild(debugLogDiv.firstChild);
-        console.log(`[${time}] ${msg}`);
-    }
-
+    // Modified showStatus to avoid using removed statusDiv
     function showStatus(msg, isErr = false) {
-        statusDiv.innerHTML = isErr ? `❌ ${msg}` : `✅ ${msg}`;
-        statusDiv.style.background = isErr ? 'rgba(220,38,38,0.8)' : 'rgba(34,197,94,0.8)';
+        // Status display element removed; only log to console
         addLog(msg, isErr);
     }
 
@@ -293,7 +284,7 @@
         addLog(`🔌 নতুন সংযোগ তৈরি: ${targetUserId}`);
         const pc = new RTCPeerConnection({ 
             iceServers: iceServers,
-            iceTransportPolicy: 'relay' // শুধু TURN ব্যবহার করতে বাধ্য করছে!
+            iceTransportPolicy: 'relay'
         });
         
         if (localStream) {
@@ -379,7 +370,6 @@
         try {
             const pc = await createPeerConnection(targetUserId);
             
-            // ICE gathering timeout
             setTimeout(async () => {
                 if (pc.iceGatheringState !== 'complete') {
                     addLog(`⚠️ ICE gathering timeout for ${targetUserId}, forcing offer`);
@@ -410,7 +400,6 @@
     }
 
     function setupListeners() {
-        // Offer listener
         const offerRef = db.ref(`voice_rooms/${currentRoomId}/offers/${currentUserId}`);
         offerRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
@@ -436,7 +425,6 @@
             }
         });
         
-        // Answer listener
         const answerRef = db.ref(`voice_rooms/${currentRoomId}/answers/${currentUserId}`);
         answerRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
@@ -455,7 +443,6 @@
             }
         });
         
-        // Candidate listener
         const candidateRef = db.ref(`voice_rooms/${currentRoomId}/candidates/${currentUserId}`);
         candidateRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
@@ -489,7 +476,6 @@
         
         showStatus("মাইক্রোফোন অনুমতি নিচ্ছি...");
         
-        // 🔥 TURN credentials নিশ্চিত করা (যদি না লোড হয়)
         if (!iceServers || iceServers.length === 0) {
             await loadIceServers();
         }
@@ -513,7 +499,6 @@
             addLog("✅ মাইক্রোফোন অনুমতি প্রাপ্ত");
             setupLocalVolumeDetection(localStream);
             
-            // Firebase এ যোগ
             await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).set({
                 joined: Date.now(),
                 name: userId
@@ -522,19 +507,16 @@
             addLog("✅ Firebase এ নিবন্ধন সফল");
             setupListeners();
             
-            // রুমের বর্তমান ইউজারদের তালিকা
             const usersSnapshot = await db.ref(`voice_rooms/${currentRoomId}/users`).once('value');
             const users = usersSnapshot.val() || {};
             const otherUsers = Object.keys(users).filter(uid => uid !== currentUserId);
             
             addLog(`👥 রুমে ${otherUsers.length} জন সদস্য আছেন`);
             
-            // অন্য ইউজারদের সাথে সংযোগ
             for (let uid of otherUsers) {
                 setTimeout(() => callUser(uid), 500);
             }
             
-            // নতুন ইউজার যোগ হলে কল করবে
             const newUserRef = db.ref(`voice_rooms/${currentRoomId}/users`);
             newUserRef.on('child_added', (snap) => {
                 const uid = snap.key;
@@ -566,7 +548,6 @@
             updateParticipantsList(otherUsers.concat([currentUserId]));
             showStatus("রুমে জয়েন করেছেন! কথা বলুন");
             
-            // 5 সেকেন্ড পর সংযোগ স্ট্যাটাস চেক
             setTimeout(() => {
                 addLog(`📊 সংযোগ স্ট্যাটাস: ${peerConnections.size}টি সক্রিয় সংযোগ`);
                 if (peerConnections.size === 0 && otherUsers.length > 0) {
@@ -683,7 +664,6 @@
         }
     });
     
-    // 🔥 Page load এ TURN credentials লোড
     loadIceServers();
     
     joinBtn.onclick = joinCall;
