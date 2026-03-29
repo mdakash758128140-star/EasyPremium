@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Easy Premium - গ্রুপ ভয়েস কল (অটো জয়েন)</title>
+    <title>Easy Premium - গ্রুপ ভয়েস কল</title>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -15,8 +15,6 @@
         button { width: 100%; padding: 12px 15px; border-radius: 60px; border: none; font-size: 1rem; margin-top: 8px; cursor: pointer; transition: 0.2s; font-weight: bold; }
         button:hover { opacity: 0.9; transform: scale(1.02); }
         .btn-google { background: #4285f4; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .btn-danger { background: #ef4444; }
-        .btn-success { background: #10b981; }
         .card { background: rgba(0,0,0,0.3); border-radius: 32px; padding: 18px; margin-bottom: 20px; }
         .status { background: rgba(0,0,0,0.6); border-radius: 60px; padding: 10px; text-align: center; color: #e2e8f0; margin: 10px 0; font-size: 0.9rem; }
         .participants-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 25px; margin-top: 20px; }
@@ -25,16 +23,15 @@
         .circle.speaking { animation: pulseRotate 0.5s infinite alternate; border-color: #facc15; }
         @keyframes pulseRotate { 0% { transform: scale(1) rotate(0deg); } 100% { transform: scale(1.08) rotate(5deg); } }
         .participant-name { color: white; background: rgba(0,0,0,0.6); border-radius: 40px; padding: 4px; font-size: 0.8rem; word-break: break-word; }
-        .flex-btns { display: flex; gap: 12px; }
-        .hidden { display: none; }
         .connection-badge { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
         .badge-connected { background: #10b981; box-shadow: 0 0 5px #10b981; }
         .badge-disconnected { background: #ef4444; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 <div class="container" id="app">
-    <!-- Login Section - Only Google Sign-In -->
+    <!-- Login Section -->
     <div id="authSection">
         <h2>🔐 গ্রুপ ভয়েস কল - গুগল লগইন</h2>
         <div class="card">
@@ -44,10 +41,9 @@
             </button>
         </div>
         <div id="authStatus" class="status"></div>
-        <div class="auto-join-note">✅ লগইন করলে স্বয়ংক্রিয়ভাবে ভয়েস কল জয়েন করবেন</div>
     </div>
 
-    <!-- Voice Call Section - Visible after login (requested sections removed) -->
+    <!-- Voice Call Section - only participant grid -->
     <div id="voiceSection" class="hidden">
         <div class="card">
             <div id="participantGrid" class="participants-grid"><div style="color:gray;">লোড হচ্ছে...</div></div>
@@ -78,19 +74,19 @@
     const participantGrid = document.getElementById('participantGrid');
 
     // Voice call state
-    let currentRoomId = "easy-premium-group";
+    const currentRoomId = "easy-premium-group";
     let currentUserId = null;
     let localStream = null;
-    let peerConnections = new Map();
+    let peerConnections = new Map();  // userId -> RTCPeerConnection
     let roomUsersRef = null;
-    let remoteAudios = new Map();
+    let remoteAudios = new Map();      // userId -> HTMLAudioElement
     let localAnalyser = null, animFrame = null;
     let audioContext = null;
     let iceServers = [];
     let isInCall = false;
-    let autoJoinAttempted = false;
+    let reconnectTimer = null;
 
-    // Helper: log to console only
+    // Helper logs
     function addLog(msg, isErr = false) {
         const time = new Date().toLocaleTimeString();
         if (isErr) console.error(`[${time}] ${msg}`);
@@ -101,9 +97,10 @@
         addLog(msg, isErr);
     }
 
+    // Load TURN/STUN servers
     async function loadIceServers() {
         try {
-            addLog("🔄 TURN ক্রেডেনশিয়াল লোড হচ্ছে...");
+            addLog("Loading TURN credentials...");
             const response = await fetch("https://easy-premium.metered.live/api/v1/turn/credentials?apiKey=546ad2772f911ebe6c4b6e0ae95f76ac36d3");
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
@@ -111,7 +108,7 @@
             if (!iceServers || iceServers.length === 0) throw new Error("No TURN servers");
             addLog(`✅ TURN loaded (${iceServers.length} servers)`);
         } catch (e) {
-            addLog(`❌ TURN fetch failed: ${e.message} → STUN fallback`, true);
+            addLog(`⚠️ TURN failed: ${e.message} → using STUN only`, true);
             iceServers = [
                 { urls: "stun:stun.l.google.com:19302" },
                 { urls: "stun:stun1.l.google.com:19302" }
@@ -123,17 +120,16 @@
         return id.replace(/[.#$\[\]\/]/g, '_').substring(0, 30);
     }
 
-    function forcePlayAllAudios() {
-        let played = 0;
+    // Force play all remote audio (user click on any circle)
+    window.forcePlayAllAudios = function() {
         for (let [userId, audio] of remoteAudios) {
             if (audio && audio.paused) {
-                audio.play().then(() => addLog(`🔊 ফোর্স প্লে: ${userId}`)).catch(e => addLog(`⚠️ প্লে ব্যর্থ ${userId}: ${e.message}`, true));
-                played++;
+                audio.play().catch(e => addLog(`⚠️ play error ${userId}: ${e.message}`, true));
             }
         }
-        if (played === 0 && remoteAudios.size > 0) addLog(`ℹ️ সব অডিও ইতিমধ্যে প্লে হচ্ছে`);
-    }
+    };
 
+    // Update UI with list of participants
     function updateParticipantsList(usersList) {
         if (!usersList || usersList.length === 0) {
             participantGrid.innerHTML = '<div style="color:gray; text-align:center;">কেউ নেই</div>';
@@ -143,11 +139,14 @@
         for (let uid of usersList) {
             const isMe = (uid === currentUserId);
             const hasConnection = peerConnections.has(uid);
-            const connectionBadge = hasConnection ? '<span class="connection-badge badge-connected"></span>' : '<span class="connection-badge badge-disconnected"></span>';
+            const badgeClass = hasConnection ? 'badge-connected' : 'badge-disconnected';
             html += `
-                <div class="participant-circle" onclick="window.forcePlayAllAudios && window.forcePlayAllAudios()">
+                <div class="participant-circle" onclick="window.forcePlayAllAudios()">
                     <div class="circle" id="circle-${uid}"><span style="font-size:28px;">${isMe ? '🎤' : '👤'}</span></div>
-                    <div class="participant-name">${connectionBadge}${uid.substring(0, 12)}${isMe ? ' (আপনি)' : ''}</div>
+                    <div class="participant-name">
+                        <span class="connection-badge ${badgeClass}"></span>
+                        ${uid.substring(0, 12)}${isMe ? ' (আপনি)' : ''}
+                    </div>
                 </div>
             `;
         }
@@ -162,6 +161,7 @@
         }
     }
 
+    // Local microphone volume detection
     function setupLocalVolumeDetection(stream) {
         if (localAnalyser && animFrame) cancelAnimationFrame(animFrame);
         if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -172,63 +172,75 @@
         source.connect(analyser);
         localAnalyser = analyser;
         audioContext.resume().then(() => {
-            addLog("🔊 লোকাল মাইক ডিটেক্টর চালু");
             function update() {
                 if (!localAnalyser || !currentUserId) return;
                 localAnalyser.getByteFrequencyData(dataArray);
                 let sum = 0;
                 for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
                 let avg = sum / dataArray.length;
-                let isSpeakingNow = avg > 15;
-                if (isSpeakingNow && avg > 45 && Math.random() < 0.05) addLog(`🗣️ কথা বলছেন (ভলিউম: ${Math.floor(avg)})`);
+                let isSpeakingNow = avg > 20;
                 updateCircleSpeaking(currentUserId, isSpeakingNow);
                 animFrame = requestAnimationFrame(update);
             }
             update();
-        }).catch(e => addLog(`AudioContext resume failed: ${e.message}`, true));
+        }).catch(e => addLog(`AudioContext error: ${e.message}`, true));
     }
 
+    // Create a peer connection for a remote user
     async function createPeerConnection(targetUserId) {
         if (peerConnections.has(targetUserId)) return peerConnections.get(targetUserId);
-        addLog(`🔌 সংযোগ তৈরি: ${targetUserId}`);
-        const pc = new RTCPeerConnection({ iceServers: iceServers, iceTransportPolicy: 'relay' });
-        if (localStream) localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        addLog(`Creating connection to ${targetUserId}`);
+        const pc = new RTCPeerConnection({ iceServers: iceServers });  // no forced relay
+        
+        if (localStream) {
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        }
+        
         pc.onicecandidate = (event) => {
             if (event.candidate) {
                 db.ref(`voice_rooms/${currentRoomId}/candidates/${targetUserId}`).push({
                     from: currentUserId,
                     candidate: event.candidate
-                }).catch(e => addLog(`ICE save failed: ${e.message}`, true));
+                }).catch(e => addLog(`ICE save error: ${e.message}`, true));
             }
         };
+        
         pc.ontrack = (event) => {
-            addLog(`📢 রিমোট ট্র্যাক ${targetUserId}`);
+            addLog(`Received remote track from ${targetUserId}`);
             let audio = remoteAudios.get(targetUserId);
             if (!audio) {
                 audio = new Audio();
                 audio.autoplay = false;
                 audio.style.display = 'none';
-                audio.volume = 1.0;
                 document.body.appendChild(audio);
                 remoteAudios.set(targetUserId, audio);
             }
             audio.srcObject = event.streams[0];
-            setTimeout(() => {
-                audio.play().catch(e => addLog(`⚠️ অডিও প্লে ব্যর্থ ${targetUserId}: ${e.message}`, true));
-            }, 100);
+            audio.play().catch(e => addLog(`Auto-play blocked for ${targetUserId}`, true));
         };
+        
         pc.onconnectionstatechange = () => {
-            addLog(`🔗 সংযোগ স্টেট ${targetUserId}: ${pc.connectionState}`);
-            if (pc.connectionState === 'connected') updateParticipantsList(Array.from(peerConnections.keys()).concat([currentUserId]));
-            else if (pc.connectionState === 'failed') peerConnections.delete(targetUserId);
+            addLog(`Connection state ${targetUserId}: ${pc.connectionState}`);
+            if (pc.connectionState === 'connected') {
+                updateParticipantsList(Array.from(peerConnections.keys()).concat([currentUserId]));
+            } else if (pc.connectionState === 'failed') {
+                addLog(`Connection failed to ${targetUserId}, will retry`, true);
+                peerConnections.delete(targetUserId);
+                setTimeout(() => {
+                    if (isInCall && currentUserId) callUser(targetUserId);
+                }, 2000);
+            }
         };
+        
         peerConnections.set(targetUserId, pc);
         return pc;
     }
 
+    // Initiate a call to a remote user
     async function callUser(targetUserId) {
-        if (targetUserId === currentUserId || peerConnections.has(targetUserId)) return;
-        addLog(`📞 কল করছি ${targetUserId}`);
+        if (targetUserId === currentUserId) return;
+        if (peerConnections.has(targetUserId)) return;
+        addLog(`Calling ${targetUserId}`);
         try {
             const pc = await createPeerConnection(targetUserId);
             const offer = await pc.createOffer();
@@ -237,29 +249,36 @@
                 from: currentUserId,
                 offer: { type: offer.type, sdp: offer.sdp }
             });
-        } catch(e) { addLog(`Offer ব্যর্থ: ${e.message}`, true); }
+        } catch (e) {
+            addLog(`Offer failed for ${targetUserId}: ${e.message}`, true);
+        }
     }
 
-    function setupListeners() {
+    // Set up Firebase listeners for signaling
+    function setupSignalingListeners() {
+        // Offers
         const offerRef = db.ref(`voice_rooms/${currentRoomId}/offers/${currentUserId}`);
         offerRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
             if (!data || data.from === currentUserId) return;
-            addLog(`📨 Offer from ${data.from}`);
+            addLog(`Received offer from ${data.from}`);
             try {
                 let pc = peerConnections.get(data.from);
                 if (!pc) pc = await createPeerConnection(data.from);
-                await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                await db.ref(`voice_rooms/${currentRoomId}/answers/${data.from}`).push({
-                    from: currentUserId,
-                    answer: { type: answer.type, sdp: answer.sdp }
-                });
+                if (pc.signalingState !== 'stable') {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    await db.ref(`voice_rooms/${currentRoomId}/answers/${data.from}`).push({
+                        from: currentUserId,
+                        answer: { type: answer.type, sdp: answer.sdp }
+                    });
+                }
                 await snapshot.ref.remove();
-            } catch(e) { addLog(`Offer process error: ${e.message}`, true); }
+            } catch(e) { addLog(`Offer handling error: ${e.message}`, true); }
         });
-
+        
+        // Answers
         const answerRef = db.ref(`voice_rooms/${currentRoomId}/answers/${currentUserId}`);
         answerRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
@@ -269,10 +288,11 @@
                 try {
                     await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
                     await snapshot.ref.remove();
-                } catch(e) { addLog(`Answer set failed: ${e.message}`, true); }
+                } catch(e) { addLog(`Answer error: ${e.message}`, true); }
             }
         });
-
+        
+        // ICE candidates
         const candidateRef = db.ref(`voice_rooms/${currentRoomId}/candidates/${currentUserId}`);
         candidateRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
@@ -282,68 +302,100 @@
                 try {
                     await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
                     await snapshot.ref.remove();
-                } catch(e) { addLog(`ICE add failed: ${e.message}`, true); }
+                } catch(e) { addLog(`ICE add error: ${e.message}`, true); }
             }
         });
     }
 
+    // Join the voice room
     async function joinCall() {
         if (!currentUserId) return;
         if (isInCall) {
-            addLog("Already in call, cleaning up first...");
             await leaveCall(false);
         }
         isInCall = true;
-        autoJoinAttempted = true;
-        showStatus("মাইক্রোফোন অনুমতি নিচ্ছি...");
+        showStatus("Requesting microphone...");
         if (!iceServers.length) await loadIceServers();
+        
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             setupLocalVolumeDetection(localStream);
-            await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).set({ joined: Date.now(), name: currentUserId });
-            setupListeners();
+            
+            // Register user in Firebase
+            await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).set({
+                joined: Date.now(),
+                name: currentUserId
+            });
+            
+            setupSignalingListeners();
+            
+            // Get existing users and call them
             const usersSnapshot = await db.ref(`voice_rooms/${currentRoomId}/users`).once('value');
             const users = usersSnapshot.val() || {};
             const otherUsers = Object.keys(users).filter(uid => uid !== currentUserId);
-            for (let uid of otherUsers) setTimeout(() => callUser(uid), 500);
-            const newUserRef = db.ref(`voice_rooms/${currentRoomId}/users`);
-            newUserRef.on('child_added', (snap) => {
+            for (let uid of otherUsers) {
+                setTimeout(() => callUser(uid), 500);
+            }
+            
+            // Listen for new users joining
+            const usersRef = db.ref(`voice_rooms/${currentRoomId}/users`);
+            usersRef.on('child_added', (snap) => {
                 const uid = snap.key;
-                if (uid !== currentUserId && !peerConnections.has(uid)) setTimeout(() => callUser(uid), 300);
-                updateParticipantsList(Array.from(peerConnections.keys()).concat([currentUserId]));
+                if (uid !== currentUserId && !peerConnections.has(uid)) {
+                    addLog(`New user joined: ${uid}`);
+                    callUser(uid);
+                }
+                // Update participant list
+                const allUsers = Array.from(peerConnections.keys()).concat([currentUserId]);
+                updateParticipantsList(allUsers);
             });
-            newUserRef.on('child_removed', (snap) => {
+            
+            usersRef.on('child_removed', (snap) => {
                 const uid = snap.key;
-                if (peerConnections.has(uid)) { peerConnections.get(uid).close(); peerConnections.delete(uid); }
-                if (remoteAudios.has(uid)) { remoteAudios.get(uid).remove(); remoteAudios.delete(uid); }
-                updateParticipantsList(Array.from(peerConnections.keys()).concat([currentUserId]));
+                addLog(`User left: ${uid}`);
+                if (peerConnections.has(uid)) {
+                    peerConnections.get(uid).close();
+                    peerConnections.delete(uid);
+                }
+                if (remoteAudios.has(uid)) {
+                    remoteAudios.get(uid).remove();
+                    remoteAudios.delete(uid);
+                }
+                const allUsers = Array.from(peerConnections.keys()).concat([currentUserId]);
+                updateParticipantsList(allUsers);
             });
-            roomUsersRef = newUserRef;
+            
+            roomUsersRef = usersRef;
             updateParticipantsList(otherUsers.concat([currentUserId]));
-            showStatus("✅ রুমে জয়েন করেছেন! কথা বলুন");
-        } catch(err) {
-            addLog(`❌ জয়েন ব্যর্থ: ${err.message}`, true);
-            showStatus(`মাইক অনুমতি প্রয়োজন: ${err.message}`, true);
+            showStatus("Connected to voice room");
+            
+        } catch (err) {
+            addLog(`Join failed: ${err.message}`, true);
+            showStatus("Microphone permission needed", true);
             isInCall = false;
         }
     }
-
-    async function leaveCall(keepUserCleanup = true) {
-        if (!currentUserId || !isInCall) return;
-        addLog("🚪 কল ছাড়ছি...");
+    
+    async function leaveCall(removeFromFirebase = true) {
+        if (!currentUserId) return;
+        addLog("Leaving call...");
         if (animFrame) cancelAnimationFrame(animFrame);
-        for (let [uid, pc] of peerConnections) { pc.close(); }
+        for (let [uid, pc] of peerConnections) {
+            pc.close();
+        }
         peerConnections.clear();
         remoteAudios.forEach(audio => audio.remove());
         remoteAudios.clear();
-        if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-        if (roomUsersRef && keepUserCleanup) {
+        if (localStream) {
+            localStream.getTracks().forEach(t => t.stop());
+            localStream = null;
+        }
+        if (roomUsersRef && removeFromFirebase) {
             await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).remove();
             roomUsersRef.off();
         }
         isInCall = false;
         participantGrid.innerHTML = '<div style="color:gray;">কল ছেড়েছেন</div>';
-        showStatus("কল ছেড়েছেন");
     }
 
     // Google Sign-In
@@ -353,28 +405,26 @@
         try {
             const result = await auth.signInWithPopup(provider);
             const user = result.user;
-            addLog(`✅ গুগল লগইন সফল: ${user.displayName} (${user.email})`);
-            authStatus.innerHTML = `✅ স্বাগতম, ${user.displayName}! কল শুরু হচ্ছে...`;
+            addLog(`Logged in: ${user.displayName}`);
+            authStatus.innerHTML = `✅ স্বাগতম, ${user.displayName}!`;
             authStatus.style.background = "#c6f6d5";
         } catch (error) {
-            addLog(`❌ গুগল লগইন ব্যর্থ: ${error.message}`, true);
+            addLog(`Login failed: ${error.message}`, true);
             authStatus.innerHTML = `❌ লগইন ব্যর্থ: ${error.message}`;
             authStatus.style.background = "#fed7d7";
             googleLoginBtn.disabled = false;
             googleLoginBtn.innerText = "গুগল অ্যাকাউন্ট দিয়ে লগইন করুন";
         }
     };
-
-    window.forcePlayAllAudios = forcePlayAllAudios;
-
-    // Auth state handler
+    
+    // Auth state change
     auth.onAuthStateChanged(async (user) => {
         if (user) {
             authSection.classList.add('hidden');
             voiceSection.classList.remove('hidden');
-            let rawName = user.displayName || user.email.split('@')[0];
+            const rawName = user.displayName || user.email.split('@')[0];
             currentUserId = sanitizeUserId(rawName + "_" + user.uid.substring(0, 6));
-            if (!isInCall && !autoJoinAttempted) {
+            if (!isInCall) {
                 await joinCall();
             }
         } else {
@@ -382,13 +432,13 @@
             voiceSection.classList.add('hidden');
             if (isInCall) await leaveCall(false);
             currentUserId = null;
-            autoJoinAttempted = false;
             googleLoginBtn.disabled = false;
             googleLoginBtn.innerText = "গুগল অ্যাকাউন্ট দিয়ে লগইন করুন";
             authStatus.innerHTML = '';
         }
     });
-
+    
+    // Preload ICE servers
     loadIceServers();
 </script>
 </body>
