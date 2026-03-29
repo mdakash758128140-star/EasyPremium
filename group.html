@@ -28,7 +28,6 @@
         .flex-btns { display: flex; gap: 12px; }
         .hidden { display: none; }
         .mic-btn { background: #f59e0b; width: auto; padding: 5px 15px; }
-        .test-btn { background: #3b82f6; width: auto; padding: 5px 10px; font-size: 0.8rem; margin-top: 5px; }
         .connection-badge { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
         .badge-connected { background: #10b981; box-shadow: 0 0 5px #10b981; }
         .badge-disconnected { background: #ef4444; }
@@ -55,24 +54,10 @@
 
     <!-- Voice Call Section - Visible after login -->
     <div id="voiceSection" class="hidden">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <h2>🎙️ গ্রুপ ভয়েস কল</h2>
-            <button id="logoutBtn" class="btn-danger" style="width: auto; padding: 8px 16px;">লগআউট</button>
-        </div>
         <div class="user-info" id="userInfoArea">
             <img id="userAvatar" class="user-avatar" src="" alt="avatar">
             <span id="userDisplayName" class="user-name"></span>
             <span id="connectionStatusBadge" style="font-size:0.7rem; background:#10b981; padding:4px 8px; border-radius:20px;">সংযুক্ত</span>
-        </div>
-        <div class="card">
-            <div class="flex-btns">
-                <button id="leaveBtn" class="btn-danger">কল ছাড়ুন</button>
-                <button id="rejoinBtn" class="btn-success" style="display:none;">পুনরায় জয়েন</button>
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button id="testMicBtn" class="test-btn hidden">🎤 মাইক টেস্ট</button>
-                <button id="forcePlayBtn" class="test-btn hidden">🔊 অডিও চালু করুন</button>
-            </div>
         </div>
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -82,7 +67,7 @@
             <div id="participantGrid" class="participants-grid"><div style="color:gray;">লোড হচ্ছে...</div></div>
         </div>
         <div class="auto-join-note" style="margin-top: 8px;">
-            🎧 কথা বললে বৃত্ত ঘুরবে | 🔊 অডিও না শুনলে "অডিও চালু করুন" বাটনে ক্লিক করুন
+            🎧 কথা বললে বৃত্ত ঘুরবে | কল ছাড়তে পৃষ্ঠা রিফ্রেশ করুন
         </div>
     </div>
 </div>
@@ -107,14 +92,9 @@
     const voiceSection = document.getElementById('voiceSection');
     const authStatus = document.getElementById('authStatus');
     const googleLoginBtn = document.getElementById('googleLoginBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const leaveBtn = document.getElementById('leaveBtn');
-    const rejoinBtn = document.getElementById('rejoinBtn');
     const participantGrid = document.getElementById('participantGrid');
     const participantCountSpan = document.getElementById('participantCount');
     const micToggleBtn = document.getElementById('micToggle');
-    const testMicBtn = document.getElementById('testMicBtn');
-    const forcePlayBtn = document.getElementById('forcePlayBtn');
     const userAvatar = document.getElementById('userAvatar');
     const userDisplayName = document.getElementById('userDisplayName');
     const connectionStatusBadge = document.getElementById('connectionStatusBadge');
@@ -142,8 +122,6 @@
 
     function showStatus(msg, isErr = false) {
         addLog(msg, isErr);
-        // Also show a temporary toast-like status in the authStatus area if visible? but we don't have a dedicated status div in voice section.
-        // We'll just rely on console and maybe small badge.
         if (connectionStatusBadge) {
             connectionStatusBadge.innerText = isErr ? 'ত্রুটি' : 'OK';
             connectionStatusBadge.style.background = isErr ? '#ef4444' : '#10b981';
@@ -187,36 +165,6 @@
         if (played === 0 && remoteAudios.size > 0) addLog(`ℹ️ সব অডিও ইতিমধ্যে প্লে হচ্ছে`);
     }
 
-    async function testMicrophone() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const testCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const source = testCtx.createMediaStreamSource(stream);
-            const analyser = testCtx.createAnalyser();
-            source.connect(analyser);
-            addLog("✅ মাইক টেস্ট শুরু (5 সেকেন্ড)");
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            let maxVolume = 0;
-            const interval = setInterval(() => {
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0;
-                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-                let avg = sum / dataArray.length;
-                if (avg > maxVolume) maxVolume = avg;
-                if (avg > 10) addLog(`🔊 ভলিউম: ${Math.floor(avg)}`);
-            }, 100);
-            setTimeout(() => {
-                clearInterval(interval);
-                stream.getTracks().forEach(t => t.stop());
-                testCtx.close();
-                addLog(`✅ টেস্ট শেষ। সর্বোচ্চ ভলিউম: ${Math.floor(maxVolume)}`);
-                if (maxVolume < 20) addLog(`⚠️ মাইকের ভলিউম কম`, true);
-            }, 5000);
-        } catch(e) {
-            addLog(`❌ মাইক টেস্ট ব্যর্থ: ${e.message}`, true);
-        }
-    }
-
     function updateParticipantsList(usersList) {
         if (!usersList || usersList.length === 0) {
             participantGrid.innerHTML = '<div style="color:gray; text-align:center;">কেউ নেই</div>';
@@ -230,7 +178,7 @@
             const hasConnection = peerConnections.has(uid);
             const connectionBadge = hasConnection ? '<span class="connection-badge badge-connected"></span>' : '<span class="connection-badge badge-disconnected"></span>';
             html += `
-                <div class="participant-circle" onclick="forcePlayAllAudios()">
+                <div class="participant-circle" onclick="window.forcePlayAllAudios && window.forcePlayAllAudios()">
                     <div class="circle" id="circle-${uid}"><span style="font-size:28px;">${isMe ? '🎤' : '👤'}</span></div>
                     <div class="participant-name">${connectionBadge}${uid.substring(0, 12)}${isMe ? ' (আপনি)' : ''}</div>
                 </div>
@@ -375,13 +323,11 @@
     async function joinCall() {
         if (!currentUserId) return;
         if (isInCall) {
-            addLog("Already in call, leaving first...");
-            await leaveCall(false); // cleanup but keep logged in
+            addLog("Already in call, cleaning up first...");
+            await leaveCall(false);
         }
         isInCall = true;
         autoJoinAttempted = true;
-        leaveBtn.disabled = false;
-        rejoinBtn.style.display = 'none';
         showStatus("মাইক্রোফোন অনুমতি নিচ্ছি...");
         if (!iceServers.length) await loadIceServers();
         try {
@@ -389,8 +335,6 @@
             isMicActive = true;
             micToggleBtn.disabled = false;
             micToggleBtn.innerText = '🔇 মাইক বন্ধ';
-            testMicBtn.classList.remove('hidden');
-            forcePlayBtn.classList.remove('hidden');
             setupLocalVolumeDetection(localStream);
             await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).set({ joined: Date.now(), name: currentUserId });
             setupListeners();
@@ -419,8 +363,6 @@
             addLog(`❌ জয়েন ব্যর্থ: ${err.message}`, true);
             showStatus(`মাইক অনুমতি প্রয়োজন: ${err.message}`, true);
             isInCall = false;
-            leaveBtn.disabled = true;
-            rejoinBtn.style.display = 'block';
             micToggleBtn.disabled = true;
         }
     }
@@ -440,12 +382,8 @@
         }
         isInCall = false;
         micToggleBtn.disabled = true;
-        testMicBtn.classList.add('hidden');
-        forcePlayBtn.classList.add('hidden');
         participantGrid.innerHTML = '<div style="color:gray;">কল ছেড়েছেন</div>';
         participantCountSpan.innerText = "0";
-        leaveBtn.disabled = true;
-        rejoinBtn.style.display = 'block';
         connectionStatusBadge.innerText = "কল ছেড়েছেন";
         connectionStatusBadge.style.background = "#6b7280";
         showStatus("কল ছেড়েছেন");
@@ -481,38 +419,22 @@
         }
     };
 
-    logoutBtn.onclick = async () => {
-        if (isInCall) await leaveCall(true);
-        await auth.signOut();
-    };
-
-    leaveBtn.onclick = () => leaveCall(true);
-    rejoinBtn.onclick = () => joinCall();
     micToggleBtn.onclick = toggleMic;
-    testMicBtn.onclick = testMicrophone;
-    forcePlayBtn.onclick = forcePlayAllAudios;
     window.forcePlayAllAudios = forcePlayAllAudios;
 
     // Auth state handler
     auth.onAuthStateChanged(async (user) => {
         if (user) {
-            // User logged in with Google
             authSection.classList.add('hidden');
             voiceSection.classList.remove('hidden');
-            // Set currentUserId from Google display name or email (sanitized)
             let rawName = user.displayName || user.email.split('@')[0];
             currentUserId = sanitizeUserId(rawName + "_" + user.uid.substring(0, 6));
             userDisplayName.innerText = rawName;
             userAvatar.src = user.photoURL || "https://ui-avatars.com/api/?background=8b5cf6&color=fff&name=" + encodeURIComponent(rawName);
-            // Auto join call
             if (!isInCall && !autoJoinAttempted) {
                 await joinCall();
-            } else if (!isInCall && autoJoinAttempted) {
-                // manual rejoin button available
-                rejoinBtn.style.display = 'block';
             }
         } else {
-            // Not logged in
             authSection.classList.remove('hidden');
             voiceSection.classList.add('hidden');
             if (isInCall) await leaveCall(false);
@@ -524,7 +446,6 @@
         }
     });
 
-    // Preload TURN servers
     loadIceServers();
 </script>
 </body>
