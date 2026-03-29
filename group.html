@@ -94,19 +94,6 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
-    // ✅ সঠিক TURN ক্রেডেনশিয়াল
-    const METERED_USERNAME = "b9edfe7cf7ed451c3c98484d";
-    const METERED_PASSWORD = "sfu90VQVPjbjLaNN";
-    
-    // ICE সার্ভার - শুধু TURN (STUN ব্লক করে TURN ফোর্স করছি)
-    const iceServers = [
-        { urls: 'turn:global.turn.metered.ca:80', username: METERED_USERNAME, credential: METERED_PASSWORD },
-        { urls: 'turn:global.turn.metered.ca:443', username: METERED_USERNAME, credential: METERED_PASSWORD },
-        { urls: 'turn:global.turn.metered.ca:443?transport=tcp', username: METERED_USERNAME, credential: METERED_PASSWORD },
-        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'stun:stun.l.google.com:19302' } // ব্যাকআপ
-    ];
-
     // DOM elements
     const authSection = document.getElementById('authSection');
     const voiceSection = document.getElementById('voiceSection');
@@ -136,6 +123,40 @@
     let localAnalyser = null, animFrame = null;
     let audioContext = null;
 
+    // ✅ Dynamic TURN Credentials (এখানে হার্ডকোড করা হয়নি)
+    let iceServers = [];
+
+    async function loadIceServers() {
+        try {
+            addLog("🔄 TURN ক্রেডেনশিয়াল লোড হচ্ছে (Metered.live API)...");
+            
+            const response = await fetch("https://easy-premium.metered.live/api/v1/turn/credentials?apiKey=546ad2772f911ebe6c4b6e0ae95f76ac36d3");
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // API কখনো array সরাসরি দেয়, কখনো {iceServers: [...]} দেয় — দুটোই হ্যান্ডেল করা হলো
+            iceServers = Array.isArray(data) ? data : (data.iceServers || data);
+            
+            if (!iceServers || iceServers.length === 0) {
+                throw new Error("কোনো TURN সার্ভার পাওয়া যায়নি");
+            }
+            
+            addLog(`✅ TURN credentials loaded! (${iceServers.length} servers)`);
+            console.log("🧊 Loaded ICE Servers:", iceServers.map(s => Array.isArray(s.urls) ? s.urls.join(', ') : s.urls));
+            
+        } catch (e) {
+            addLog(`❌ TURN fetch failed: ${e.message} → STUN fallback ব্যবহার করা হচ্ছে`, true);
+            iceServers = [
+                { urls: "stun:stun.l.google.com:19302" },
+                { urls: "stun:stun1.l.google.com:19302" }
+            ];
+        }
+    }
+
     function addLog(msg, isErr = false) {
         const div = document.createElement('div');
         const time = new Date().toLocaleTimeString();
@@ -159,7 +180,6 @@
         return id.replace(/[.#$\[\]\/]/g, '_').substring(0, 30);
     }
 
-    // ফোর্স অডিও প্লে (ব্রাউজারের autoplay policy বাইপাস)
     function forcePlayAllAudios() {
         let played = 0;
         for (let [userId, audio] of remoteAudios) {
@@ -301,13 +321,12 @@
             let audio = remoteAudios.get(targetUserId);
             if (!audio) {
                 audio = new Audio();
-                audio.autoplay = false; // autoplay বন্ধ, ম্যানুয়াল প্লে করব
+                audio.autoplay = false;
                 audio.style.display = 'none';
                 audio.volume = 1.0;
                 document.body.appendChild(audio);
                 remoteAudios.set(targetUserId, audio);
                 
-                // ইউজার ইন্টারঅ্যাকশনে প্লে করবে
                 audio.addEventListener('canplay', () => {
                     addLog(`🎵 অডিও রেডি: ${targetUserId}`);
                 });
@@ -315,7 +334,6 @@
             
             audio.srcObject = event.streams[0];
             
-            // ব্রাউজারের autoplay পলিসি বাইপাস করতে setTimeout
             setTimeout(() => {
                 audio.play().then(() => {
                     addLog(`✅ অডিও প্লে শুরু: ${targetUserId}`);
@@ -361,7 +379,7 @@
         try {
             const pc = await createPeerConnection(targetUserId);
             
-            // ICE gathering timeout (3 সেকেন্ড)
+            // ICE gathering timeout
             setTimeout(async () => {
                 if (pc.iceGatheringState !== 'complete') {
                     addLog(`⚠️ ICE gathering timeout for ${targetUserId}, forcing offer`);
@@ -470,6 +488,11 @@
         leaveBtn.disabled = false;
         
         showStatus("মাইক্রোফোন অনুমতি নিচ্ছি...");
+        
+        // 🔥 TURN credentials নিশ্চিত করা (যদি না লোড হয়)
+        if (!iceServers || iceServers.length === 0) {
+            await loadIceServers();
+        }
         
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ 
@@ -660,13 +683,16 @@
         }
     });
     
+    // 🔥 Page load এ TURN credentials লোড
+    loadIceServers();
+    
     joinBtn.onclick = joinCall;
     leaveBtn.onclick = leaveCall;
     micToggleBtn.onclick = toggleMic;
     testMicBtn.onclick = testMicrophone;
     forcePlayBtn.onclick = forcePlayAllAudios;
     
-    window.forcePlayAllAudios = forcePlayAllAudios; // onclick এর জন্য global
+    window.forcePlayAllAudios = forcePlayAllAudios;
     
     window.addEventListener('beforeunload', () => {
         if (currentRoomId && currentUserId) {
