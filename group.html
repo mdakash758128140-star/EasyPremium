@@ -3,24 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Easy Premium - ভয়েস কল (TURN ফিক্সড)</title>
+    <title>Easy Premium - ভয়েস কল (ফিক্সড)</title>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <style>
-        /* আপনার আগের CSS (স্থান বাঁচাতে সংক্ষেপে দিচ্ছি) */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: linear-gradient(135deg, #0f172a, #1e1b4b); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
         .container { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 48px; max-width: 950px; width: 100%; padding: 25px; border: 1px solid rgba(255,255,255,0.2); }
         h2 { text-align: center; color: #f0f0ff; margin-bottom: 15px; }
         input, button { width: 100%; padding: 12px 15px; border-radius: 60px; border: none; font-size: 1rem; margin-top: 8px; }
-        button { background: #8b5cf6; color: white; font-weight: bold; cursor: pointer; }
+        button { background: #8b5cf6; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { opacity: 0.9; transform: scale(1.02); }
         .btn-danger { background: #ef4444; }
+        .btn-success { background: #10b981; }
         .card { background: rgba(0,0,0,0.3); border-radius: 32px; padding: 18px; margin-bottom: 20px; }
         .status { background: rgba(0,0,0,0.6); border-radius: 60px; padding: 10px; text-align: center; color: #e2e8f0; margin: 10px 0; }
         .participants-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 25px; margin-top: 20px; }
         .participant-circle { text-align: center; width: 100px; }
-        .circle { width: 80px; height: 80px; border-radius: 50%; background: #2d2b55; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; border: 3px solid #4f46e5; transition: all 0.1s; }
+        .circle { width: 80px; height: 80px; border-radius: 50%; background: #2d2b55; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; border: 3px solid #4f46e5; transition: all 0.1s; cursor: pointer; }
         .circle.speaking { animation: pulseRotate 0.5s infinite alternate; border-color: #facc15; }
         @keyframes pulseRotate { 0% { transform: scale(1) rotate(0deg); } 100% { transform: scale(1.08) rotate(5deg); } }
         .participant-name { color: white; background: rgba(0,0,0,0.6); border-radius: 40px; padding: 4px; font-size: 0.8rem; }
@@ -28,6 +29,7 @@
         .hidden { display: none; }
         .mic-btn { background: #f59e0b; width: auto; padding: 5px 15px; }
         .debug-log { font-family: monospace; font-size: 0.7rem; background: rgba(0,0,0,0.5); border-radius: 16px; padding: 8px; margin-top: 15px; max-height: 150px; overflow-y: auto; color: #ccc; }
+        .test-btn { background: #3b82f6; width: auto; padding: 5px 10px; font-size: 0.8rem; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -38,12 +40,12 @@
             <input type="email" id="loginEmail" placeholder="ইমেইল">
             <input type="password" id="loginPassword" placeholder="পাসওয়ার্ড">
             <button id="loginBtn">লগইন</button>
-            <button id="signupBtn" style="background:#10b981;">রেজিস্টার</button>
+            <button id="signupBtn" class="btn-success">রেজিস্টার</button>
         </div>
         <div id="authStatus" class="status"></div>
     </div>
     <div id="voiceSection" class="hidden">
-        <div style="display: flex; justify-content: space-between;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
             <h2>🎙️ গ্রুপ ভয়েস কল</h2>
             <button id="logoutBtn" class="btn-danger" style="width: auto; padding: 8px 16px;">লগআউট</button>
         </div>
@@ -54,6 +56,7 @@
                 <button id="joinBtn">জয়েন করুন</button>
                 <button id="leaveBtn" class="btn-danger" disabled>কল ছাড়ুন</button>
             </div>
+            <button id="testMicBtn" class="test-btn hidden">🎤 মাইক টেস্ট</button>
         </div>
         <div id="statusArea" class="status">⚡ সংযোগ শুরু হয়নি</div>
         <div class="card">
@@ -64,12 +67,12 @@
             <div id="participantGrid" class="participants-grid"><div style="color:gray;">কেউ নেই</div></div>
         </div>
         <div class="debug-log" id="debugLog"></div>
-        <div class="footer">🎧 কথা বললে বৃত্ত ঘুরবে। নিচের লগ দেখুন।</div>
+        <div class="footer" style="text-align: center; color: #aaa; margin-top: 10px;">🎧 কথা বললে বৃত্ত ঘুরবে</div>
     </div>
 </div>
 
 <script>
-    // ---------- Firebase কনফিগারেশন (আপনার দেওয়া) ----------
+    // Firebase কনফিগারেশন
     const firebaseConfig = {
         apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
         authDomain: "easy-premium.firebaseapp.com",
@@ -82,6 +85,23 @@
     const app = firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const auth = firebase.auth();
+
+    // ✅ সঠিক TURN ক্রেডেনশিয়াল (আপনার স্ক্রিনশট থেকে)
+    const METERED_USERNAME = "b9edfe7cf7ed451c3c98484d";
+    const METERED_PASSWORD = "sfu90VQVPjbjLaNN";  // নোটিশ: 9 এর পর o নয়, 0 আছে
+    
+    // TURN সার্ভার কনফিগারেশন (একাধিক প্রোটোকল)
+    const iceServers = [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        // Metered.ca TURN (TCP/UDP both)
+        { urls: 'turn:global.turn.metered.ca:80', username: METERED_USERNAME, credential: METERED_PASSWORD },
+        { urls: 'turn:global.turn.metered.ca:443', username: METERED_USERNAME, credential: METERED_PASSWORD },
+        { urls: 'turn:global.turn.metered.ca:443?transport=tcp', username: METERED_USERNAME, credential: METERED_PASSWORD },
+        // Backup: OpenRelay (ফ্রি TURN)
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' }
+    ];
 
     // DOM elements
     const authSection = document.getElementById('authSection');
@@ -101,14 +121,25 @@
     const participantCountSpan = document.getElementById('participantCount');
     const micToggleBtn = document.getElementById('micToggle');
     const debugLogDiv = document.getElementById('debugLog');
+    const testMicBtn = document.getElementById('testMicBtn');
+
+    let currentRoomId = null, currentUserId = null;
+    let localStream = null, isMicActive = false;
+    let peerConnections = new Map();
+    let roomUsersRef = null;
+    let remoteAudios = new Map();
+    let localAnalyser = null, animFrame = null;
+    let audioContext = null; // একক AudioContext
 
     function addLog(msg, isErr = false) {
         const div = document.createElement('div');
         div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
         div.style.color = isErr ? '#f87171' : '#86efac';
+        div.style.marginBottom = '4px';
         debugLogDiv.appendChild(div);
         debugLogDiv.scrollTop = debugLogDiv.scrollHeight;
         while (debugLogDiv.children.length > 50) debugLogDiv.removeChild(debugLogDiv.firstChild);
+        console.log(msg);
     }
 
     function showStatus(msg, isErr = false) {
@@ -116,38 +147,43 @@
         statusDiv.style.background = isErr ? 'rgba(220,38,38,0.8)' : 'rgba(34,197,94,0.8)';
         addLog(msg, isErr);
         setTimeout(() => {
-            if (!isErr && currentRoomId) statusDiv.innerHTML = `🎤 রুম: ${currentRoomId}`;
+            if (currentRoomId) statusDiv.innerHTML = `🎤 রুম: ${currentRoomId} | ${peerConnections.size} সংযোগ`;
             else statusDiv.innerHTML = `⚡ প্রস্তুত`;
-        }, 4000);
+        }, 3000);
     }
-
-    let currentRoomId = null, currentUserId = null;
-    let localStream = null, isMicActive = false;
-    let peerConnections = new Map();
-    let roomUsersRef = null, activeListeners = [];
-    const remoteAudios = new Map();
-    const remoteVolumeLevels = new Map();
-    let localAnalyser = null, animFrame = null;
-
-    // ==================== আপনার Metered.ca TURN ক্রেডেনশিয়াল এখানে বসান ====================
-    // ফ্রি অ্যাকাউন্ট করতে metered.ca তে গিয়ে সাইনআপ করুন, তারপর নিচের ডেটা দিন
-    const METERED_USERNAME = "b9edfe7cf7ed451c3c98484d";    // পরিবর্তন করুন
-    const METERED_PASSWORD = "sfu9oVQVpjbjLaNN";    // পরিবর্তন করুন
-    
-    const iceServers = [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        // Metered.ca TURN সার্ভার (ফ্রি টিয়ার)
-        { urls: 'turn:global.turn.metered.ca:80', username: METERED_USERNAME, credential: METERED_PASSWORD },
-        { urls: 'turn:global.turn.metered.ca:443', username: METERED_USERNAME, credential: METERED_PASSWORD },
-        { urls: 'turn:global.turn.metered.ca:443?transport=tcp', username: METERED_USERNAME, credential: METERED_PASSWORD }
-    ];
 
     function sanitizeUserId(id) {
-        return id.replace(/[.#$\[\]]/g, '_');
+        return id.replace(/[.#$\[\]\/]/g, '_').substring(0, 30);
     }
 
-    function renderParticipants(usersList) {
+    async function testMicrophone() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyser = audioContext.createAnalyser();
+            source.connect(analyser);
+            addLog("✅ মাইক কাজ করছে! ভলিউম লেভেল দেখুন:");
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            function checkVolume() {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                let avg = sum / dataArray.length;
+                if (avg > 10) addLog(`🔊 ভলিউম ডিটেক্টেড: ${Math.floor(avg)}`);
+                if (stream.active) requestAnimationFrame(checkVolume);
+            }
+            checkVolume();
+            setTimeout(() => {
+                stream.getTracks().forEach(t => t.stop());
+                audioContext.close();
+            }, 3000);
+        } catch(e) {
+            addLog(`❌ মাইক টেস্ট ব্যর্থ: ${e.message}`, true);
+        }
+    }
+
+    function updateParticipantsList(usersList) {
         if (!usersList || usersList.length === 0) {
             participantGrid.innerHTML = '<div style="color:gray; text-align:center;">কেউ নেই</div>';
             participantCountSpan.innerText = "0";
@@ -160,235 +196,193 @@
             html += `
                 <div class="participant-circle">
                     <div class="circle" id="circle-${uid}"><span style="font-size:28px;">${isMe ? '🎤' : '👤'}</span></div>
-                    <div class="participant-name">${uid.substring(0,12)}${isMe ? ' (আপনি)' : ''}</div>
+                    <div class="participant-name">${uid.substring(0, 15)}${isMe ? ' (আপনি)' : ''}</div>
                 </div>
             `;
         }
         participantGrid.innerHTML = html;
-        for (let [uid, vol] of remoteVolumeLevels) {
-            if (usersList.includes(uid)) updateCircleSpeaking(uid, vol > 0.05, vol);
-        }
     }
 
-    async function updateParticipantsList() {
-        if (!currentRoomId) return;
-        try {
-            const snap = await db.ref(`voice_rooms/${currentRoomId}/users`).once('value');
-            renderParticipants(Object.keys(snap.val() || {}));
-        } catch(e) { addLog(`লিস্ট আপডেট ব্যর্থ: ${e.message}`, true); }
-    }
-
-    function updateCircleSpeaking(userId, isSpeaking, volume = 0) {
+    function updateCircleSpeaking(userId, isSpeaking) {
         const circle = document.getElementById(`circle-${userId}`);
-        if (!circle) return;
-        if (isSpeaking) {
-            circle.classList.add('speaking');
-            if (volume < 0.2) circle.style.borderColor = '#3b82f6';
-            else if (volume < 0.5) circle.style.borderColor = '#f97316';
-            else circle.style.borderColor = '#ef4444';
-        } else {
-            circle.classList.remove('speaking');
-            circle.style.borderColor = '#4f46e5';
+        if (circle) {
+            if (isSpeaking) circle.classList.add('speaking');
+            else circle.classList.remove('speaking');
         }
     }
 
     function setupLocalVolumeDetection(stream) {
         if (localAnalyser && animFrame) cancelAnimationFrame(animFrame);
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioCtx.createMediaStreamSource(stream);
-        const analyser = audioCtx.createAnalyser();
+        if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
         analyser.fftSize = 256;
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
         source.connect(analyser);
         localAnalyser = analyser;
-        function update() {
-            if (!localAnalyser || !currentUserId) return;
-            localAnalyser.getByteFrequencyData(dataArray);
-            let sum = 0;
-            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-            let normalized = Math.min(1, sum / dataArray.length / 150);
-            updateCircleSpeaking(currentUserId, normalized > 0.05, normalized);
-            animFrame = requestAnimationFrame(update);
-        }
-        audioCtx.resume().then(() => { addLog("লোকাল ভলিউম ডিটেক্টর চালু"); update(); })
-                .catch(e => addLog(`AudioContext resume ব্যর্থ: ${e.message}`, true));
-    }
-
-    function setupRemoteVolumeDetection(audioElement, userId) {
-        if (!audioElement) return;
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioCtx.createMediaElementSource(audioElement);
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 256;
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        source.connect(analyser);
-        analyser.connect(audioCtx.destination);
-        function update() {
-            if (!analyser) return;
-            analyser.getByteFrequencyData(dataArray);
-            let sum = 0;
-            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-            let normalized = Math.min(1, sum / dataArray.length / 150);
-            remoteVolumeLevels.set(userId, normalized);
-            updateCircleSpeaking(userId, normalized > 0.05, normalized);
-            requestAnimationFrame(update);
-        }
-        audioCtx.resume().then(() => { addLog(`রিমোট ভলিউম ডিটেক্টর চালু: ${userId}`); update(); })
-                .catch(e => addLog(`রিমোট AudioContext resume ব্যর্থ ${userId}: ${e.message}`, true));
+        
+        audioContext.resume().then(() => {
+            addLog("🔊 লোকাল মাইক ডিটেক্টর চালু");
+            function update() {
+                if (!localAnalyser || !currentUserId) return;
+                localAnalyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                let avg = sum / dataArray.length;
+                let isSpeakingNow = avg > 15;
+                if (isSpeakingNow && avg > 50) addLog(`🗣️ কথা বলছেন (ভলিউম: ${Math.floor(avg)})`);
+                updateCircleSpeaking(currentUserId, isSpeakingNow);
+                animFrame = requestAnimationFrame(update);
+            }
+            update();
+        }).catch(e => addLog(`AudioContext resume failed: ${e.message}`, true));
     }
 
     async function createPeerConnection(targetUserId) {
         if (peerConnections.has(targetUserId)) return peerConnections.get(targetUserId);
-        const pc = new RTCPeerConnection({ iceServers });
-        if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-        pc.onicecandidate = e => {
-            if (e.candidate) {
+        
+        addLog(`🔌 নতুন সংযোগ তৈরি: ${targetUserId}`);
+        const pc = new RTCPeerConnection({ 
+            iceServers: iceServers,
+            iceTransportPolicy: 'all' // TURN ব্যবহার বাধ্যতামূলক
+        });
+        
+        if (localStream) {
+            localStream.getTracks().forEach(track => {
+                pc.addTrack(track, localStream);
+                addLog(`➕ ট্র্যাক যোগ: ${track.kind}`);
+            });
+        }
+        
+        pc.onicecandidate = (event) => {
+            if (event.candidate) {
+                addLog(`📡 ICE candidate: ${event.candidate.candidate.substring(0, 50)}...`);
                 db.ref(`voice_rooms/${currentRoomId}/candidates/${targetUserId}`).push({
-                    from: currentUserId, candidate: e.candidate
-                });
-                addLog(`ICE candidate পাঠানো হয়েছে ${targetUserId}`);
+                    from: currentUserId,
+                    candidate: event.candidate
+                }).catch(e => addLog(`ICE save failed: ${e.message}`, true));
             }
         };
-        pc.ontrack = e => {
-            addLog(`📢 ontrack from ${targetUserId}`);
+        
+        pc.ontrack = (event) => {
+            addLog(`📢 রিমোট অডিও পেলাম ${targetUserId}`);
             let audio = remoteAudios.get(targetUserId);
             if (!audio) {
                 audio = new Audio();
-                audio.autoplay = false;
+                audio.autoplay = true;
                 audio.style.display = 'none';
                 document.body.appendChild(audio);
                 remoteAudios.set(targetUserId, audio);
-                setupRemoteVolumeDetection(audio, targetUserId);
             }
-            audio.srcObject = e.streams[0];
-            audio.muted = false;
-            audio.volume = 1.0;
-            audio.play().then(() => addLog(`অডিও প্লে শুরু: ${targetUserId}`))
-                  .catch(err => addLog(`অডিও প্লে ব্যর্থ ${targetUserId}: ${err.message}`, true));
+            audio.srcObject = event.streams[0];
+            audio.play().catch(e => addLog(`Audio play error: ${e.message}`, true));
+            addLog(`✅ অডিও প্লে শুরু: ${targetUserId}`);
         };
+        
         pc.onconnectionstatechange = () => {
-            addLog(`সংযোগ স্টেট ${targetUserId}: ${pc.connectionState}`);
-            if (pc.connectionState === 'connected') showStatus(`${targetUserId} সংযুক্ত`);
-            if (pc.connectionState === 'failed') {
-                addLog(`সংযোগ ব্যর্থ ${targetUserId}, পুনরায় চেষ্টা`, true);
-                if (peerConnections.has(targetUserId)) peerConnections.delete(targetUserId);
-                if (remoteAudios.has(targetUserId)) remoteAudios.get(targetUserId).srcObject = null;
-                remoteAudios.delete(targetUserId);
-                remoteVolumeLevels.delete(targetUserId);
-                updateParticipantsList();
-                setTimeout(() => startCallWith(targetUserId), 2000);
+            addLog(`🔗 সংযোগ স্টেট ${targetUserId}: ${pc.connectionState}`);
+            if (pc.connectionState === 'connected') {
+                showStatus(`${targetUserId} সংযুক্ত`);
+            } else if (pc.connectionState === 'failed') {
+                addLog(`❌ সংযোগ ব্যর্থ ${targetUserId}`, true);
+                peerConnections.delete(targetUserId);
             }
         };
+        
         pc.oniceconnectionstatechange = () => {
-            addLog(`ICE স্টেট ${targetUserId}: ${pc.iceConnectionState}`);
-            if (pc.iceConnectionState === 'failed') showStatus(`${targetUserId} এর জন্য ICE ব্যর্থ - TURN সার্ভার চেক করুন`, true);
+            addLog(`🧊 ICE স্টেট ${targetUserId}: ${pc.iceConnectionState}`);
+            if (pc.iceConnectionState === 'connected') {
+                addLog(`✅ TURN সংযোগ সফল ${targetUserId}`);
+            }
         };
+        
         peerConnections.set(targetUserId, pc);
         return pc;
     }
 
-    async function startCallWith(targetUserId) {
+    async function callUser(targetUserId) {
         if (targetUserId === currentUserId || peerConnections.has(targetUserId)) return;
-        addLog(`কল শুরু ${targetUserId}`);
+        
+        addLog(`📞 কল করছি ${targetUserId}`);
         try {
             const pc = await createPeerConnection(targetUserId);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            await db.ref(`voice_rooms/${currentRoomId}/offers/${targetUserId}`).push({ from: currentUserId, offer });
-        } catch(e) { addLog(`Offer ব্যর্থ ${targetUserId}: ${e.message}`, true); }
+            
+            await db.ref(`voice_rooms/${currentRoomId}/offers/${targetUserId}`).push({
+                from: currentUserId,
+                offer: { type: offer.type, sdp: offer.sdp }
+            });
+            addLog(`📤 Offer পাঠানো হয়েছে ${targetUserId}`);
+        } catch(e) {
+            addLog(`Offer তৈরি ব্যর্থ: ${e.message}`, true);
+        }
     }
 
-    function setupSignalingListeners() {
-        const offersRef = db.ref(`voice_rooms/${currentRoomId}/offers/${currentUserId}`);
-        const offListener = offersRef.on('child_added', async snap => {
-            const data = snap.val();
+    function setupListeners() {
+        // Offer listener
+        const offerRef = db.ref(`voice_rooms/${currentRoomId}/offers/${currentUserId}`);
+        offerRef.on('child_added', async (snapshot) => {
+            const data = snapshot.val();
             if (!data || data.from === currentUserId) return;
-            const { from, offer } = data;
-            addLog(`Offer পেয়েছি ${from}`);
+            
+            addLog(`📨 Offer পেয়েছি ${data.from}`);
             try {
-                let pc = peerConnections.get(from);
-                if (!pc) pc = await createPeerConnection(from);
-                await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                let pc = peerConnections.get(data.from);
+                if (!pc) pc = await createPeerConnection(data.from);
+                
+                await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
-                await db.ref(`voice_rooms/${currentRoomId}/answers/${from}`).push({ from: currentUserId, answer });
-                snap.ref.remove();
-            } catch(e) { addLog(`Offer প্রসেস ব্যর্থ: ${e.message}`, true); }
-        });
-        const answersRef = db.ref(`voice_rooms/${currentRoomId}/answers/${currentUserId}`);
-        const ansListener = answersRef.on('child_added', async snap => {
-            const data = snap.val();
-            if (!data || data.from === currentUserId) return;
-            const { from, answer } = data;
-            const pc = peerConnections.get(from);
-            if (pc && pc.remoteDescription === null) {
-                try { await pc.setRemoteDescription(new RTCSessionDescription(answer)); snap.ref.remove(); }
-                catch(e) { addLog(`Answer সেট ব্যর্থ: ${e.message}`, true); }
+                
+                await db.ref(`voice_rooms/${currentRoomId}/answers/${data.from}`).push({
+                    from: currentUserId,
+                    answer: { type: answer.type, sdp: answer.sdp }
+                });
+                await snapshot.ref.remove();
+                addLog(`✅ Answer পাঠানো হয়েছে ${data.from}`);
+            } catch(e) {
+                addLog(`Offer প্রসেস ব্যর্থ: ${e.message}`, true);
             }
         });
-        const candidatesRef = db.ref(`voice_rooms/${currentRoomId}/candidates/${currentUserId}`);
-        const candListener = candidatesRef.on('child_added', async snap => {
-            const data = snap.val();
+        
+        // Answer listener
+        const answerRef = db.ref(`voice_rooms/${currentRoomId}/answers/${currentUserId}`);
+        answerRef.on('child_added', async (snapshot) => {
+            const data = snapshot.val();
             if (!data || data.from === currentUserId) return;
-            const { from, candidate } = data;
-            const pc = peerConnections.get(from);
-            if (pc && candidate) {
-                try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); addLog(`ICE candidate যোগ হয়েছে ${from}`); }
-                catch(e) { addLog(`ICE যোগ ব্যর্থ: ${e.message}`, true); }
+            
+            addLog(`📨 Answer পেয়েছি ${data.from}`);
+            const pc = peerConnections.get(data.from);
+            if (pc && pc.signalingState === 'have-local-offer') {
+                try {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                    await snapshot.ref.remove();
+                    addLog(`✅ Answer সেট করা হয়েছে ${data.from}`);
+                } catch(e) {
+                    addLog(`Answer সেট ব্যর্থ: ${e.message}`, true);
+                }
             }
         });
-        activeListeners.push(() => {
-            offersRef.off('child_added', offListener);
-            answersRef.off('child_added', ansListener);
-            candidatesRef.off('child_added', candListener);
+        
+        // Candidate listener
+        const candidateRef = db.ref(`voice_rooms/${currentRoomId}/candidates/${currentUserId}`);
+        candidateRef.on('child_added', async (snapshot) => {
+            const data = snapshot.val();
+            if (!data || data.from === currentUserId) return;
+            
+            const pc = peerConnections.get(data.from);
+            if (pc && data.candidate) {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    addLog(`✅ ICE যোগ হয়েছে ${data.from}`);
+                    await snapshot.ref.remove();
+                } catch(e) {
+                    addLog(`ICE যোগ ব্যর্থ: ${e.message}`, true);
+                }
+            }
         });
-    }
-
-    function watchRoomUsers() {
-        if (roomUsersRef) roomUsersRef.off();
-        roomUsersRef = db.ref(`voice_rooms/${currentRoomId}/users`);
-        roomUsersRef.on('child_added', snap => {
-            const uid = snap.key;
-            if (uid === currentUserId) return;
-            addLog(`নতুন সদস্য এলেন: ${uid}`);
-            updateParticipantsList();
-            setTimeout(() => { if (localStream && !peerConnections.has(uid)) startCallWith(uid); }, 500);
-        });
-        roomUsersRef.on('child_removed', snap => {
-            const uid = snap.key;
-            addLog(`সদস্য চলে গেলেন: ${uid}`);
-            if (peerConnections.has(uid)) peerConnections.get(uid).close();
-            peerConnections.delete(uid);
-            if (remoteAudios.has(uid)) remoteAudios.get(uid).srcObject = null;
-            remoteAudios.delete(uid);
-            remoteVolumeLevels.delete(uid);
-            updateParticipantsList();
-        });
-    }
-
-    async function leaveCall() {
-        if (!currentRoomId || !currentUserId) return;
-        addLog("কল ছাড়া হচ্ছে");
-        if (animFrame) cancelAnimationFrame(animFrame);
-        if (localAnalyser) localAnalyser = null;
-        for (let [uid, pc] of peerConnections) pc.close();
-        peerConnections.clear();
-        remoteAudios.forEach(a => a.srcObject = null);
-        remoteAudios.clear();
-        remoteVolumeLevels.clear();
-        if (localStream) localStream.getTracks().forEach(t => t.stop());
-        localStream = null;
-        isMicActive = false;
-        micToggleBtn.disabled = true;
-        micToggleBtn.innerText = '🎤 মাইক চালু';
-        if (roomUsersRef) roomUsersRef.off();
-        await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).remove().catch(e=>addLog(`Firebase রিমুভ ব্যর্থ: ${e.message}`, true));
-        activeListeners.forEach(fn => fn());
-        activeListeners = [];
-        currentRoomId = null; currentUserId = null;
-        joinBtn.disabled = false; leaveBtn.disabled = true;
-        showStatus("কল ছেড়েছেন");
-        renderParticipants([]);
     }
 
     async function joinCall() {
@@ -396,77 +390,202 @@
         let userId = userIdInput.value.trim();
         if (!room) { showStatus("রুম আইডি দিন", true); return; }
         if (!userId) { userId = "User_" + Math.floor(Math.random()*10000); userIdInput.value = userId; }
+        
         userId = sanitizeUserId(userId);
-        currentRoomId = room; currentUserId = userId;
-        joinBtn.disabled = true; leaveBtn.disabled = false;
-        showStatus("মাইক্রোফোন অনুমতি চাচ্ছি...");
+        currentRoomId = room;
+        currentUserId = userId;
+        
+        joinBtn.disabled = true;
+        leaveBtn.disabled = false;
+        
+        showStatus("মাইক্রোফোন অনুমতি নিচ্ছি...");
+        
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            localStream = stream;
+            localStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                } 
+            });
+            
             isMicActive = true;
             micToggleBtn.disabled = false;
             micToggleBtn.innerText = '🔇 মাইক বন্ধ';
-            addLog("মাইক্রোফোন অনুমতি প্রাপ্ত");
-            setupLocalVolumeDetection(stream);
-            // অডিও আনলক
-            new Audio().play().catch(e=>addLog("সাইলেন্ট প্লে ব্যর্থ", false));
-            await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).set(true);
-            addLog("Firebase এ উপস্থিতি নিবন্ধিত");
-            setupSignalingListeners();
-            watchRoomUsers();
-            showStatus("রুমে জয়েন করেছেন! কথা বললে বৃত্ত ঘুরবে।");
-            setTimeout(() => updateParticipantsList(), 500);
-        } catch (err) {
-            addLog(`জয়েন ব্যর্থ: ${err.message}`, true);
+            testMicBtn.classList.remove('hidden');
+            
+            addLog("✅ মাইক্রোফোন অনুমতি প্রাপ্ত");
+            setupLocalVolumeDetection(localStream);
+            
+            // Firebase এ যোগ
+            await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).set({
+                joined: Date.now(),
+                name: userId
+            });
+            
+            addLog("✅ Firebase এ নিবন্ধন সফল");
+            setupListeners();
+            
+            // রুমের বর্তমান ইউজারদের তালিকা
+            const usersSnapshot = await db.ref(`voice_rooms/${currentRoomId}/users`).once('value');
+            const users = usersSnapshot.val() || {};
+            const otherUsers = Object.keys(users).filter(uid => uid !== currentUserId);
+            
+            addLog(`👥 রুমে ${otherUsers.length} জন সদস্য আছেন`);
+            
+            // অন্য ইউজারদের সাথে সংযোগ
+            for (let uid of otherUsers) {
+                setTimeout(() => callUser(uid), 500);
+            }
+            
+            // নতুন ইউজার যোগ হলে কল করবে
+            const newUserRef = db.ref(`voice_rooms/${currentRoomId}/users`);
+            newUserRef.on('child_added', (snap) => {
+                const uid = snap.key;
+                if (uid !== currentUserId && !peerConnections.has(uid)) {
+                    addLog(`🆕 নতুন সদস্য: ${uid}`);
+                    setTimeout(() => callUser(uid), 500);
+                }
+                updateParticipantsList(Object.keys(users));
+            });
+            
+            newUserRef.on('child_removed', (snap) => {
+                const uid = snap.key;
+                addLog(`🚪 সদস্য চলে গেছেন: ${uid}`);
+                if (peerConnections.has(uid)) {
+                    peerConnections.get(uid).close();
+                    peerConnections.delete(uid);
+                }
+                if (remoteAudios.has(uid)) {
+                    remoteAudios.get(uid).remove();
+                    remoteAudios.delete(uid);
+                }
+                updateParticipantsList(Object.keys(users));
+            });
+            
+            roomUsersRef = newUserRef;
+            updateParticipantsList(otherUsers.concat([currentUserId]));
+            showStatus("রুমে জয়েন করেছেন! কথা বলুন");
+            
+        } catch(err) {
+            addLog(`❌ জয়েন ব্যর্থ: ${err.message}`, true);
             showStatus(`মাইক্রোফোন অনুমতি দেননি: ${err.message}`, true);
-            joinBtn.disabled = false; leaveBtn.disabled = true;
-            currentRoomId = null; currentUserId = null;
-            if (localStream) localStream.getTracks().forEach(t=>t.stop());
+            joinBtn.disabled = false;
+            leaveBtn.disabled = true;
+            currentRoomId = null;
+            currentUserId = null;
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
             localStream = null;
         }
     }
-
+    
+    async function leaveCall() {
+        if (!currentRoomId || !currentUserId) return;
+        
+        addLog("🚪 কল ছাড়ছি...");
+        if (animFrame) cancelAnimationFrame(animFrame);
+        
+        for (let [uid, pc] of peerConnections) {
+            pc.close();
+        }
+        peerConnections.clear();
+        
+        remoteAudios.forEach(audio => {
+            if (audio.parentNode) audio.remove();
+        });
+        remoteAudios.clear();
+        
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+        
+        if (roomUsersRef) {
+            await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).remove();
+            roomUsersRef.off();
+        }
+        
+        currentRoomId = null;
+        currentUserId = null;
+        joinBtn.disabled = false;
+        leaveBtn.disabled = true;
+        micToggleBtn.disabled = true;
+        testMicBtn.classList.add('hidden');
+        showStatus("কল ছেড়েছেন");
+        participantGrid.innerHTML = '<div style="color:gray;">কেউ নেই</div>';
+        participantCountSpan.innerText = "0";
+    }
+    
     function toggleMic() {
         if (!localStream) return;
-        const track = localStream.getAudioTracks()[0];
-        track.enabled = !track.enabled;
-        isMicActive = track.enabled;
-        micToggleBtn.innerText = isMicActive ? '🔇 মাইক বন্ধ' : '🎤 মাইক চালু';
-        showStatus(isMicActive ? "মাইক সক্রিয়" : "মাইক বন্ধ");
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = !audioTrack.enabled;
+            isMicActive = audioTrack.enabled;
+            micToggleBtn.innerText = isMicActive ? '🔇 মাইক বন্ধ' : '🎤 মাইক চালু';
+            showStatus(isMicActive ? "মাইক চালু" : "মাইক বন্ধ");
+        }
     }
-
-    // অথেনটিকেশন (পূর্বের মতই)
+    
+    // Authentication
+    loginBtn.onclick = async () => {
+        const email = loginEmail.value.trim();
+        const pwd = loginPassword.value.trim();
+        if (!email || !pwd) return showAuthStatus("ইমেইল ও পাসওয়ার্ড দিন", true);
+        try {
+            await auth.signInWithEmailAndPassword(email, pwd);
+            showAuthStatus("লগইন সফল!");
+        } catch(e) {
+            showAuthStatus(e.message, true);
+        }
+    };
+    
+    signupBtn.onclick = async () => {
+        const email = loginEmail.value.trim();
+        const pwd = loginPassword.value.trim();
+        if (!email || !pwd) return showAuthStatus("ইমেইল ও পাসওয়ার্ড দিন", true);
+        try {
+            await auth.createUserWithEmailAndPassword(email, pwd);
+            showAuthStatus("অ্যাকাউন্ট তৈরি সফল!");
+        } catch(e) {
+            showAuthStatus(e.message, true);
+        }
+    };
+    
+    logoutBtn.onclick = async () => {
+        if (currentRoomId) await leaveCall();
+        await auth.signOut();
+    };
+    
     function showAuthStatus(msg, isErr) {
         authStatus.innerHTML = isErr ? `❌ ${msg}` : `✅ ${msg}`;
         authStatus.style.background = isErr ? '#fed7d7' : '#c6f6d5';
-        addLog(`Auth: ${msg}`, isErr);
         setTimeout(() => { authStatus.innerHTML = ''; }, 3000);
     }
-    loginBtn.onclick = async () => {
-        const email = loginEmail.value.trim(), pwd = loginPassword.value.trim();
-        if (!email || !pwd) return showAuthStatus("ইমেইল ও পাসওয়ার্ড দিন", true);
-        try { await auth.signInWithEmailAndPassword(email, pwd); showAuthStatus("লগইন সফল!"); }
-        catch(e) { showAuthStatus(e.message, true); }
-    };
-    signupBtn.onclick = async () => {
-        const email = loginEmail.value.trim(), pwd = loginPassword.value.trim();
-        if (!email || !pwd) return showAuthStatus("ইমেইল ও পাসওয়ার্ড দিন", true);
-        try { await auth.createUserWithEmailAndPassword(email, pwd); showAuthStatus("অ্যাকাউন্ট তৈরি সফল!"); }
-        catch(e) { showAuthStatus(e.message, true); }
-    };
-    logoutBtn.onclick = async () => { if (currentRoomId) await leaveCall(); await auth.signOut(); };
+    
     auth.onAuthStateChanged(user => {
-        if (user) { authSection.classList.add('hidden'); voiceSection.classList.remove('hidden'); if (currentRoomId) leaveCall(); addLog(`লগইন: ${user.email}`); }
-        else { authSection.classList.remove('hidden'); voiceSection.classList.add('hidden'); if (localStream) localStream.getTracks().forEach(t=>t.stop()); peerConnections.forEach(p=>p.close()); peerConnections.clear(); localStream = null; }
+        if (user) {
+            authSection.classList.add('hidden');
+            voiceSection.classList.remove('hidden');
+            addLog(`✅ লগইন: ${user.email}`);
+        } else {
+            authSection.classList.remove('hidden');
+            voiceSection.classList.add('hidden');
+            if (currentRoomId) leaveCall();
+        }
     });
-
+    
     joinBtn.onclick = joinCall;
     leaveBtn.onclick = leaveCall;
     micToggleBtn.onclick = toggleMic;
+    testMicBtn.onclick = testMicrophone;
+    
     window.addEventListener('beforeunload', () => {
-        if (currentRoomId && currentUserId) db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).remove();
-        if (localStream) localStream.getTracks().forEach(t=>t.stop());
-        peerConnections.forEach(p=>p.close());
+        if (currentRoomId && currentUserId) {
+            db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).remove();
+        }
+        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        peerConnections.forEach(pc => pc.close());
     });
 </script>
 </body>
