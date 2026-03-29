@@ -601,14 +601,15 @@
                     <div class="section-icon">
                         <i class="fas fa-database"></i>
                     </div>
-                    <h2 class="section-title">আমরা কোন তথ্য সংগ্রহ করি?</h2>
+                    <h2 class="section-title">আমরা কিভাবে তথ্য সংগ্রহ করি?</h2>
                 </div>
                 <div class="section-content">
                     <p>আমরা শুধুমাত্র নিম্নলিখিত তথ্যগুলি সংগ্রহ করি, যা আপনার অর্ডার প্রক্রিয়াকরণ ও যোগাযোগের জন্য একান্ত প্রয়োজনীয়:</p>
                     <div class="list-container">
-                        <div class="list-item">আপনার দেওয়া নাম এবং যোগাযোগের তথ্য (ইমেইল, ফোন নম্বর)</div>
-                        <div class="list-item">অর্ডার দেওয়ার সময় প্রদত্ত প্রয়োজনীয় তথ্য (যেমন: যে প্ল্যাটফর্মের জন্য প্রিমিয়াম প্রয়োজন)</div>
-                        <div class="list-item">সাপোর্টের জন্য প্রয়োজনীয় তথ্য (আপনার সমস্যার বিবরণ)</div>
+                        <div class="list-item">ইউজার ওয়েবসাইটে প্রোডাক্ট সিলেক্ট করে Pay.html-এ পেমেন্ট তথ্য (TXID, ফোন নম্বর) জমা দেয়।</div>
+                        <div class="list-item">create-order.js রিলোগ্রেড API-তে অর্ডার তৈরি করে, ফায়ারবেসে transactions ও userOrders নোডে অর্ডার সংরক্ষণ করে, এবং ইউজারের ইমেইলে চেকিং লিংক পাঠায়।</div>
+                        <div class="list-item">Google লগইন করে অ্যাডমিন প্যানেলে প্রবেশ করে। সেখানে pending/waiting অর্ডার দেখে, ম্যানুয়ালি TXID চেক করে, এবং অ্যাডমিন পাসওয়ার্ড দিয়ে order_completed.js কে কমান্ড করে অর্ডার complete বা fail করে।</div>
+                         <div class="list-item">ব্যাকএন্ডএ order_completed.js API রিলোগ্রেডে অর্ডার কনফার্ম করে, webhook.js ভাউচার সংগ্রহ করে, ইউজারের ইমেইলে ভাউচার লিংক পাঠায় ফায়ারবেসের ভাউচার লিংক আপডেট করে।</div>
                     </div>
                     
                     <div class="warning-box">
