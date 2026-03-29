@@ -3,132 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Easy Premium - গ্রুপ ভয়েস কল</title>
+    <title>Easy Premium - গ্রুপ ভয়েস কল (ফাইনাল)</title>
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .container {
-            background: rgba(255,255,255,0.95);
-            border-radius: 28px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            max-width: 650px;
-            width: 100%;
-            padding: 25px;
-            transition: all 0.3s ease;
-        }
-        h2 {
-            text-align: center;
-            color: #4a4a8a;
-            margin-bottom: 15px;
-        }
-        .input-group {
-            margin-bottom: 16px;
-        }
-        input, button {
-            width: 100%;
-            padding: 12px 15px;
-            border-radius: 60px;
-            border: 1px solid #ccc;
-            font-size: 1rem;
-            outline: none;
-            transition: 0.2s;
-        }
-        input:focus {
-            border-color: #764ba2;
-            box-shadow: 0 0 0 2px rgba(118,75,162,0.2);
-        }
-        button {
-            background: #5a67d8;
-            color: white;
-            font-weight: bold;
-            border: none;
-            cursor: pointer;
-            margin-top: 8px;
-        }
-        button:hover {
-            background: #434190;
-            transform: scale(0.98);
-        }
-        .btn-secondary {
-            background: #38a169;
-        }
-        .btn-danger {
-            background: #e53e3e;
-        }
-        .card {
-            background: #f9f9ff;
-            border-radius: 20px;
-            padding: 18px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        .status {
-            background: #e2e8f0;
-            border-radius: 60px;
-            padding: 8px 15px;
-            text-align: center;
-            font-size: 0.85rem;
-            margin: 15px 0;
-            color: #2d3748;
-        }
-        .participants {
-            list-style: none;
-            margin-top: 10px;
-        }
-        .participants li {
-            background: white;
-            margin: 8px 0;
-            padding: 10px 15px;
-            border-radius: 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .badge {
-            background: #48bb78;
-            color: white;
-            border-radius: 30px;
-            padding: 4px 12px;
-            font-size: 0.7rem;
-            font-weight: bold;
-        }
-        .flex-btns {
-            display: flex;
-            gap: 12px;
-            margin-top: 10px;
-        }
-        .hidden {
-            display: none;
-        }
-        .mic-btn {
-            background: #ed8936;
-            width: auto;
-            padding: 5px 15px;
-            margin-top: 0;
-        }
-        .footer {
-            font-size: 0.7rem;
-            text-align: center;
-            color: #aaa;
-            margin-top: 25px;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .container { background: rgba(255,255,255,0.95); border-radius: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); max-width: 650px; width: 100%; padding: 25px; }
+        h1, h2 { text-align: center; color: #4a4a8a; margin-bottom: 15px; }
+        .input-group { margin-bottom: 16px; }
+        input, button { width: 100%; padding: 12px 15px; border-radius: 60px; border: 1px solid #ccc; font-size: 1rem; outline: none; transition: 0.2s; }
+        input:focus { border-color: #764ba2; box-shadow: 0 0 0 2px rgba(118,75,162,0.2); }
+        button { background: #5a67d8; color: white; font-weight: bold; border: none; cursor: pointer; margin-top: 8px; }
+        button:hover { background: #434190; transform: scale(0.98); }
+        .btn-secondary { background: #38a169; }
+        .btn-danger { background: #e53e3e; }
+        .card { background: #f9f9ff; border-radius: 20px; padding: 18px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .status { background: #e2e8f0; border-radius: 60px; padding: 8px 15px; text-align: center; font-size: 0.85rem; margin: 15px 0; color: #2d3748; }
+        .participants { list-style: none; margin-top: 10px; }
+        .participants li { background: white; margin: 8px 0; padding: 10px 15px; border-radius: 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .badge { background: #48bb78; color: white; border-radius: 30px; padding: 4px 12px; font-size: 0.7rem; font-weight: bold; }
+        .flex-btns { display: flex; gap: 12px; margin-top: 10px; }
+        .hidden { display: none; }
+        .mic-btn { background: #ed8936; width: auto; padding: 5px 15px; margin-top: 0; }
+        .footer { font-size: 0.7rem; text-align: center; color: #aaa; margin-top: 25px; }
     </style>
 </head>
 <body>
@@ -179,13 +79,13 @@
         </div>
         <div class="footer">
             🎧 কথা বলতে মাইক্রোফোন অনুমতি দিন। HTTPS প্রয়োজন।<br>
-            যদি শব্দ না শোনা যায়, F12 চেপে Console এ কোন ত্রুটি দেখুন।
+            যদি শব্দ না শোনা যায়, F12 চেপে Console এ কোনো ত্রুটি দেখুন।
         </div>
     </div>
 </div>
 
 <script>
-    // ------------------- Firebase কনফিগারেশন -------------------
+    // ------------------- Firebase কনফিগারেশন (আপনার ডাটাবেস) -------------------
     const firebaseConfig = {
         apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
         authDomain: "easy-premium.firebaseapp.com",
@@ -318,13 +218,14 @@
             let audioEl = remoteAudios.get(targetUserId);
             if (!audioEl) {
                 audioEl = new Audio();
-                audioEl.autoplay = true;
+                audioEl.autoplay = false;   // autoplay false, we'll call play() explicitly
                 audioEl.style.display = 'none';
                 document.body.appendChild(audioEl);
                 remoteAudios.set(targetUserId, audioEl);
             }
             audioEl.srcObject = event.streams[0];
-            audioEl.play().catch(e => console.warn("Audio play error", e));
+            // অডিও প্লে করার চেষ্টা (ব্রাউজার ব্লক করতে পারে, কিন্তু সাইলেন্ট অডিও আনলক করেছি)
+            audioEl.play().catch(e => console.warn(`Audio play error for ${targetUserId}:`, e));
         };
         pc.onconnectionstatechange = () => {
             console.log(`Connection state with ${targetUserId}: ${pc.connectionState}`);
@@ -503,7 +404,7 @@
         participantCountSpan.innerText = "0";
     }
 
-    // ------------------- কল জয়েন -------------------
+    // ------------------- কল জয়েন (অডিও আনলক সহ) -------------------
     async function joinCall() {
         let room = roomInput.value.trim();
         let userId = userIdInput.value.trim();
@@ -528,10 +429,14 @@
             micToggleBtn.disabled = false;
             micToggleBtn.innerText = '🔇 মাইক বন্ধ';
 
-            // অডিও প্লেব্যাক আনলক করার জন্য একটি নীরব অডিও চালানো
+            // ***** অডিও প্লেব্যাক আনলক করার কৌশল: একটি নীরব অডিও চালান *****
             const silentAudio = new Audio();
-            silentAudio.src = "data:audio/wav;base64,U3RlYWx0aCBpcyB0aGUgc291bmQgb2Ygc2lsZW5jZS4=";
-            silentAudio.play().catch(e => console.log("Audio unlock not needed"));
+            silentAudio.src = "data:audio/wav;base64,U3RlYWx0aCBpcyB0aGUgc291bmQgb2Ygc2lsZW5jZS4="; // নীরব WAV
+            silentAudio.play().then(() => {
+                console.log("Audio context unlocked via silent audio");
+            }).catch(e => {
+                console.warn("Silent audio play failed (but may still work):", e);
+            });
 
             // Firebase এ নিজের উপস্থিতি
             await database.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).set(true);
