@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Easy Premium - গ্রুপ ভয়েস কল (ত্রুটি সমাধান)</title>
+    <title>Easy Premium - গ্রুপ ভয়েস কল (সঠিক)</title>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <style>
-        /* আপনার আগের CSS অপরিবর্তিত রাখুন, সংক্ষেপে দিচ্ছি */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: linear-gradient(135deg, #0f172a, #1e1b4b); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
         .container { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 48px; max-width: 950px; width: 100%; padding: 25px; border: 1px solid rgba(255,255,255,0.2); }
@@ -257,7 +256,6 @@
                 setupRemoteVolumeDetection(audio, targetUserId);
             }
             audio.srcObject = event.streams[0];
-            // অডিও প্লে করার চেষ্টা
             audio.play().then(() => addLog(`অডিও প্লে শুরু: ${targetUserId}`))
                 .catch(e => addLog(`অডিও প্লে ব্যর্থ ${targetUserId}: ${e.message}`, true));
         };
@@ -309,7 +307,8 @@
                 });
                 snap.ref.remove();
             } catch(e) { addLog(`Offer প্রসেস ব্যর্থ: ${e.message}`, true); }
-        });
+        }, (err) => addLog(`offersRef লিসেনার এরর: ${err.message}`, true));
+        
         const answersRef = db.ref(`voice_rooms/${currentRoomId}/answers/${currentUserId}`);
         const ansListener = answersRef.on('child_added', async snap => {
             const data = snap.val();
@@ -322,7 +321,8 @@
                     snap.ref.remove();
                 } catch(e) { addLog(`Answer সেট ব্যর্থ: ${e.message}`, true); }
             }
-        });
+        }, (err) => addLog(`answersRef লিসেনার এরর: ${err.message}`, true));
+        
         const candidatesRef = db.ref(`voice_rooms/${currentRoomId}/candidates/${currentUserId}`);
         const candListener = candidatesRef.on('child_added', async snap => {
             const data = snap.val();
@@ -334,7 +334,8 @@
                     await pc.addIceCandidate(new RTCIceCandidate(candidate));
                 } catch(e) { addLog(`ICE যোগ ব্যর্থ: ${e.message}`, true); }
             }
-        });
+        }, (err) => addLog(`candidatesRef লিসেনার এরর: ${err.message}`, true));
+        
         activeListeners.push(() => {
             offersRef.off('child_added', offListener);
             answersRef.off('child_added', ansListener);
@@ -342,13 +343,13 @@
         });
     }
 
-    // সংশোধিত watchRoomUsers - শুধু একবার লিসেনার সেট করে এবং আগেরটি অফ করে
+    // সংশোধিত watchRoomUsers - 'error' ইভেন্ট সরানো হয়েছে
     function watchRoomUsers() {
         if (roomUsersRef) {
-            // আগের লিসেনার সরান
             roomUsersRef.off();
         }
         roomUsersRef = db.ref(`voice_rooms/${currentRoomId}/users`);
+        // child_added লিসেনার
         roomUsersRef.on('child_added', async (snapshot) => {
             const uid = snapshot.key;
             if (uid === currentUserId) return;
@@ -357,7 +358,8 @@
             setTimeout(() => {
                 if (localStream && !peerConnections.has(uid)) startCallWith(uid);
             }, 500);
-        });
+        }, (err) => addLog(`roomUsers child_added এরর: ${err.message}`, true));
+        // child_removed লিসেনার
         roomUsersRef.on('child_removed', (snapshot) => {
             const uid = snapshot.key;
             addLog(`সদস্য চলে গেলেন: ${uid}`);
@@ -372,8 +374,7 @@
             remoteVolumeLevels.delete(uid);
             updateParticipantsList();
             showStatus(`${uid} রুম ছেড়েছেন।`);
-        });
-        roomUsersRef.on('error', (err) => addLog(`রুম ইউজার লিসেনার ত্রুটি: ${err.message}`, true));
+        }, (err) => addLog(`roomUsers child_removed এরর: ${err.message}`, true));
     }
 
     async function leaveCall() {
@@ -438,7 +439,7 @@
             await db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).set(true);
             addLog("Firebase এ নিজের উপস্থিতি নিবন্ধিত");
             setupSignalingListeners();
-            watchRoomUsers();  // এখন এটি ঠিকমত কাজ করবে
+            watchRoomUsers();
             showStatus("রুমে জয়েন করেছেন! কথা বললে বৃত্ত ঘুরবে।");
             setTimeout(() => updateParticipantsList(), 500);
         } catch (err) {
