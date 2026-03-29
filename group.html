@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Easy Premium - গ্রুপ ভয়েস কল (Firebase + WebRTC)</title>
-    <!-- Firebase SDK (CDN) -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <style>
+        /* আপনার আগের CSS একই থাকবে */
         * {
             margin: 0;
             padding: 0;
@@ -211,6 +213,13 @@
     // ফায়ারবেস ইন্সট্যান্স
     const app = firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
+    const auth = firebase.auth();
+
+    // অ্যানোনিমাস লগইন (রুলসের auth != null পূরণ করতে)
+    auth.signInAnonymously().catch(error => {
+        console.error("Auth error:", error);
+        document.getElementById('statusArea').innerHTML = `❌ অথেনটিকেশন ব্যর্থ: ${error.message}`;
+    });
 
     // DOM এলিমেন্টস
     const roomInput = document.getElementById('roomId');
@@ -225,13 +234,12 @@
     // গ্লোবাল স্টেট
     let currentRoomId = null;
     let currentUserId = null;
-    let localStream = null;          // লোকাল মাইক স্ট্রিম
+    let localStream = null;
     let isMicActive = false;
-    let peerConnections = new Map();  // key: targetUserId, value: RTCPeerConnection
-    let roomUsersRef = null;          // Firebase রেফারেন্স (users নোড)
-    let activeListeners = [];         // আনসাবস্ক্রাইব ফাংশন রাখার জন্য
+    let peerConnections = new Map();
+    let roomUsersRef = null;
+    let activeListeners = [];
 
-    // ---------- ইউটিলিটি ----------
     function updateStatus(msg, isError = false) {
         statusDiv.innerHTML = isError ? `❌ ${msg}` : `✅ ${msg}`;
         statusDiv.style.background = isError ? '#fed7d7' : '#c6f6d5';
@@ -243,10 +251,8 @@
         }, 2000);
     }
 
-    // রিমোট অডিও প্লে করার জন্য HTML অডিও এলিমেন্ট ক্যাশে
-    const remoteAudios = new Map(); // targetUserId -> Audio element
+    const remoteAudios = new Map();
 
-    // ---------- WebRTC পিয়ার কানেকশন তৈরি ----------
     async function createPeerConnection(targetUserId) {
         if(peerConnections.has(targetUserId)) return peerConnections.get(targetUserId);
 
@@ -257,27 +263,22 @@
             ]
         });
 
-        // লোকাল ট্র্যাক যোগ (মাইক)
         if(localStream) {
             localStream.getTracks().forEach(track => {
                 pc.addTrack(track, localStream);
             });
         }
 
-        // ICE ক্যান্ডিডেট সংগ্রহ করে ডাটাবেসে পাঠানো
         pc.onicecandidate = (event) => {
             if(event.candidate) {
                 const candidateRef = database.ref(`voice_rooms/${currentRoomId}/candidates/${targetUserId}`);
                 candidateRef.push({
                     from: currentUserId,
                     candidate: event.candidate
-                }).then(() => {
-                    // console.log("ICE পাঠানো হয়েছে", event.candidate);
                 });
             }
         };
 
-        // রিমোট স্ট্রিম আসলে অডিও চালানো
         pc.ontrack = (event) => {
             console.log("রিমোট ট্র্যাক পেয়েছি", targetUserId);
             let audioEl = remoteAudios.get(targetUserId);
@@ -293,15 +294,13 @@
         };
 
         pc.onconnectionstatechange = () => {
-            console.log(`[${targetUserId}] সংযোগ স্টেট:`, pc.connectionState);
             if(pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-                // সংযোগ ভাঙলে ক্লিনআপ
                 if(peerConnections.has(targetUserId)) peerConnections.delete(targetUserId);
                 if(remoteAudios.has(targetUserId)) {
                     remoteAudios.get(targetUserId).srcObject = null;
                     remoteAudios.delete(targetUserId);
                 }
-                updateParticipantsList(); // রিফ্রেশ
+                updateParticipantsList();
             }
         };
 
@@ -309,59 +308,45 @@
         return pc;
     }
 
-    // ---------- কল শুরু (Offer পাঠানো) ----------
     async function startCallWith(targetUserId) {
         if(targetUserId === currentUserId) return;
-        if(peerConnections.has(targetUserId)) return; // ইতিমধ্যে সংযোগ আছে
+        if(peerConnections.has(targetUserId)) return;
 
         try {
             const pc = await createPeerConnection(targetUserId);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            // Firebase তে Offer পাঠান
             const offerRef = database.ref(`voice_rooms/${currentRoomId}/offers/${targetUserId}`);
             await offerRef.push({
                 from: currentUserId,
                 offer: offer
             });
-            // console.log("Offer পাঠানো হয়েছে", targetUserId);
         } catch(e) {
             console.error("Offer তৈরি ব্যর্থ", e);
         }
     }
 
-    // ---------- ইনকামিং সিগন্যাল শোনা (অফার, উত্তর, আইসিই) ----------
     function setupSignalingListeners() {
-        // 1. অফার শোনা (আমার জন্য আসা অফার)
         const offersRef = database.ref(`voice_rooms/${currentRoomId}/offers/${currentUserId}`);
         const offerListener = offersRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
             if(!data || data.from === currentUserId) return;
             const { from, offer } = data;
-            console.log("অফার পেয়েছি from", from);
-
-            // ইতিমধ্যে পিয়ার কানেকশন থাকলে?
             let pc = peerConnections.get(from);
             if(!pc) {
                 pc = await createPeerConnection(from);
             }
-            if(pc.signalingState !== 'stable') {
-                // কিছু ক্ষেত্রে রিমোটDesc সেট করার আগে রিসেট দরকার, কিন্তু সাধারণত OK
-            }
             await pc.setRemoteDescription(new RTCSessionDescription(offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
-            // উত্তর পাঠান
             const answerRef = database.ref(`voice_rooms/${currentRoomId}/answers/${from}`);
             await answerRef.push({
                 from: currentUserId,
                 answer: answer
             });
-            // অফারটি একবার প্রসেস করার পর ডিলিট করতে পারেন (অথবা রেখে দিন, রিফ্রেশ হলে সমস্যা)
             snapshot.ref.remove().catch(e=>console.warn);
         });
 
-        // 2. উত্তর শোনা
         const answersRef = database.ref(`voice_rooms/${currentRoomId}/answers/${currentUserId}`);
         const answerListener = answersRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
@@ -370,12 +355,10 @@
             const pc = peerConnections.get(from);
             if(pc && pc.remoteDescription === null) {
                 await pc.setRemoteDescription(new RTCSessionDescription(answer));
-                console.log("Answer সেট করা হয়েছে", from);
                 snapshot.ref.remove().catch(e=>console.warn);
             }
         });
 
-        // 3. ICE ক্যান্ডিডেট শোনা
         const candidatesRef = database.ref(`voice_rooms/${currentRoomId}/candidates/${currentUserId}`);
         const iceListener = candidatesRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
@@ -387,7 +370,6 @@
                     await pc.addIceCandidate(new RTCIceCandidate(candidate));
                 } catch(e) { console.warn("ICE যোগ করতে ব্যর্থ", e); }
             }
-            // snapshot.ref.remove(); // মাঝেমধ্যে রিমুভ করলে সমস্যা হতে পারে, রেখে দিন
         });
 
         activeListeners.push(() => {
@@ -397,16 +379,13 @@
         });
     }
 
-    // ---------- রুমের ইউজার লিস্ট শোনা (যারা উপস্থিত) ----------
     function watchRoomUsers() {
         if(roomUsersRef) roomUsersRef.off();
         roomUsersRef = database.ref(`voice_rooms/${currentRoomId}/users`);
         roomUsersRef.on('child_added', async (snapshot) => {
             const uid = snapshot.key;
             if(uid === currentUserId) return;
-            // নতুন ইউজার এলে তাকে কল করা শুরু
             updateParticipantsList();
-            // কিছু সময় অপেক্ষা করে কল পাঠানো (যাতে নিজের পিয়ার তৈরি হয়)
             setTimeout(() => {
                 if(localStream && currentRoomId && !peerConnections.has(uid)) {
                     startCallWith(uid).catch(e=>console.warn);
@@ -428,7 +407,6 @@
         });
     }
 
-    // ইউজার লিস্ট রেন্ডার করা
     async function updateParticipantsList() {
         if(!currentRoomId) return;
         const snapshot = await database.ref(`voice_rooms/${currentRoomId}/users`).once('value');
@@ -450,12 +428,10 @@
         participantList.innerHTML = html;
     }
 
-    // ---------- ক্লিনআপ: সব সংযোগ বন্ধ, ফায়ারবেস থেকে ইউজার রিমুভ ----------
     async function leaveCall() {
         if(!currentRoomId || !currentUserId) return;
         updateStatus("কল ছাড়ার প্রক্রিয়া...");
 
-        // ১. সব পিয়ার কানেকশন বন্ধ
         for(let [uid, pc] of peerConnections.entries()) {
             pc.close();
             if(remoteAudios.has(uid)) {
@@ -465,7 +441,6 @@
         }
         peerConnections.clear();
 
-        // ২. লোকাল মাইক বন্ধ
         if(localStream) {
             localStream.getTracks().forEach(track => track.stop());
             localStream = null;
@@ -474,16 +449,13 @@
         micToggleBtn.innerText = '🎤 মাইক চালু';
         micToggleBtn.disabled = true;
 
-        // ৩. ফায়ারবেস থেকে নিজের নাম মুছে ফেলা
         if(roomUsersRef) {
             await database.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).remove().catch(e=>console.warn);
         }
 
-        // ৪. সব লিসেনার আনসাবস্ক্রাইব
         activeListeners.forEach(clean => clean());
         activeListeners = [];
 
-        // ৫. স্টেট রিসেট
         currentRoomId = null;
         currentUserId = null;
         joinBtn.disabled = false;
@@ -494,7 +466,6 @@
         participantCountSpan.innerText = "0";
     }
 
-    // ---------- জয়েন কল (মাইক অনুমতি চেয়ে) ----------
     async function joinCall() {
         let room = roomInput.value.trim();
         let userId = userIdInput.value.trim();
@@ -506,7 +477,6 @@
             userId = "ব্যবহারকারী_" + Math.floor(Math.random()*10000);
             userIdInput.value = userId;
         }
-        // ইউনিকনেস নিশ্চিত না, তবে ব্যবহারকারী দায়িত্বে
         currentRoomId = room;
         currentUserId = userId;
 
@@ -515,20 +485,16 @@
         updateStatus("মাইক্রোফোন অনুমতি চাচ্ছি...");
 
         try {
-            // মাইক অ্যাক্সেস
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             localStream = stream;
             isMicActive = true;
             micToggleBtn.innerText = '🔇 মাইক বন্ধ';
             micToggleBtn.disabled = false;
 
-            // ফায়ারবেস এ নিজের এন্ট্রি
             await database.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).set(true);
-            // সিগন্যাল লিসেনার সেটআপ
             setupSignalingListeners();
             watchRoomUsers();
             updateStatus("রুমে জয়েন করেছেন! এখন অন্যদের সাথে কথা বলুন।");
-            // কিছুক্ষণ পর ইউজার লিস্ট রিফ্রেশ
             setTimeout(() => updateParticipantsList(), 500);
         } catch(err) {
             console.error(err);
@@ -544,7 +510,6 @@
         }
     }
 
-    // মাইক টগল (মিউট/আনমিউট)
     function toggleMic() {
         if(!localStream) return;
         const audioTrack = localStream.getAudioTracks()[0];
@@ -556,12 +521,10 @@
         }
     }
 
-    // ---------- ইভেন্ট লিসেনার ----------
     joinBtn.onclick = joinCall;
     leaveBtn.onclick = leaveCall;
     micToggleBtn.onclick = toggleMic;
 
-    // পেজ আনলোড হলে ক্লিনআপ
     window.addEventListener('beforeunload', () => {
         if(currentRoomId && currentUserId) {
             database.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).remove();
