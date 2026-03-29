@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Easy Premium - গ্রুপ ভয়েস কল (লগইন সহ)</title>
+    <title>Easy Premium - গ্রুপ ভয়েস কল</title>
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
@@ -32,20 +32,13 @@
             padding: 25px;
             transition: all 0.3s ease;
         }
-        h1, h2 {
+        h2 {
             text-align: center;
             color: #4a4a8a;
             margin-bottom: 15px;
         }
         .input-group {
             margin-bottom: 16px;
-        }
-        label {
-            font-weight: 600;
-            color: #333;
-            display: block;
-            margin-bottom: 6px;
-            font-size: 0.9rem;
         }
         input, button {
             width: 100%;
@@ -75,14 +68,8 @@
         .btn-secondary {
             background: #38a169;
         }
-        .btn-secondary:hover {
-            background: #2f855a;
-        }
         .btn-danger {
             background: #e53e3e;
-        }
-        .btn-danger:hover {
-            background: #c53030;
         }
         .card {
             background: #f9f9ff;
@@ -122,12 +109,6 @@
             font-size: 0.7rem;
             font-weight: bold;
         }
-        .footer {
-            font-size: 0.7rem;
-            text-align: center;
-            color: #aaa;
-            margin-top: 25px;
-        }
         .flex-btns {
             display: flex;
             gap: 12px;
@@ -138,7 +119,15 @@
         }
         .mic-btn {
             background: #ed8936;
+            width: auto;
+            padding: 5px 15px;
             margin-top: 0;
+        }
+        .footer {
+            font-size: 0.7rem;
+            text-align: center;
+            color: #aaa;
+            margin-top: 25px;
         }
     </style>
 </head>
@@ -146,14 +135,12 @@
 <div class="container" id="app">
     <!-- লগইন / রেজিস্টার সেকশন -->
     <div id="authSection">
-        <h1>🔐 লগইন বা রেজিস্টার করুন</h1>
+        <h2>🔐 লগইন বা রেজিস্টার করুন</h2>
         <div class="card">
             <div class="input-group">
-                <label>ইমেইল</label>
-                <input type="email" id="loginEmail" placeholder="you@example.com">
+                <input type="email" id="loginEmail" placeholder="ইমেইল">
             </div>
             <div class="input-group">
-                <label>পাসওয়ার্ড</label>
                 <input type="password" id="loginPassword" placeholder="পাসওয়ার্ড">
             </div>
             <button id="loginBtn">লগইন</button>
@@ -162,48 +149,43 @@
         <div id="authStatus" class="status"></div>
     </div>
 
-    <!-- ভয়েস কল সেকশন (লগইন পর দেখাবে) -->
+    <!-- ভয়েস কল সেকশন -->
     <div id="voiceSection" class="hidden">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h1>🎙️ গ্রুপ ভয়েস কল</h1>
+            <h2>🎙️ গ্রুপ ভয়েস কল</h2>
             <button id="logoutBtn" class="btn-danger" style="width: auto; padding: 8px 16px;">লগআউট</button>
         </div>
-        <div class="sub">🔥 Firebase + WebRTC · P2P এনক্রিপ্টেড</div>
-
         <div class="card">
             <div class="input-group">
-                <label>🏠 রুম আইডি</label>
-                <input type="text" id="roomId" placeholder="যেমন: easy-premium-group" value="easy-premium-group">
+                <input type="text" id="roomId" placeholder="রুম আইডি" value="easy-premium-group">
             </div>
             <div class="input-group">
-                <label>👤 আপনার নাম / ইউজার আইডি</label>
-                <input type="text" id="userId" placeholder="আপনার নাম (ইউনিক)" value="">
+                <input type="text" id="userId" placeholder="আপনার নাম (ইউনিক)">
             </div>
             <div class="flex-btns">
-                <button id="joinBtn">🔊 জয়েন ও কথা বলুন</button>
+                <button id="joinBtn">🔊 জয়েন করুন</button>
                 <button id="leaveBtn" class="btn-danger" disabled>🚪 কল ছাড়ুন</button>
             </div>
         </div>
-
-        <div id="statusArea" class="status">⚡ সংযোগ শুরু হয়নি। উপরের বাটনে ক্লিক করুন।</div>
-
+        <div id="statusArea" class="status">⚡ সংযোগ শুরু হয়নি</div>
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <strong>👥 রুমের সদস্য (<span id="participantCount">0</span>)</strong>
-                <button id="micToggle" class="mic-btn" disabled style="width: auto; padding: 5px 15px;">🎤 মাইক চালু</button>
+                <button id="micToggle" class="mic-btn" disabled>🎤 মাইক চালু</button>
             </div>
             <ul id="participantList" class="participants">
-                <li style="justify-content: center; color: gray;">কেউ নেই</li>
+                <li style="justify-content: center;">কেউ নেই</li>
             </ul>
         </div>
         <div class="footer">
-            ⚡ গ্রুপ ভয়েস কল (সর্বোচ্চ ৪-৫ জন সুপারিশ) | প্রতিটি ব্যবহারকারী অন্যদের সাথে সরাসরি যুক্ত হন
+            🎧 কথা বলতে মাইক্রোফোন অনুমতি দিন। HTTPS প্রয়োজন।<br>
+            যদি শব্দ না শোনা যায়, F12 চেপে Console এ কোন ত্রুটি দেখুন।
         </div>
     </div>
 </div>
 
 <script>
-    // Firebase কনফিগারেশন
+    // ------------------- Firebase কনফিগারেশন -------------------
     const firebaseConfig = {
         apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
         authDomain: "easy-premium.firebaseapp.com",
@@ -211,15 +193,13 @@
         projectId: "easy-premium",
         storageBucket: "easy-premium.firebasestorage.app",
         messagingSenderId: "155891252265",
-        appId: "1:155891252265:web:77ab41de24231e8e5ef038",
-        measurementId: "G-CHL8K8HRPX"
+        appId: "1:155891252265:web:77ab41de24231e8e5ef038"
     };
-
     const app = firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     const auth = firebase.auth();
 
-    // DOM elements
+    // ------------------- DOM এলিমেন্টস -------------------
     const authSection = document.getElementById('authSection');
     const voiceSection = document.getElementById('voiceSection');
     const authStatus = document.getElementById('authStatus');
@@ -228,8 +208,6 @@
     const loginBtn = document.getElementById('loginBtn');
     const signupBtn = document.getElementById('signupBtn');
     const logoutBtn = document.getElementById('logoutBtn');
-
-    // Voice call elements
     const roomInput = document.getElementById('roomId');
     const userIdInput = document.getElementById('userId');
     const joinBtn = document.getElementById('joinBtn');
@@ -239,40 +217,31 @@
     const participantCountSpan = document.getElementById('participantCount');
     const micToggleBtn = document.getElementById('micToggle');
 
-    // Voice call state
+    // ------------------- গ্লোবাল স্টেট -------------------
     let currentRoomId = null;
     let currentUserId = null;
     let localStream = null;
     let isMicActive = false;
-    let peerConnections = new Map();
+    let peerConnections = new Map();      // targetUserId -> RTCPeerConnection
     let roomUsersRef = null;
     let activeListeners = [];
+    const remoteAudios = new Map();        // targetUserId -> Audio element
 
-    const remoteAudios = new Map();
-
-    // ---------- অথেনটিকেশন ফাংশন ----------
+    // ------------------- অথেনটিকেশন ফাংশন -------------------
     function showAuthStatus(msg, isError = false) {
         authStatus.innerHTML = isError ? `❌ ${msg}` : `✅ ${msg}`;
         authStatus.style.background = isError ? '#fed7d7' : '#c6f6d5';
-        setTimeout(() => {
-            if(authStatus.innerHTML === `✅ ${msg}` || authStatus.innerHTML === `❌ ${msg}`) {
-                authStatus.style.background = '#e2e8f0';
-                authStatus.innerHTML = '';
-            }
-        }, 3000);
+        setTimeout(() => { authStatus.innerHTML = ''; authStatus.style.background = ''; }, 3000);
     }
 
     loginBtn.onclick = async () => {
         const email = loginEmail.value.trim();
         const password = loginPassword.value.trim();
-        if(!email || !password) {
-            showAuthStatus("ইমেইল ও পাসওয়ার্ড দিন", true);
-            return;
-        }
+        if (!email || !password) return showAuthStatus("ইমেইল ও পাসওয়ার্ড দিন", true);
         try {
             await auth.signInWithEmailAndPassword(email, password);
             showAuthStatus("লগইন সফল!");
-        } catch(error) {
+        } catch (error) {
             showAuthStatus(error.message, true);
         }
     };
@@ -280,80 +249,74 @@
     signupBtn.onclick = async () => {
         const email = loginEmail.value.trim();
         const password = loginPassword.value.trim();
-        if(!email || !password) {
-            showAuthStatus("ইমেইল ও পাসওয়ার্ড দিন", true);
-            return;
-        }
+        if (!email || !password) return showAuthStatus("ইমেইল ও পাসওয়ার্ড দিন", true);
         try {
             await auth.createUserWithEmailAndPassword(email, password);
             showAuthStatus("অ্যাকাউন্ট তৈরি ও লগইন সফল!");
-        } catch(error) {
+        } catch (error) {
             showAuthStatus(error.message, true);
         }
     };
 
     logoutBtn.onclick = async () => {
-        // কল চললে আগে লিভ করানো
-        if(currentRoomId && currentUserId) {
-            await leaveCall();
-        }
+        if (currentRoomId && currentUserId) await leaveCall();
         await auth.signOut();
     };
 
-    // লগইন স্টেট পরিবর্তন শোনা
     auth.onAuthStateChanged(async (user) => {
-        if(user) {
-            // লগইন থাকলে ভয়েস সেকশন দেখাও
+        if (user) {
             authSection.classList.add('hidden');
             voiceSection.classList.remove('hidden');
-            // অডিও এলিমেন্ট ক্লিনআপ (আগের কোন কল থাকলে)
-            if(currentRoomId) await leaveCall();
+            if (currentRoomId) await leaveCall();
         } else {
-            // লগআউট হলে লগইন ফর্ম দেখাও
             authSection.classList.remove('hidden');
             voiceSection.classList.add('hidden');
-            // সব সংযোগ বন্ধ
-            if(localStream) localStream.getTracks().forEach(t => t.stop());
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
             peerConnections.forEach(pc => pc.close());
             peerConnections.clear();
             localStream = null;
         }
     });
 
-    // ---------- ভয়েস কল ফাংশন (আগের মতো) ----------
+    // ------------------- হেল্পার ফাংশন -------------------
     function updateStatus(msg, isError = false) {
         statusDiv.innerHTML = isError ? `❌ ${msg}` : `✅ ${msg}`;
         statusDiv.style.background = isError ? '#fed7d7' : '#c6f6d5';
         setTimeout(() => {
-            if(statusDiv.innerHTML === `✅ ${msg}` || statusDiv.innerHTML === `❌ ${msg}`) {
-                statusDiv.style.background = '#e2e8f0';
-                if(!isError && currentRoomId) statusDiv.innerHTML = `🎤 সংযুক্ত আছেন। রুম: ${currentRoomId}`;
-            }
-        }, 2000);
+            if (!isError && currentRoomId) statusDiv.innerHTML = `🎤 রুম: ${currentRoomId}`;
+            else if (!isError) statusDiv.innerHTML = `✅ ${msg}`;
+        }, 3000);
     }
 
+    // উন্নত ICE সার্ভার (STUN + ফ্রি TURN)
+    const iceServers = [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+    ];
+
+    // ------------------- WebRTC পিয়ার কানেকশন -------------------
     async function createPeerConnection(targetUserId) {
-        if(peerConnections.has(targetUserId)) return peerConnections.get(targetUserId);
-        const pc = new RTCPeerConnection({
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        });
-        if(localStream) {
+        if (peerConnections.has(targetUserId)) return peerConnections.get(targetUserId);
+        const pc = new RTCPeerConnection({ iceServers });
+        if (localStream) {
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
         }
         pc.onicecandidate = (event) => {
-            if(event.candidate) {
+            if (event.candidate) {
                 database.ref(`voice_rooms/${currentRoomId}/candidates/${targetUserId}`).push({
                     from: currentUserId,
                     candidate: event.candidate
                 });
+                console.log(`ICE candidate sent to ${targetUserId}`);
             }
         };
         pc.ontrack = (event) => {
+            console.log(`🎵 Track received from ${targetUserId}`);
             let audioEl = remoteAudios.get(targetUserId);
-            if(!audioEl) {
+            if (!audioEl) {
                 audioEl = new Audio();
                 audioEl.autoplay = true;
                 audioEl.style.display = 'none';
@@ -361,11 +324,16 @@
                 remoteAudios.set(targetUserId, audioEl);
             }
             audioEl.srcObject = event.streams[0];
+            audioEl.play().catch(e => console.warn("Audio play error", e));
         };
         pc.onconnectionstatechange = () => {
-            if(pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-                if(peerConnections.has(targetUserId)) peerConnections.delete(targetUserId);
-                if(remoteAudios.has(targetUserId)) {
+            console.log(`Connection state with ${targetUserId}: ${pc.connectionState}`);
+            if (pc.connectionState === 'connected') {
+                updateStatus(`${targetUserId} এর সাথে সংযুক্ত`, false);
+            }
+            if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+                if (peerConnections.has(targetUserId)) peerConnections.delete(targetUserId);
+                if (remoteAudios.has(targetUserId)) {
                     remoteAudios.get(targetUserId).srcObject = null;
                     remoteAudios.delete(targetUserId);
                 }
@@ -377,7 +345,8 @@
     }
 
     async function startCallWith(targetUserId) {
-        if(targetUserId === currentUserId || peerConnections.has(targetUserId)) return;
+        if (targetUserId === currentUserId || peerConnections.has(targetUserId)) return;
+        console.log(`📞 Calling ${targetUserId}`);
         try {
             const pc = await createPeerConnection(targetUserId);
             const offer = await pc.createOffer();
@@ -386,17 +355,22 @@
                 from: currentUserId,
                 offer: offer
             });
-        } catch(e) { console.error("Offer error", e); }
+        } catch (e) {
+            console.error("Offer creation failed", e);
+        }
     }
 
+    // ------------------- সিগন্যালিং লিসেনার -------------------
     function setupSignalingListeners() {
+        // অফার শোনা
         const offersRef = database.ref(`voice_rooms/${currentRoomId}/offers/${currentUserId}`);
         const offerListener = offersRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
-            if(!data || data.from === currentUserId) return;
+            if (!data || data.from === currentUserId) return;
             const { from, offer } = data;
+            console.log(`📨 Offer received from ${from}`);
             let pc = peerConnections.get(from);
-            if(!pc) pc = await createPeerConnection(from);
+            if (!pc) pc = await createPeerConnection(from);
             await pc.setRemoteDescription(new RTCSessionDescription(offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
@@ -404,29 +378,38 @@
                 from: currentUserId,
                 answer: answer
             });
-            snapshot.ref.remove().catch(e=>console.warn);
+            snapshot.ref.remove(); // অফারটি মুছে ফেলা
         });
+
+        // উত্তর শোনা
         const answersRef = database.ref(`voice_rooms/${currentRoomId}/answers/${currentUserId}`);
         const answerListener = answersRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
-            if(!data || data.from === currentUserId) return;
+            if (!data || data.from === currentUserId) return;
             const { from, answer } = data;
             const pc = peerConnections.get(from);
-            if(pc && pc.remoteDescription === null) {
+            if (pc && pc.remoteDescription === null) {
                 await pc.setRemoteDescription(new RTCSessionDescription(answer));
-                snapshot.ref.remove().catch(e=>console.warn);
+                console.log(`🔁 Answer set from ${from}`);
+                snapshot.ref.remove();
             }
         });
+
+        // ICE ক্যান্ডিডেট শোনা
         const candidatesRef = database.ref(`voice_rooms/${currentRoomId}/candidates/${currentUserId}`);
         const iceListener = candidatesRef.on('child_added', async (snapshot) => {
             const data = snapshot.val();
-            if(!data || data.from === currentUserId) return;
+            if (!data || data.from === currentUserId) return;
             const { from, candidate } = data;
             const pc = peerConnections.get(from);
-            if(pc && candidate) {
-                try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch(e) {}
+            if (pc && candidate) {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    console.log(`🧊 ICE added from ${from}`);
+                } catch (e) { console.warn("ICE error", e); }
             }
         });
+
         activeListeners.push(() => {
             offersRef.off('child_added', offerListener);
             answersRef.off('child_added', answerListener);
@@ -434,28 +417,29 @@
         });
     }
 
+    // ------------------- রুমের ইউজার ট্র্যাকিং -------------------
     function watchRoomUsers() {
-        if(roomUsersRef) roomUsersRef.off();
+        if (roomUsersRef) roomUsersRef.off();
         roomUsersRef = database.ref(`voice_rooms/${currentRoomId}/users`);
         roomUsersRef.on('child_added', async (snapshot) => {
             const uid = snapshot.key;
-            if(uid === currentUserId) return;
+            if (uid === currentUserId) return;
+            console.log(`👤 New user: ${uid}`);
             updateParticipantsList();
             setTimeout(() => {
-                if(localStream && currentRoomId && !peerConnections.has(uid)) {
-                    startCallWith(uid).catch(e=>console.warn);
-                }
-            }, 300);
+                if (localStream && !peerConnections.has(uid)) startCallWith(uid);
+            }, 500);
         });
         roomUsersRef.on('child_removed', (snapshot) => {
             const uid = snapshot.key;
-            if(peerConnections.has(uid)) {
+            console.log(`🚪 User left: ${uid}`);
+            if (peerConnections.has(uid)) {
                 peerConnections.get(uid).close();
                 peerConnections.delete(uid);
-                if(remoteAudios.has(uid)) {
-                    remoteAudios.get(uid).srcObject = null;
-                    remoteAudios.delete(uid);
-                }
+            }
+            if (remoteAudios.has(uid)) {
+                remoteAudios.get(uid).srcObject = null;
+                remoteAudios.delete(uid);
             }
             updateParticipantsList();
             updateStatus(`${uid} রুম ছেড়েছেন।`);
@@ -463,60 +447,72 @@
     }
 
     async function updateParticipantsList() {
-        if(!currentRoomId) return;
+        if (!currentRoomId) return;
         const snapshot = await database.ref(`voice_rooms/${currentRoomId}/users`).once('value');
         const users = snapshot.val() || {};
         const userIds = Object.keys(users);
         participantCountSpan.innerText = userIds.length;
-        if(userIds.length === 0) {
-            participantList.innerHTML = '<li style="justify-content: center; color: gray;">কেউ নেই</li>';
+        if (userIds.length === 0) {
+            participantList.innerHTML = '<li style="justify-content: center;">কেউ নেই</li>';
             return;
         }
         let html = '';
-        for(let uid of userIds) {
+        for (let uid of userIds) {
             const isMe = (uid === currentUserId);
-            html += `<li><span>${uid} ${isMe ? '(আপনি)' : ''}</span>${!isMe ? '<span class="badge">🔊 সক্রিয়</span>' : '<span class="badge" style="background:#a0aec0;">আমি</span>'}</li>`;
+            html += `<li>
+                        <span>${uid} ${isMe ? '(আপনি)' : ''}</span>
+                        ${!isMe ? '<span class="badge">🔊 সংযুক্ত</span>' : ''}
+                     </li>`;
         }
         participantList.innerHTML = html;
     }
 
+    // ------------------- কল ছাড়া ও পরিষ্কার -------------------
     async function leaveCall() {
-        if(!currentRoomId || !currentUserId) return;
+        if (!currentRoomId || !currentUserId) return;
         updateStatus("কল ছাড়ার প্রক্রিয়া...");
-        for(let [uid, pc] of peerConnections.entries()) {
+        // সব পিয়ার সংযোগ বন্ধ
+        for (let [uid, pc] of peerConnections.entries()) {
             pc.close();
-            if(remoteAudios.has(uid)) {
+            if (remoteAudios.has(uid)) {
                 remoteAudios.get(uid).srcObject = null;
                 remoteAudios.delete(uid);
             }
         }
         peerConnections.clear();
-        if(localStream) {
+        // লোকাল মাইক বন্ধ
+        if (localStream) {
             localStream.getTracks().forEach(track => track.stop());
             localStream = null;
         }
         isMicActive = false;
         micToggleBtn.innerText = '🎤 মাইক চালু';
         micToggleBtn.disabled = true;
-        await database.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).remove().catch(e=>console.warn);
+        // Firebase থেকে নিজেকে সরানো
+        await database.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).remove().catch(e => console.warn);
+        // সব লিসেনার বন্ধ
         activeListeners.forEach(clean => clean());
         activeListeners = [];
+        // স্টেট রিসেট
         currentRoomId = null;
         currentUserId = null;
         joinBtn.disabled = false;
         leaveBtn.disabled = true;
-        micToggleBtn.disabled = true;
         updateStatus("কল ছেড়েছেন। আবার জয়েন করতে পারেন।");
-        participantList.innerHTML = '<li style="justify-content: center; color: gray;">কেউ নেই</li>';
+        participantList.innerHTML = '<li style="justify-content: center;">কেউ নেই</li>';
         participantCountSpan.innerText = "0";
     }
 
+    // ------------------- কল জয়েন -------------------
     async function joinCall() {
         let room = roomInput.value.trim();
         let userId = userIdInput.value.trim();
-        if(!room) { updateStatus("রুম আইডি দিন!", true); return; }
-        if(!userId) {
-            userId = "ব্যবহারকারী_" + Math.floor(Math.random()*10000);
+        if (!room) {
+            updateStatus("রুম আইডি দিন!", true);
+            return;
+        }
+        if (!userId) {
+            userId = "ব্যবহারকারী_" + Math.floor(Math.random() * 10000);
             userIdInput.value = userId;
         }
         currentRoomId = room;
@@ -524,31 +520,43 @@
         joinBtn.disabled = true;
         leaveBtn.disabled = false;
         updateStatus("মাইক্রোফোন অনুমতি চাচ্ছি...");
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             localStream = stream;
             isMicActive = true;
-            micToggleBtn.innerText = '🔇 মাইক বন্ধ';
             micToggleBtn.disabled = false;
+            micToggleBtn.innerText = '🔇 মাইক বন্ধ';
+
+            // অডিও প্লেব্যাক আনলক করার জন্য একটি নীরব অডিও চালানো
+            const silentAudio = new Audio();
+            silentAudio.src = "data:audio/wav;base64,U3RlYWx0aCBpcyB0aGUgc291bmQgb2Ygc2lsZW5jZS4=";
+            silentAudio.play().catch(e => console.log("Audio unlock not needed"));
+
+            // Firebase এ নিজের উপস্থিতি
             await database.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).set(true);
             setupSignalingListeners();
             watchRoomUsers();
             updateStatus("রুমে জয়েন করেছেন! এখন অন্যদের সাথে কথা বলুন।");
             setTimeout(() => updateParticipantsList(), 500);
-        } catch(err) {
+        } catch (err) {
+            console.error(err);
             updateStatus("মাইক্রোফোন অনুমতি দেননি অথবা ত্রুটি: " + err.message, true);
             joinBtn.disabled = false;
             leaveBtn.disabled = true;
             currentRoomId = null;
             currentUserId = null;
-            if(localStream) { localStream.getTracks().forEach(t=>t.stop()); localStream = null; }
+            if (localStream) {
+                localStream.getTracks().forEach(t => t.stop());
+                localStream = null;
+            }
         }
     }
 
     function toggleMic() {
-        if(!localStream) return;
+        if (!localStream) return;
         const audioTrack = localStream.getAudioTracks()[0];
-        if(audioTrack) {
+        if (audioTrack) {
             audioTrack.enabled = !audioTrack.enabled;
             isMicActive = audioTrack.enabled;
             micToggleBtn.innerText = isMicActive ? '🔇 মাইক বন্ধ' : '🎤 মাইক চালু';
@@ -556,16 +564,17 @@
         }
     }
 
+    // ------------------- ইভেন্ট লিসেনার -------------------
     joinBtn.onclick = joinCall;
     leaveBtn.onclick = leaveCall;
     micToggleBtn.onclick = toggleMic;
 
     window.addEventListener('beforeunload', () => {
-        if(currentRoomId && currentUserId) {
+        if (currentRoomId && currentUserId) {
             database.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).remove();
-            if(localStream) localStream.getTracks().forEach(t => t.stop());
-            peerConnections.forEach(pc => pc.close());
         }
+        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        peerConnections.forEach(pc => pc.close());
     });
 </script>
 </body>
