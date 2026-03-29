@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Easy Premium - গ্রুপ ভয়েস কল (চূড়ান্ত)</title>
+    <title>Easy Premium - গ্রুপ ভয়েস কল (চূড়ান্ত সমাধান)</title>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -30,7 +30,6 @@
         .mic-btn { background: #f59e0b; width: auto; padding: 5px 15px; }
         .footer { font-size: 0.7rem; text-align: center; color: #aaa; margin-top: 20px; }
         .debug-log { font-family: monospace; font-size: 0.7rem; background: rgba(0,0,0,0.5); border-radius: 16px; padding: 8px; margin-top: 15px; max-height: 150px; overflow-y: auto; color: #ccc; }
-        .test-audio-btn { background: #f97316; margin-top: 5px; padding: 6px; font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -66,11 +65,7 @@
             </div>
             <div id="participantGrid" class="participants-grid"><div style="color:gray;">কেউ নেই</div></div>
         </div>
-        <div class="footer">
-            🎧 কথা বললে বৃত্ত ঘুরবে। <br>
-            🔊 অডিও না শুনলে নিচের বাটনে ক্লিক করে স্পিকার টেস্ট করুন।
-            <button id="testAudioBtn" class="test-audio-btn">🔊 স্পিকার টেস্ট (বীপ)</button>
-        </div>
+        <div class="footer">🎧 কথা বললে বৃত্ত ঘুরবে। কনসোল (F12) ও নিচের লগ দেখুন।</div>
         <div id="debugLog" class="debug-log"></div>
     </div>
 </div>
@@ -107,7 +102,6 @@
     const participantCountSpan = document.getElementById('participantCount');
     const micToggleBtn = document.getElementById('micToggle');
     const debugLogDiv = document.getElementById('debugLog');
-    const testAudioBtn = document.getElementById('testAudioBtn');
 
     function addLog(msg, isErr = false) {
         const div = document.createElement('div');
@@ -116,6 +110,7 @@
         debugLogDiv.appendChild(div);
         debugLogDiv.scrollTop = debugLogDiv.scrollHeight;
         while (debugLogDiv.children.length > 50) debugLogDiv.removeChild(debugLogDiv.firstChild);
+        console.log(msg);
     }
 
     function showStatus(msg, isErr = false) {
@@ -139,6 +134,7 @@
     const remoteVolumeLevels = new Map();
     let localAnalyser = null, animFrame = null;
 
+    // উন্নত ICE সার্ভার (STUN + একাধিক TURN)
     const iceServers = [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
@@ -250,6 +246,9 @@
         const pc = new RTCPeerConnection({ iceServers });
         if (localStream) {
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            addLog(`লোকাল ট্র্যাক যোগ হয়েছে ${targetUserId} এর জন্য`);
+        } else {
+            addLog(`লোকাল স্ট্রিম নেই!`, true);
         }
         pc.onicecandidate = event => {
             if (event.candidate) {
@@ -260,7 +259,7 @@
             }
         };
         pc.ontrack = event => {
-            addLog(`📢 ontrack from ${targetUserId}`);
+            addLog(`📢 ontrack ফায়ার হয়েছে ${targetUserId} থেকে`);
             let audio = remoteAudios.get(targetUserId);
             if (!audio) {
                 audio = new Audio();
@@ -271,13 +270,10 @@
                 setupRemoteVolumeDetection(audio, targetUserId);
             }
             audio.srcObject = event.streams[0];
-            // জোর করে আনমিউট ও ভলিউম সেট
             audio.muted = false;
             audio.volume = 1.0;
             audio.play().then(() => {
                 addLog(`অডিও প্লে শুরু: ${targetUserId}`);
-                audio.muted = false;
-                audio.volume = 1.0;
             }).catch(e => {
                 addLog(`অডিও প্লে ব্যর্থ ${targetUserId}: ${e.message}`, true);
                 showStatus(`${targetUserId} এর অডিও বাজাতে সমস্যা। ব্রাউজার সেটিংস চেক করুন।`, true);
@@ -288,13 +284,10 @@
             if (pc.connectionState === 'connected') {
                 showStatus(`${targetUserId} সংযুক্ত`);
                 const audio = remoteAudios.get(targetUserId);
-                if (audio) {
-                    audio.muted = false;
-                    audio.volume = 1.0;
-                }
+                if (audio) { audio.muted = false; audio.volume = 1.0; }
             }
             if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-                addLog(`সংযোগ বন্ধ বা ব্যর্থ ${targetUserId}, পুনরায় চেষ্টা করা হবে`, true);
+                addLog(`সংযোগ বন্ধ বা ব্যর্থ ${targetUserId}`, true);
                 if (peerConnections.has(targetUserId)) peerConnections.delete(targetUserId);
                 if (remoteAudios.has(targetUserId)) {
                     remoteAudios.get(targetUserId).srcObject = null;
@@ -306,7 +299,7 @@
                     if (localStream && currentRoomId && !peerConnections.has(targetUserId)) {
                         startCallWith(targetUserId);
                     }
-                }, 1000);
+                }, 2000);
             }
         };
         pc.oniceconnectionstatechange = () => {
@@ -329,6 +322,7 @@
             await db.ref(`voice_rooms/${currentRoomId}/offers/${targetUserId}`).push({
                 from: currentUserId, offer: offer
             });
+            addLog(`Offer পাঠানো হয়েছে ${targetUserId}`);
         } catch(e) { addLog(`Offer ব্যর্থ ${targetUserId}: ${e.message}`, true); }
     }
 
@@ -349,6 +343,7 @@
                     from: currentUserId, answer: answer
                 });
                 snap.ref.remove();
+                addLog(`Answer পাঠানো হয়েছে ${from}`);
             } catch(e) { addLog(`Offer প্রসেস ব্যর্থ: ${e.message}`, true); }
         }, (err) => addLog(`offersRef লিসেনার এরর: ${err.message}`, true));
         
@@ -362,6 +357,7 @@
                 try {
                     await pc.setRemoteDescription(new RTCSessionDescription(answer));
                     snap.ref.remove();
+                    addLog(`Answer সেট করা হয়েছে ${from}`);
                 } catch(e) { addLog(`Answer সেট ব্যর্থ: ${e.message}`, true); }
             }
         }, (err) => addLog(`answersRef লিসেনার এরর: ${err.message}`, true));
@@ -506,23 +502,6 @@
         }
     }
 
-    // স্পিকার টেস্ট ফাংশন
-    function testSpeaker() {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        oscillator.connect(gain);
-        gain.connect(audioCtx.destination);
-        oscillator.type = 'sine';
-        oscillator.frequency.value = 800;
-        gain.gain.value = 0.3;
-        oscillator.start();
-        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 1);
-        oscillator.stop(audioCtx.currentTime + 1);
-        addLog("স্পিকার টেস্ট: 800Hz বীপ বাজানো হচ্ছে।");
-        audioCtx.resume().catch(e => addLog("AudioContext resume failed", true));
-    }
-
     function showAuthStatus(msg, isErr) {
         authStatus.innerHTML = isErr ? `❌ ${msg}` : `✅ ${msg}`;
         authStatus.className = `status ${isErr ? 'error-notification' : 'success-notification'}`;
@@ -562,7 +541,6 @@
     joinBtn.onclick = joinCall;
     leaveBtn.onclick = leaveCall;
     micToggleBtn.onclick = toggleMic;
-    testAudioBtn.onclick = testSpeaker;
 
     window.addEventListener('beforeunload', () => {
         if (currentRoomId && currentUserId) db.ref(`voice_rooms/${currentRoomId}/users/${currentUserId}`).remove();
