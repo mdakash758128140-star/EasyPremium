@@ -334,7 +334,7 @@ async function sendCompletionEmail(params) {
       accessToken: EMAILJS_PRIVATE_KEY
     };
 
-    // ✅ Trustpilot AFS ইমেইল BCC হিসেবে যোগ করা
+   
     if (trustpilot_afs_email && trustpilot_afs_email.trim() !== '') {
       emailBody.bcc = [trustpilot_afs_email];
       console.log(`📧 Trustpilot AFS email added as BCC: ${trustpilot_afs_email}`);
