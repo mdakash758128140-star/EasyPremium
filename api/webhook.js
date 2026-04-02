@@ -18,12 +18,12 @@ export default async function handler(req, res) {
       // রেফারেন্স পার্স করুন (JSON ফরম্যাট)
       let firebaseOrderId = null;
       let userId = null;
-      let userEmail = null;  // ✅ নতুন: ইমেইল এক্সট্রাক্ট করুন
+      let userEmail = null;
       try {
         const refData = JSON.parse(reference);
         firebaseOrderId = refData.firebaseOrderId;
         userId = refData.userId;
-        userEmail = refData.email;  // ✅ create-order.js থেকে ইমেইল আসছে
+        userEmail = refData.email;
         console.log(`✅ Parsed: firebaseOrderId=${firebaseOrderId}, userId=${userId}, email=${userEmail}`);
       } catch (e) {
         console.error('❌ Failed to parse reference JSON:', e.message);
@@ -35,7 +35,6 @@ export default async function handler(req, res) {
         return res.status(200).json({ received: true, warning: 'No firebaseOrderId' });
       }
 
-      // Firebase কনফিগারেশন
       const FIREBASE_DATABASE_URL = process.env.FIREBASE_DATABASE_URL;
       const FIREBASE_SECRET = process.env.FIREBASE_SECRET;
 
@@ -44,11 +43,10 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Firebase not configured' });
       }
 
-      // Relograde থেকে অর্ডার ডিটেইলস এনে টোকেন/ভাউচার তথ্য সংগ্রহ
       const apiKey = process.env.RELOGRADE_API_KEY;
       let voucherData = null;
-      let productPlatform = null;  // ✅ প্ল্যাটফর্মের নাম রাখার জন্য
-      let orderAmount = null;      // ✅ অর্ডার অ্যামাউন্ট
+      let productPlatform = null;
+      let orderAmount = null;
       let orderCurrency = null;
 
       if (apiKey && trx) {
@@ -60,22 +58,18 @@ export default async function handler(req, res) {
             const orderDetails = await orderRes.json();
             console.log('📦 Order details from Relograde received');
 
-            // 🔥 ইম্প্রুভড টোকেন এক্সট্রাকশন লজিক
             let token = null;
             let voucherLink = null;
             let voucherCode = null;
 
             if (orderDetails.items && orderDetails.items.length > 0) {
               const firstItem = orderDetails.items[0];
-              // প্ল্যাটফর্মের নাম বের করুন (যদি থাকে)
               if (firstItem.productSlug) productPlatform = firstItem.productSlug;
-              // অর্ডারের পরিমাণ ও কারেন্সি
               if (firstItem.amount) orderAmount = firstItem.amount;
               if (firstItem.paymentCurrency) orderCurrency = firstItem.paymentCurrency;
 
               if (firstItem.orderLines && firstItem.orderLines.length > 0) {
                 const firstLine = firstItem.orderLines[0];
-
                 token = firstLine.token || null;
 
                 if (!token && firstLine.product && typeof firstLine.product === 'string') {
@@ -128,7 +122,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // আপডেট ডাটা প্রস্তুত (completed স্ট্যাটাস ও ভাউচার তথ্য একসাথে)
       const updates = {
         status: 'completed',
         completedAt: new Date().toISOString(),
@@ -137,7 +130,7 @@ export default async function handler(req, res) {
         updates.voucherData = voucherData;
       }
 
-      // ========== 1. transactions আপডেট ==========
+      // Transactions আপডেট
       const transactionDirectUrl = `${FIREBASE_DATABASE_URL}/transactions/${firebaseOrderId}.json?auth=${FIREBASE_SECRET}`;
       const directCheck = await fetch(transactionDirectUrl, { method: 'GET' });
 
@@ -157,7 +150,7 @@ export default async function handler(req, res) {
         await updateTransactionViaSearch(firebaseOrderId, updates, FIREBASE_DATABASE_URL, FIREBASE_SECRET);
       }
 
-      // ========== 2. userOrders আপডেট ==========
+      // UserOrders আপডেট
       if (userId) {
         const userUpdates = {
           status: 'completed'
@@ -189,8 +182,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // ========== 3. Trustpilot AFS ইমেইল পাঠানো (নতুন অংশ) ==========
-      // শুধুমাত্র তখন ইমেইল পাঠানো হবে যখন গ্রাহকের ইমেইল আছে এবং ভাউচার ডাটা আছে (অর্ডার সফল)
+      // ========== Trustpilot AFS ইমেইল পাঠানো ==========
       if (userEmail && voucherData && voucherData.voucherLink) {
         await sendCompletionEmail({
           to_email: userEmail,
@@ -202,7 +194,6 @@ export default async function handler(req, res) {
           amount: orderAmount,
           currency: orderCurrency || 'BDT',
           user_id: userId || 'guest',
-          trustpilot_afs_email: process.env.TRUSTPILOT_AFS_EMAIL
         });
       } else {
         console.log('ℹ️ Skipping Trustpilot email: missing email or voucher data');
@@ -216,7 +207,7 @@ export default async function handler(req, res) {
   }
 }
 
-// সার্চ করে ট্রানজেকশন আপডেট করার ফাংশন (পুরনো পদ্ধতি)
+// হেল্পার ফাংশন (অপরিবর্তিত)
 async function updateTransactionViaSearch(orderId, updates, dbUrl, secret) {
   const findUrl = `${dbUrl}/transactions.json?orderBy="orderId"&equalTo="${orderId}"&auth=${secret}`;
   const findRes = await fetch(findUrl);
@@ -241,7 +232,6 @@ async function updateTransactionViaSearch(orderId, updates, dbUrl, secret) {
   }
 }
 
-// সার্চ করে ইউজার অর্ডার আপডেট করার ফাংশন (পুরনো পদ্ধতি)
 async function updateUserOrderViaSearch(userId, orderId, updates, dbUrl, secret) {
   const userOrdersUrl = `${dbUrl}/userOrders/${userId}.json?auth=${secret}`;
   const userOrdersRes = await fetch(userOrdersUrl);
@@ -266,7 +256,7 @@ async function updateUserOrderViaSearch(userId, orderId, updates, dbUrl, secret)
   }
 }
 
-// ========== Trustpilot AFS ইমেইল পাঠানোর ফাংশন (নতুন) ==========
+// Trustpilot AFS ইমেইল পাঠানোর ফাংশন (সংশোধিত)
 async function sendCompletionEmail(params) {
   const {
     to_email,
@@ -278,14 +268,13 @@ async function sendCompletionEmail(params) {
     amount,
     currency,
     user_id,
-    trustpilot_afs_email
   } = params;
 
-  // EmailJS credentials (একই এনভায়রনমেন্ট ভেরিয়েবল ব্যবহার করবে)
   const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
-  const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID_COMPLETION || process.env.EMAILJS_TEMPLATE_ID; // আলাদা টেমপ্লেট থাকলে ব্যবহার করুন, না থাকলে আগেরটা
+  const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID_COMPLETION || process.env.EMAILJS_TEMPLATE_ID;
   const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
   const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
+  const TRUSTPILOT_AFS_EMAIL = process.env.TRUSTPILOT_AFS_EMAIL;
 
   if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
     console.log('❌ EmailJS credentials missing for completion email');
@@ -296,19 +285,8 @@ async function sendCompletionEmail(params) {
     return false;
   }
 
-  // Trustpilot স্ট্রাকচারড ডাটা (ইমেইলের HTML বডিতে বসানোর জন্য)
-  const trustpilotStructuredData = `
-    <script type="application/json+trustpilot">
-    {
-      "recipientName": "${to_name.replace(/"/g, '\\"')}",
-      "recipientEmail": "${to_email}",
-      "referenceId": "${order_id}",
-      "orderValue": ${amount || 0},
-      "orderCurrency": "${currency || 'BDT'}",
-      "productSku": "${platform || ''}"
-    }
-    </script>
-  `;
+  // Trustpilot স্ট্রাকচারড ডাটা (ইমেইলের HTML বডিতে যোগ করতে চাইলে নিচের ভেরিয়েবল ব্যবহার করুন)
+  // const trustpilotStructuredData = `<script type="application/json+trustpilot">{"recipientName":"${to_name.replace(/"/g, '\\"')}","recipientEmail":"${to_email}","referenceId":"${order_id}","orderValue":${amount || 0},"orderCurrency":"${currency || 'BDT'}","productSku":"${platform || ''}"}</script>`;
 
   try {
     const templateParams = {
@@ -322,8 +300,6 @@ async function sendCompletionEmail(params) {
       user_id: user_id,
       from_name: 'Easy Premium',
       reply_to: 'support@easy-premium.com',
-      // আপনার EmailJS টেমপ্লেটে {{{trustpilot_script}}} ভেরিয়েবল থাকলে নিচের লাইন আনকমেন্ট করুন
-      // trustpilot_script: trustpilotStructuredData
     };
 
     const emailBody = {
@@ -334,10 +310,12 @@ async function sendCompletionEmail(params) {
       accessToken: EMAILJS_PRIVATE_KEY
     };
 
-   
-    if (trustpilot_afs_email && trustpilot_afs_email.trim() !== '') {
-      emailBody.bcc = [trustpilot_afs_email];
-      console.log(`📧 Trustpilot AFS email added as BCC: ${trustpilot_afs_email}`);
+    // ✅ Trustpilot BCC যোগ করা হচ্ছে (শুধুমাত্র যদি ইমেলটি সেট করা থাকে)
+    if (TRUSTPILOT_AFS_EMAIL && TRUSTPILOT_AFS_EMAIL.trim() !== '') {
+      // EmailJS API BCC সমর্থন করে কিনা নিশ্চিত নন; তাই একটি সতর্কতা যোগ করছি।
+      // যদি BCC কাজ না করে, তাহলে নিচের লাইনের পরিবর্তে আলাদা SMTP ব্যবহার করুন।
+      emailBody.bcc = [TRUSTPILOT_AFS_EMAIL];
+      console.log(`📧 Trustpilot AFS email added as BCC: ${TRUSTPILOT_AFS_EMAIL}`);
     } else {
       console.warn('⚠️ TRUSTPILOT_AFS_EMAIL not set, skipping BCC');
     }
