@@ -32,6 +32,15 @@
         .footer { text-align:center; color:#888; font-size:0.8rem; margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,152,0,0.2); }
         .support-note { background:rgba(0,188,212,0.1); border-left:4px solid #00bcd4; padding:12px 15px; border-radius:8px; margin:20px 0; color:#b0bec5; font-size:0.9rem; }
         @media (max-width:500px){ .info-grid{grid-template-columns:1fr;gap:5px;} .info-value{text-align:left;} }
+        
+        /* Widget container - only spacing, no visual changes to original design */
+        .trustpilot-widget-wrapper {
+            margin: 20px 0;
+        }
+        /* Ensure widget respects card-like spacing without altering background */
+        .trustpilot-widget {
+            min-height: 52px;
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -47,6 +56,21 @@
                 <p>তথ্য লোড হচ্ছে...</p>
             </div>
         </div>
+        
+        <!-- ⭐ Trustpilot Review Collector Widget - সংযোজিত হয়েছে, ডিজাইনে কোনো পরিবর্তন ছাড়াই ⭐ -->
+        <div class="trustpilot-widget-wrapper">
+            <div class="trustpilot-widget" 
+                 data-locale="en-US" 
+                 data-template-id="56278e9abfbbba0bdcd568bc" 
+                 data-businessunit-id="69c7e068b44dfcea3ab1aece" 
+                 data-style-height="52px" 
+                 data-style-width="100%" 
+                 data-token="feb43707-17b9-4562-9e16-423aa5cc3709">
+                <a href="https://www.trustpilot.com/review/easy-premium.com" target="_blank" rel="noopener">Trustpilot</a>
+            </div>
+        </div>
+        <!-- Trustpilot widget end -->
+        
         <div class="support-note">
             <i class="fas fa-info-circle"></i> আপনার প্রোফাইল চেক করুন অর্ডার এর সমস্ত তথ্য বা ভাউচার পাবেন
         </div>
@@ -54,6 +78,10 @@
             <p>© 2026 Easy Premium · সর্বস্বত্ব সংরক্ষিত</p>
         </div>
     </div>
+    
+    <!-- Trustpilot Bootstrap script (একবার লোড হবে, UI তে কোন প্রভাব ফেলবে না) -->
+    <script type="text/javascript" src="//widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js" async></script>
+    
     <script>
         (function(){
             const content = document.getElementById('content');
@@ -81,7 +109,7 @@
                 } catch { return iso; }
             }
 
-            // 🔥 স্ট্যাটাস আপডেট করার ফাংশন
+            // স্ট্যাটাস আপডেট (যদি প্রয়োজন হয়) — বিদ্যমান ফাংশন অপরিবর্তিত
             async function updateOrderStatus(orderId) {
                 if (!orderId) return;
                 try {
@@ -94,14 +122,12 @@
                     const order = result.data;
                     if (!order) return;
 
-                    // স্ট্যাটাস বাংলায় রূপান্তর
                     let statusBangla = order.orderStatus || 'অজানা';
                     if (statusBangla === 'created') statusBangla = 'অপেক্ষমান';
                     else if (statusBangla === 'finished') statusBangla = 'সম্পন্ন';
                     else if (statusBangla === 'cancelled') statusBangla = 'বাতিল';
                     else statusBangla = statusBangla;
 
-                    // ডমে স্ট্যাটাস ফিল্ড খুঁজে আপডেট
                     const labels = document.querySelectorAll('.info-label');
                     for (let label of labels) {
                         if (label.textContent.trim() === 'স্ট্যাটাস') {
@@ -120,7 +146,6 @@
             function renderOrder(data) {
                 if(!data) return '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>ডেটা পাওয়া যায়নি</h3></div>';
                 
-                // লেবেল ম্যাপিং
                 const labels = {
                     OrderId:'অর্ডার আইডি', 
                     PaymentMethods:'পেমেন্ট পদ্ধতি', 
@@ -138,16 +163,12 @@
                     totalAmount:'মোট মূল্য'
                 };
                 
-                // ফেস ভ্যালু ডিসপ্লে
                 let faceDisplay = data.faceValue ? '$' + data.faceValue : '—';
-                
-                // স্ট্যাটাস টেক্সট বাংলায় (প্রাথমিক)
                 let statusText = data.status || 'pending';
                 if(statusText === 'pending') statusText = 'অপেক্ষমান';
                 else if(statusText === 'completed') statusText = 'সম্পন্ন';
                 else if(statusText === 'cancelled') statusText = 'বাতিল';
                 
-                // মূল্য ও মোট মূল্য ডিসপ্লে
                 let amountDisplay = data.amount || '0';
                 let totalDisplay = data.totalAmount || data.amount || '0';
                 let serviceDisplay = data.serviceCharge || '0';
@@ -217,7 +238,6 @@
             
             content.innerHTML = renderOrder(orderData);
             
-
             if (orderData && orderData.OrderId) {
                 updateOrderStatus(orderData.OrderId);
             }
