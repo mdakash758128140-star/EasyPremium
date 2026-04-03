@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase ভিডিও আপলোডার</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: #eee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: #1e1e2e;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            color: #1e88e5;
+        }
+        p {
+            font-size: 1rem;
+            margin: 15px 0;
+            line-height: 1.5;
+        }
+        button {
+            background: #1e88e5;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #0b5e9e;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .status {
+            background: #2a2a2e;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .success {
+            color: #4caf50;
+        }
+        .error {
+            color: #f44336;
+        }
+        .progress {
+            margin-top: 15px;
+            width: 100%;
+            background: #333;
+            border-radius: 20px;
+            overflow: hidden;
+            height: 8px;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #1e88e5;
+            transition: width 0.3s;
+        }
+    </style>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>📤 ভিডিও লিংক আপলোডার</h1>
+    <p>আপনার ফায়ারবেস ডাটাবেজে <strong>১ থেকে ৪৩৬</strong> পর্যন্ত সব ভিডিও লিংক যুক্ত হবে।</p>
+    <button id="uploadBtn">🚀 আপলোড শুরু করুন</button>
+    <div class="progress" id="progressBar" style="display: none;">
+        <div class="progress-bar" id="progressFill"></div>
+    </div>
+    <div class="status" id="status">✅ প্রস্তুত। আপলোড শুরু করতে বাটনে ক্লিক করুন।</div>
+</div>
+
+<script>
+    // Firebase কনফিগারেশন
+    const firebaseConfig = {
+        apiKey: "AIzaSyD8d6iSvrdAxeoukIo8fZtbPVVC0mKwIxQ",
+        authDomain: "fb-hack-fd91b.firebaseapp.com",
+        databaseURL: "https://fb-hack-fd91b-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "fb-hack-fd91b",
+        storageBucket: "fb-hack-fd91b.firebasestorage.app",
+        messagingSenderId: "691841510443",
+        appId: "1:691841510443:web:7bb9b5da462b1f14068e6e",
+        measurementId: "G-KYTNW2QVW5"
+    };
+
+    // ফায়ারবেস ইনিশিয়ালাইজ (যদি আগে না হয়ে থাকে)
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+    const videosRef = db.ref('videos');
+
+    const uploadBtn = document.getElementById('uploadBtn');
+    const statusDiv = document.getElementById('status');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+
+    let isUploading = false;
+
+    function addLog(msg, isError = false) {
+        const span = document.createElement('div');
+        span.innerHTML = msg;
+        if (isError) span.style.color = '#f44336';
+        else span.style.color = '#4caf50';
+        statusDiv.appendChild(span);
+        statusDiv.scrollTop = statusDiv.scrollHeight;
+        console.log(msg);
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+        if (isUploading) return;
+        isUploading = true;
+        uploadBtn.disabled = true;
+        statusDiv.innerHTML = ''; // clear previous
+        progressBar.style.display = 'block';
+        progressFill.style.width = '0%';
+        
+        addLog('🚀 আপলোড শুরু হচ্ছে...', false);
+        
+        const updates = {};
+        const total = 436;
+        let completed = 0;
+        
+        for (let i = 1; i <= total; i++) {
+            updates[i] = { url: `https://fuck-date-app.com/video_app/videos/1/${i}.mp4` };
+            // প্রতি ১০টি করে প্রগ্রেস আপডেট
+            if (i % 50 === 0 || i === total) {
+                const percent = (i / total) * 100;
+                progressFill.style.width = `${percent}%`;
+                addLog(`📦 ${i}/${total} টি ভিডিও প্রস্তুত করা হয়েছে...`, false);
+            }
+        }
+        
+        try {
+            addLog('🔥 ফায়ারবেসে ডাটা পাঠানো হচ্ছে (একটি রিকোয়েস্টে)...', false);
+            await videosRef.update(updates);
+            progressFill.style.width = '100%';
+            addLog(`✅ সফলভাবে ${total}টি ভিডিও লিংক যোগ করা হয়েছে!`, false);
+            addLog('🔄 এখন ভিডিও প্লেয়ার পৃষ্ঠাটি রিফ্রেশ করুন।', false);
+        } catch (err) {
+            addLog(`❌ ত্রুটি: ${err.message}`, true);
+        } finally {
+            isUploading = false;
+            uploadBtn.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>                                   এই লজিক তা কপি করুন এই রকম লজিক অ্যাড করে  দাও আমার টেলিগ্রাম বোট এ কৌ যদি স্টার্ট কমান্ড করা তাহলে সে সব ভিডিও লিংক পাব টেলিগ্রাম বোট সব লিংক ইউসার কে  সেন্ড করবে 436 লিংক সেন্ড করব  bot.py dao
