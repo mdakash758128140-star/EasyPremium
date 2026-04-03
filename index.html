@@ -99,6 +99,9 @@
     <!-- EmailJS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     
+    <!-- ================== TRUSTPILOT SCRIPT ================== -->
+    <script type="text/javascript" src="//widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js" async></script>
+    
     <!-- ================== সিকিউরিটি মেটা ট্যাগ ================== -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:; style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval';">
     <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -110,7 +113,7 @@
     <meta http-equiv="Expires" content="0">
     
     <style>
-        /* ========== সম্পূর্ণ আগের CSS ========== */
+        /* ========== সম্পূর্ণ আগের CSS (অপরিবর্তিত) ========== */
         * {
             margin: 0;
             padding: 0;
@@ -402,7 +405,33 @@
         }
         .buy-button:hover { background: linear-gradient(45deg, #ff5722, #ff9800); }
         
-        /* মোডাল */
+        /* Trustpilot Widget for Desktop only */
+        .trustpilot-desktop {
+            display: block;
+            margin-left: 20px;
+            min-width: 200px;
+        }
+        
+        /* মোবাইলে Trustpilot লুকানো */
+        @media (max-width: 768px) {
+            .trustpilot-desktop {
+                display: none !important;
+            }
+            .search-container { display: none !important; }
+            .hero h1 { font-size: 1.7rem; }
+            .platforms-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+            .drawer { width: 80%; max-width: 300px; }
+        }
+        
+        /* ট্যাবলেট ও ডেস্কটপে Trustpilot দেখাবে */
+        @media (min-width: 769px) {
+            .trustpilot-desktop {
+                display: flex;
+                align-items: center;
+            }
+        }
+        
+        /* মোডাল, ড্রয়ার, ফুটার ইত্যাদি আগের মতোই */
         .login-modal {
             display: none;
             position: fixed;
@@ -463,7 +492,6 @@
         }
         #closeLoginBtn:hover { border-color: #ff9800; color: #ff9800; }
         
-        /* প্রোফাইল মোডাল (রেখেছি) */
         .profile-modal {
             display: none;
             position: fixed;
@@ -558,7 +586,6 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* ফুটার */
         .footer {
             background: rgba(10, 10, 26, 0.95);
             padding: 40px 20px 30px;
@@ -616,7 +643,6 @@
         .social-link:nth-child(6) i { color: #0088cc; }
         .copyright { color: #b0bec5; font-size: 0.85rem; line-height: 1.6; max-width: 800px; margin: 0 auto; }
         
-        /* ড্রয়ার */
         .drawer-overlay {
             position: fixed;
             top: 0;
@@ -682,7 +708,6 @@
         .drawer-btn:hover { background: #ff9800; color: #000; transform: translateX(-5px); }
         .drawer-btn:hover i { color: #000; }
         
-        /* ফ্লোটিং মেসেঞ্জার */
         .messenger-float {
             position: fixed;
             bottom: 30px;
@@ -709,7 +734,6 @@
             100% { box-shadow: 0 0 0 0 rgba(0, 132, 255, 0); }
         }
         
-        /* ওভারলে */
         .website-overlay {
             position: fixed;
             top: 0;
@@ -761,12 +785,6 @@
         }
         .accept-btn:hover { background: linear-gradient(45deg, #ff2222, #0008ff); transform: translateY(-2px); }
         
-        @media (max-width: 768px) {
-            .search-container { display: none !important; }
-            .hero h1 { font-size: 1.7rem; }
-            .platforms-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
-            .drawer { width: 80%; max-width: 300px; }
-        }
         @media (max-width: 480px) {
             .header { padding: 10px 12px; }
             .logo-image-container { width: 40px; height: 40px; min-width: 40px; }
@@ -793,7 +811,6 @@
         }
     </style>
     
-    <!-- No JavaScript = No Access -->
     <noscript>
         <style> body { display: none !important; } html { background: #000 !important; height: 100% !important; overflow: hidden !important; } </style>
         <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:#000;color:#ff0000;display:flex;align-items:center;justify-content:center;z-index:999999;font-family:monospace;text-align:center;flex-direction:column;">
@@ -831,7 +848,7 @@
         </div>
     </div>
 
-    <!-- Profile Modal (রেখেছি) -->
+    <!-- Profile Modal -->
     <div id="profileModal" class="profile-modal">
         <div class="profile-content">
             <div class="profile-header">
@@ -872,6 +889,12 @@
                     <input type="text" id="searchInput" class="search-input" placeholder="সার্চ করুন...">
                     <button id="searchBtn" class="search-btn"><i class="fas fa-search"></i></button>
                     <div id="searchResults" class="search-results"></div>
+                </div>
+            </div>
+            <!-- Trustpilot Widget (Desktop only) -->
+            <div class="trustpilot-desktop">
+                <div class="trustpilot-widget" data-locale="en-US" data-template-id="56278e9abfbbba0bdc568bc" data-businessunit-id="69c7e068b44dfcea3ab1aec" data-style-height="52px" data-style-width="200px" data-token="81a520aa-de6a-411b-904c-abd490ce881e">
+                    <a href="https://www.trustpilot.com/review/easy-premium.com" target="_blank" rel="noopener">TrustPilot</a>
                 </div>
             </div>
         </div>
@@ -1042,7 +1065,7 @@
             } catch(error) { loadingOverlay.style.display = 'none'; alert('অর্ডার ব্যর্থ: ' + error.message); }
         }
         
-        // ================== প্ল্যাটফর্ম লোড (সঠিক পাথ: pricingPlans1) ==================
+        // ================== প্ল্যাটফর্ম লোড ==================
         function loadPlatforms() {
             database.ref('publicData/pricingPlans1').on('value', (snapshot) => {
                 const data = snapshot.val();
@@ -1166,7 +1189,7 @@
         document.addEventListener('DOMContentLoaded', function() { checkCookieConsent(); loadPlatforms(); });
     </script>
 
-    <!-- ================== সম্পূর্ণ সিকিউরিটি স্ক্রিপ্ট (Privacy Policy পৃষ্ঠার মতো) ================== -->
+    <!-- ================== সিকিউরিটি স্ক্রিপ্ট (অপরিবর্তিত) ================== -->
     <script>
     (function() {
         'use strict';
@@ -1181,17 +1204,14 @@
             REDIRECT_URL: 'easy-premium.com/privacy-refund-policy-terms-of-service.html'
         };
         
-        // HTTPS ফোর্স
         if (CONFIG.ENFORCE_HTTPS && location.protocol !== 'https:' && location.hostname !== 'localhost' && !location.hostname.includes('127.0.0.1')) {
             location.replace('https://' + location.host + location.pathname + location.search);
         }
         
-        // ক্লিকজ্যাকিং প্রোটেকশন
         if (self !== top) {
             try { top.location.href = self.location.href; } catch(e) { document.body.innerHTML = '<h1 style="color:red;text-align:center;padding:50px;">Access Denied</h1>'; throw new Error('Clickjacking protection'); }
         }
         
-        // DevTools Detection with Immediate Redirect
         let devToolsOpened = false;
         function detectDevTools() {
             const start = performance.now();
@@ -1206,7 +1226,6 @@
         setInterval(detectDevTools, 1000);
         setTimeout(detectDevTools, 500);
         
-        // Rate Limiting
         window._rateLimitStore = window._rateLimitStore || { attempts: {}, blockUntil: {} };
         window.checkRateLimit = function(action, userId = 'anonymous') {
             const key = `${action}_${userId}`;
@@ -1225,7 +1244,6 @@
             return { allowed: true };
         };
         
-        // Session Timeout
         let sessionTimer;
         function resetSessionTimer() {
             if (sessionTimer) clearTimeout(sessionTimer);
@@ -1238,7 +1256,6 @@
         }
         ['click', 'keypress', 'scroll', 'mousemove', 'touchstart'].forEach(event => document.addEventListener(event, resetSessionTimer, { passive: true }));
         
-        // XSS Protection
         function sanitizeInput(input) {
             if (typeof input !== 'string') return input;
             return input.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/\//g, '&#x2F;').replace(/\\/g, '&#x5C;').replace(/`/g, '&#96;').replace(/=/g, '&#61;');
@@ -1257,7 +1274,6 @@
         const formObserver = new MutationObserver(() => setupFormProtection());
         formObserver.observe(document.body, { childList: true, subtree: true });
         
-        // LocalStorage Encryption
         const originalSetItem = localStorage.setItem, originalGetItem = localStorage.getItem;
         const sensitiveKeys = ['user', 'session', 'token', 'auth'];
         localStorage.setItem = function(key, value) {
@@ -1273,7 +1289,6 @@
             return originalGetItem.call(this, key);
         };
         
-        // Keyboard Shortcuts Block
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.keyCode === 85) { e.preventDefault(); return false; }
             if (e.ctrlKey && e.keyCode === 83) { e.preventDefault(); return false; }
@@ -1281,7 +1296,6 @@
             if (e.keyCode === 123) { e.preventDefault(); return false; }
         });
         
-        // Right-click Protection
         document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
         document.addEventListener('mousedown', function(e) { if (e.button === 2) { e.preventDefault(); return false; } });
         document.addEventListener('touchstart', function(e) {
@@ -1290,7 +1304,6 @@
             if (e.touches.length === 1) { touchTimer = setTimeout(() => e.preventDefault(), 500); document.addEventListener('touchend', handleTouchEnd, { once: true }); }
         }, { passive: false });
         
-        // Rate limit for order form
         if (window.purchaseForm) {
             const form = window.purchaseForm;
             const originalHandler = form.onsubmit;
