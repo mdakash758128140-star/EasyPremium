@@ -27,17 +27,15 @@
         .price-highlight { background:rgba(255,152,0,0.15); border-radius:50px; padding:18px; text-align:center; margin:20px 0; border:1px solid #ff9800; }
         .price-highlight .label { color:#b0bec5; font-size:1.1rem; }
         .price-highlight .value { color:#ff0000; font-size:2rem; font-weight:800; margin-left:10px; }
-        .print-btn { background:linear-gradient(45deg,#ff9800,#ff2222); color:white; border:none; padding:16px 30px; border-radius:60px; font-size:1.2rem; font-weight:600; cursor:pointer; width:100%; max-width:300px; margin:20px auto 0; display:block; transition:0.3s; border:1px solid #ff9800; }
-        .print-btn:hover { background:linear-gradient(45deg,#ff2222,#0008ff); transform:translateY(-3px); box-shadow:0 10px 20px rgba(255,152,0,0.4); }
         .footer { text-align:center; color:#888; font-size:0.8rem; margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,152,0,0.2); }
         .support-note { background:rgba(0,188,212,0.1); border-left:4px solid #00bcd4; padding:12px 15px; border-radius:8px; margin:20px 0; color:#b0bec5; font-size:0.9rem; }
         @media (max-width:500px){ .info-grid{grid-template-columns:1fr;gap:5px;} .info-value{text-align:left;} }
         
-        /* Widget container - only spacing, no visual changes to original design */
+        /* Widget wrapper styling - only spacing, no visual changes to your design */
         .trustpilot-widget-wrapper {
-            margin: 20px 0;
+            margin-top: 20px;
+            margin-bottom: 5px;
         }
-        /* Ensure widget respects card-like spacing without altering background */
         .trustpilot-widget {
             min-height: 52px;
         }
@@ -56,21 +54,6 @@
                 <p>তথ্য লোড হচ্ছে...</p>
             </div>
         </div>
-        
-        <!-- ⭐ Trustpilot Review Collector Widget - সংযোজিত হয়েছে, ডিজাইনে কোনো পরিবর্তন ছাড়াই ⭐ -->
-        <div class="trustpilot-widget-wrapper">
-            <div class="trustpilot-widget" 
-                 data-locale="en-US" 
-                 data-template-id="56278e9abfbbba0bdcd568bc" 
-                 data-businessunit-id="69c7e068b44dfcea3ab1aece" 
-                 data-style-height="52px" 
-                 data-style-width="100%" 
-                 data-token="feb43707-17b9-4562-9e16-423aa5cc3709">
-                <a href="https://www.trustpilot.com/review/easy-premium.com" target="_blank" rel="noopener">Trustpilot</a>
-            </div>
-        </div>
-        <!-- Trustpilot widget end -->
-        
         <div class="support-note">
             <i class="fas fa-info-circle"></i> আপনার প্রোফাইল চেক করুন অর্ডার এর সমস্ত তথ্য বা ভাউচার পাবেন
         </div>
@@ -79,7 +62,7 @@
         </div>
     </div>
     
-    <!-- Trustpilot Bootstrap script (একবার লোড হবে, UI তে কোন প্রভাব ফেলবে না) -->
+    <!-- Trustpilot Bootstrap script -->
     <script type="text/javascript" src="//widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js" async></script>
     
     <script>
@@ -109,7 +92,7 @@
                 } catch { return iso; }
             }
 
-            // স্ট্যাটাস আপডেট (যদি প্রয়োজন হয়) — বিদ্যমান ফাংশন অপরিবর্তিত
+            // স্ট্যাটাস আপডেট ফাংশন (অপরিবর্তিত)
             async function updateOrderStatus(orderId) {
                 if (!orderId) return;
                 try {
@@ -172,7 +155,6 @@
                 let amountDisplay = data.amount || '0';
                 let totalDisplay = data.totalAmount || data.amount || '0';
                 let serviceDisplay = data.serviceCharge || '0';
-                let currencySymbol = data.currency || '৳';
                 
                 if(data.currency) {
                     amountDisplay = data.amount + ' ' + data.currency;
@@ -206,12 +188,24 @@
                 }
                 
                 html += `<div class="info-label">${labels.status}</div><div class="info-value">${statusText}</div>`;
-                
                 html += '</div>';
                 
                 html += `<div class="price-highlight"><span class="label">সর্বমোট:</span><span class="value">${totalDisplay}</span></div>`;
                 
-                html += `<button class="print-btn" onclick="window.print()"><i class="fas fa-print"></i> প্রিন্ট / ডাউনলোড</button>`;
+                // 🔁 প্রিন্ট বাটন সরানো হয়েছে এবং এর জায়গায় Trustpilot রিভিউ কালেক্টর যুক্ত করা হয়েছে
+                html += `
+                    <div class="trustpilot-widget-wrapper">
+                        <div class="trustpilot-widget" 
+                             data-locale="en-US" 
+                             data-template-id="56278e9abfbbba0bdcd568bc" 
+                             data-businessunit-id="69c7e068b44dfcea3ab1aece" 
+                             data-style-height="52px" 
+                             data-style-width="100%" 
+                             data-token="feb43707-17b9-4562-9e16-423aa5cc3709">
+                            <a href="https://www.trustpilot.com/review/easy-premium.com" target="_blank" rel="noopener">Trustpilot</a>
+                        </div>
+                    </div>
+                `;
                 
                 return html;
             }
