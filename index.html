@@ -886,9 +886,8 @@
     <div id="drawer" class="drawer">
         <button class="drawer-close" id="drawerClose"><i class="fas fa-times"></i></button>
         <div class="drawer-buttons">
-            <a href="https://easy-premium.com/Profile.html" class="drawer-btn">প্রোফাইল</a>
-            <a href="https://easy-premium.com/Review.html" class="drawer-btn">ভয়েস রিভিউ</a>
-            <a href="https://easy-premium.com/AccountDelete.html" class="drawer-btn">অ্যাকাউন্ট ডিলিট</a>
+            <a href="https://www.easy-premium.com/Profile" class="drawer-btn">প্রোফাইল</a>
+            <a href="https://www.easy-premium.com/AccountDelete" class="drawer-btn">অ্যাকাউন্ট ডিলিট</a>
         </div>
     </div>
 
@@ -906,10 +905,10 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="footer-policy-links">
-            <a href="https://easy-premium.com/privacy-refund-policy-terms-of-service.html?data=PrivacyPolicy">Privacy Policy</a>
-            <a href="https://easy-premium.com/privacy-refund-policy-terms-of-service.html?data=PaymentSolutions">Payment Solutions</a>
-            <a href="https://easy-premium.com/privacy-refund-policy-terms-of-service.html?data=TermsandConditions">Terms and Conditions</a>
-            <a href="https://easy-premium.com/privacy-refund-policy-terms-of-service.html?data=RefundandReturnsPolicy">Refund and Returns Policy</a>
+            <a href="https://easy-premium.com/privacy-refund-policy-terms-of-service?data=PrivacyPolicy">Privacy Policy</a>
+            <a href="https://easy-premium.com/privacy-refund-policy-terms-of-service?data=PaymentSolutions">Payment Solutions</a>
+            <a href="https://easy-premium.com/privacy-refund-policy-terms-of-service?data=TermsandConditions">Terms and Conditions</a>
+            <a href="https://easy-premium.com/privacy-refund-policy-terms-of-service?data=RefundandReturnsPolicy">Refund and Returns Policy</a>
         </div>
         <div class="social-links">
             <a href="https://m.me/906635592542978" class="social-link"><i class="fab fa-facebook"></i></a>
@@ -993,7 +992,7 @@
         drawer.addEventListener('click', e => e.stopPropagation());
         
         // ================== কার্ট ক্লিক ==================
-        cartIcon.addEventListener('click', function() { if (!checkCookieConsent()) return; window.location.href = 'https://easy-premium.com/Profile.html'; });
+        cartIcon.addEventListener('click', function() { if (!checkCookieConsent()) return; window.location.href = 'https://www.asy-premium.com/Profile'; });
         
         closeLoginBtn.addEventListener('click', () => loginModal.style.display = 'none');
         loginModal.addEventListener('click', e => { if (e.target === loginModal) loginModal.style.display = 'none'; });
@@ -1034,7 +1033,7 @@
                 const dataString = `${dataObj.orderId}|${dataObj.platformId}|${dataObj.price}|${dataObj.timestamp}|${dataObj.userId}|${dataObj.email}|${dataObj.adminGeneratedAt}`;
                 let encodedData = btoa(dataString);
                 encodedData = encodeURIComponent(encodedData);
-                const paymentLink = `https://www.easy-premium.com/Pay.html?data=${encodedData}&v=2`;
+                const paymentLink = `https://www.easy-premium.com/Pay?data=${encodedData}&v=2`;
                 const orderData = { orderId: orderId, userId: user.uid, userEmail: user.email, platform: purchaseData.platformName, platformId: purchaseData.platformId, price: purchaseData.price, orderDate: new Date().toISOString(), status: 'pending', paymentLink: paymentLink, timestamp: firebase.database.ServerValue.TIMESTAMP, adminGeneratedAt: adminGeneratedAt };
                 await database.ref(`transactions/${orderId}`).set(orderData);
                 await database.ref(`userOrders/${user.uid}/${orderId}`).set({ orderId: orderId, platform: purchaseData.platformName, price: purchaseData.price, status: 'pending', orderDate: orderData.orderDate, platformId: purchaseData.platformId });
@@ -1178,7 +1177,7 @@
             ALERT_ON_DEVTOOLS: false,
             ENABLE_ACTIVITY_LOG: false, 
             ENFORCE_HTTPS: true,
-            REDIRECT_URL: 'easy-premium.com/privacy-refund-policy-terms-of-service.html'
+            REDIRECT_URL: 'https://www.easy-premium.com/privacy-refund-policy-terms-of-service'
         };
         
         // HTTPS ফোর্স
