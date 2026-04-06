@@ -391,7 +391,6 @@
     <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
     
-    <!-- No Script Fallback -->
     <noscript>
         <style>body { display: none !important; }</style>
         <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:#000;color:#ff0000;display:flex;align-items:center;justify-content:center;z-index:999999;">
@@ -400,7 +399,7 @@
     </noscript>
     
     <script>
-        // Encode Firebase Config (Base64)
+        // Firebase config (unchanged)
         const encodedFirebaseConfig = "ewogICJhcGlLZXkiOiAiQUl6YVN5QnQ5dDZtY2pVdFh4WDJpZ0FKZHNldUlJYzhwUF9RUEV3IiwKICAiYXV0aERvbWFpbiI6ICJlYXN5LXByZW1pdW0uZmlyZWJhc2VhcHAuY29tIiwKICAiZGF0YWJhc2VVUkwiOiAiaHR0cHM6Ly9lYXN5LXByZW1pdW0tZGVmYXVsdC1ydGRiLmFzaWEtc291dGhlYXN0MS5maXJlYmFzZWRhdGFiYXNlLmFwcCIsCiAgInByb2plY3RJZCI6ICJlYXN5LXByZW1pdW0iLAogICJzdG9yYWdlQnVja2V0IjogImVhc3ktcHJlbWl1bS5maXJlYmFzZXN0b3JhZ2UuYXBwIiwKICAibWVzc2FnaW5nU2VuZGVySWQiOiAiMTU1ODkxMjUyMjY1IiwKICAiYXBwSWQiOiAiMToxNTU4OTEyNTIyNjU6d2ViOjc3YWI0MWRlMjQyMzFlOGU1ZWYwMzgiLAogICJtZWFzdXJlbWVudElkIjogIkctQ0hMODFLOEhSUFgiCn0=";
         
         function decodeBase64(str) {
@@ -413,7 +412,7 @@
         const database = firebase.database();
         const auth = firebase.auth();
         
-        // ========== Helper Functions ==========
+        // ========== Helper Functions (unchanged except plan fetch) ==========
         function decryptData(encrypted) {
             try {
                 const urlDecoded = decodeURIComponent(encrypted);
@@ -447,7 +446,6 @@
             window.location.href = "https://www.easy-premium.com";
         }
         
-        // NEW: Check if order status is already "waiting"
         async function checkOrderStatus(orderId) {
             try {
                 const snapshot = await database.ref(`transactions/${orderId}`).once('value');
@@ -460,40 +458,20 @@
             }
         }
         
-        // Validate order: status, time, user match
         async function validateOrder(orderId, expectedUserId, expectedUserEmail) {
             try {
                 const snapshot = await database.ref(`transactions/${orderId}`).once('value');
-                if (!snapshot.exists()) {
-                    console.warn("Order not found in DB");
-                    return false;
-                }
+                if (!snapshot.exists()) return false;
                 const order = snapshot.val();
-                
-                if (order.status !== "pending") {
-                    console.warn("Order status not pending:", order.status);
-                    return false;
-                }
-                
+                if (order.status !== "pending") return false;
                 const orderTimestamp = order.timestamp || order.orderDate ? new Date(order.orderDate).getTime() : null;
-                if (!orderTimestamp) {
-                    console.warn("Order timestamp missing");
-                    return false;
-                }
+                if (!orderTimestamp) return false;
                 const now = Date.now();
                 const hoursDiff = (now - orderTimestamp) / (1000 * 60 * 60);
-                if (hoursDiff > 24) {
-                    console.warn("Order older than 24 hours");
-                    return false;
-                }
-                
+                if (hoursDiff > 24) return false;
                 const dbUserId = order.userId || "";
                 const dbUserEmail = order.userEmail || "";
-                if (dbUserId !== expectedUserId && dbUserEmail.toLowerCase() !== expectedUserEmail.toLowerCase()) {
-                    console.warn("User mismatch");
-                    return false;
-                }
-                
+                if (dbUserId !== expectedUserId && dbUserEmail.toLowerCase() !== expectedUserEmail.toLowerCase()) return false;
                 return true;
             } catch (err) {
                 console.error("Validation error:", err);
@@ -501,6 +479,63 @@
             }
         }
         
+        // ----- NEW: Fetch plan data from publicData.json instead of Firebase -----
+        let cachedPublicData = null;
+        
+        async function loadPublicData() {
+            if (cachedPublicData) return cachedPublicData;
+            try {
+                const response = await fetch('/publicData.json');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                cachedPublicData = data;
+                return data;
+            } catch (err) {
+                console.error("Failed to load publicData.json:", err);
+                return null;
+            }
+        }
+        
+        async function fetchPlanData(platformId) {
+            const publicData = await loadPublicData();
+            if (!publicData) return null;
+            
+            // Search in pricingPlans1 (object with numeric keys)
+            if (publicData.pricingPlans1 && typeof publicData.pricingPlans1 === 'object') {
+                for (const key in publicData.pricingPlans1) {
+                    const plan = publicData.pricingPlans1[key];
+                    if (plan && (plan.product === platformId || plan.Products === platformId)) {
+                        return {
+                            name: plan.name || platformId,
+                            ServicCharge: Number(plan.serviceCharge) || 0,
+                            Products: plan.product || platformId,
+                            D: plan.description || '',
+                            faceValue: plan.faceValue ? Number(plan.faceValue) : null,
+                            price: plan.price
+                        };
+                    }
+                }
+            }
+            
+            // Search in products.products array
+            if (publicData.products && Array.isArray(publicData.products.products)) {
+                const found = publicData.products.products.find(p => p.product === platformId);
+                if (found) {
+                    return {
+                        name: found.name || platformId,
+                        ServicCharge: Number(found.serviceCharge) || 0,
+                        Products: found.product || platformId,
+                        D: found.description || '',
+                        faceValue: found.faceValue ? Number(found.faceValue) : null,
+                        price: found.price
+                    };
+                }
+            }
+            
+            return null;
+        }
+        
+        // Admin active logic (unchanged, still from Firebase)
         async function setActiveAdminNumber() {
             try {
                 const snapshot = await database.ref('publicAdminInfo').once('value');
@@ -562,39 +597,6 @@
             });
         }
         
-        // 🔁 MODIFIED: Fetch plan data from local publicData.json instead of Firebase
-        async function fetchPlanData(platformId) {
-            try {
-                const response = await fetch('publicData.json');
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const jsonData = await response.json();
-                // Try pricingPlans1 first, then pricingPlans2 if exists
-                let plans = null;
-                if (jsonData.pricingPlans1) plans = jsonData.pricingPlans1;
-                else if (jsonData.pricingPlans2) plans = jsonData.pricingPlans2;
-                else if (jsonData.products && jsonData.products.products) {
-                    // fallback: if products array exists, convert to object keyed by product field
-                    const arr = jsonData.products.products;
-                    const map = {};
-                    arr.forEach(p => { if(p.product) map[p.product] = p; });
-                    plans = map;
-                }
-                if (!plans) return null;
-                
-                // Find plan where product field matches platformId OR key matches
-                for (let key in plans) {
-                    const plan = plans[key];
-                    if (plan.product === platformId || key === platformId || (plan.Products && plan.Products === platformId)) {
-                        return plan;
-                    }
-                }
-                return null;
-            } catch (err) {
-                console.error("fetchPlanData from publicData.json failed:", err);
-                return null;
-            }
-        }
-        
         // ========== Main Execution ==========
         window.addEventListener('DOMContentLoaded', () => {
             const output = document.getElementById('output');
@@ -622,17 +624,14 @@
                     return;
                 }
                 
-                // Check if order is already waiting – if yes, redirect to main
+                // Check if order is already waiting
                 const isWaiting = await checkOrderStatus(urlData.orderId);
                 if (isWaiting) {
-                    console.log("Order is already waiting, redirecting to main");
                     redirectToMain();
                     return;
                 }
                 
-                // Check user match
                 if (user.uid !== urlData.userId && user.email !== urlData.userEmail) {
-                    console.warn("User mismatch");
                     redirectToMain();
                     return;
                 }
@@ -643,18 +642,29 @@
                     return;
                 }
                 
-                // Fetch plan from publicData.json (local file)
+                // ----- FETCH PLAN DATA FROM JSON (not Firebase) -----
                 const planData = await fetchPlanData(urlData.platformId);
-                // Use serviceCharge (lowercase) from JSON, fallback to ServicCharge or 0
-                let serviceCharge = 0;
-                if (planData) {
-                    if (typeof planData.serviceCharge === 'number') serviceCharge = planData.serviceCharge;
-                    else if (typeof planData.ServicCharge === 'number') serviceCharge = planData.ServicCharge;
-                    else if (planData.serviceCharge) serviceCharge = Number(planData.serviceCharge) || 0;
-                    else if (planData.ServicCharge) serviceCharge = Number(planData.ServicCharge) || 0;
+                if (!planData) {
+                    console.error("Plan not found in publicData.json");
+                    redirectToMain();
+                    return;
                 }
+                
+                const serviceCharge = Number(planData.ServicCharge) || 0;
                 const productPrice = Number(urlData.price) || 0;
                 const totalAmount = productPrice + serviceCharge;
+                const productSlug = planData.Products || urlData.platformId;
+                const platformName = planData.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
+                const descriptionText = planData.D || '';
+                const isVariable = productSlug.includes('variable');
+                let faceValueFromDB = planData.faceValue ? Number(planData.faceValue) : null;
+                let minFace = 1, maxFace = 1000;
+                if (isVariable) {
+                    minFace = productSlug.includes('mastercard') ? 5 : 1;
+                    if (faceValueFromDB && (faceValueFromDB < minFace || faceValueFromDB > maxFace)) {
+                        faceValueFromDB = null;
+                    }
+                }
                 
                 function updatePaymentAmounts() {
                     document.querySelectorAll('#bkash-amount, #nagad-amount, #rocket-amount').forEach(el => {
@@ -662,33 +672,14 @@
                     });
                 }
                 
-                const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
-                const productSlug = planData?.product || planData?.Products || urlData.platformId;
-                const dField = planData?.D || planData?.description || '';
-                
                 let dFieldHTML = '';
-                if (dField) {
+                if (descriptionText) {
                     dFieldHTML = `
                         <div class="card" style="margin-top:10px;">
                             <div style="color:#ff9800; margin-bottom:8px; font-weight:600;">📝 বিস্তারিত বিবরণ</div>
-                            <div style="color:#b0bec5; font-size:14px; white-space: pre-line;">${dField}</div>
+                            <div style="color:#b0bec5; font-size:14px; white-space: pre-line;">${descriptionText}</div>
                         </div>
                     `;
-                }
-                
-                const isVariable = productSlug && productSlug.includes('variable');
-                let minFace = 1, maxFace = 1000;
-                let faceValueFromDB = null;
-                if (isVariable) {
-                    minFace = productSlug.includes('mastercard') ? 5 : 1;
-                    if (planData?.faceValue) {
-                        faceValueFromDB = parseFloat(planData.faceValue);
-                        if (faceValueFromDB >= minFace && faceValueFromDB <= maxFace) {
-                            console.log(`✅ Face value from DB: $${faceValueFromDB}`);
-                        } else {
-                            faceValueFromDB = null;
-                        }
-                    }
                 }
                 
                 output.innerHTML = `
@@ -720,7 +711,7 @@
                     updatePaymentAmounts();
                 };
                 
-                // Radio button logic
+                // Radio logic (unchanged)
                 const radios = document.querySelectorAll('input[name="payment_method"]');
                 const bkashBox = document.getElementById('box-bkash');
                 const nagadBox = document.getElementById('box-nagad');
@@ -750,7 +741,7 @@
                     });
                 });
                 
-                // VERIFY button with length validation (1-20 characters)
+                // VERIFY button
                 const verifyBtn = document.getElementById('verifyInsideBtn');
                 verifyBtn.addEventListener('click', async function() {
                     const selected = document.querySelector('input[name="payment_method"]:checked');
@@ -789,11 +780,8 @@
                     
                     let faceValue = null;
                     if (isVariable) {
-                        if (faceValueFromDB) {
-                            faceValue = faceValueFromDB;
-                        } else {
-                            faceValue = minFace;
-                        }
+                        if (faceValueFromDB) faceValue = faceValueFromDB;
+                        else faceValue = minFace;
                     }
                     
                     const method = selected.value.replace('woo_', '').toUpperCase();
