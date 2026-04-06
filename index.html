@@ -110,7 +110,7 @@
     <meta http-equiv="Expires" content="0">
     
     <style>
-        /* ========== সম্পূর্ণ আগের CSS ========== */
+        /* ========== সম্পূর্ণ আগের CSS (অপরিবর্তিত) ========== */
         * {
             margin: 0;
             padding: 0;
@@ -1041,21 +1041,41 @@
             } catch(error) { loadingOverlay.style.display = 'none'; alert('অর্ডার ব্যর্থ: ' + error.message); }
         }
         
-        // ================== প্ল্যাটফর্ম লোড (সঠিক পাথ: pricingPlans1) ==================
+        // ================== প্ল্যাটফর্ম লোড (সরাসরি publicData.json থেকে) ==================
         function loadPlatforms() {
-            database.ref('publicData/pricingPlans1').on('value', (snapshot) => {
-                const data = snapshot.val();
-                platformsGrid.innerHTML = '';
-                if (!data) { platformsGrid.innerHTML = '<div style="grid-column:1/-1; text-align:center;">কোন প্ল্যাটফর্ম নেই</div>'; return; }
-                allPlatforms = [];
-                Object.entries(data).forEach(([id, platform]) => {
-                    if (platform.status === 'active') {
-                        allPlatforms.push({ id: id, name: platform.name || 'প্ল্যাটফর্ম', description: platform.description || '', price: platform.price || '৳ 0', features: platform.features || [], icon: platform.icon || 'visa' });
+            fetch('publicData.json')
+                .then(response => {
+                    if (!response.ok) throw new Error('HTTP error ' + response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    const pricingData = data.pricingPlans1;
+                    platformsGrid.innerHTML = '';
+                    if (!pricingData) {
+                        platformsGrid.innerHTML = '<div style="grid-column:1/-1; text-align:center;">কোন প্ল্যাটফর্ম নেই</div>';
+                        return;
                     }
+                    allPlatforms = [];
+                    Object.entries(pricingData).forEach(([id, platform]) => {
+                        // শুধুমাত্র সক্রিয় প্ল্যাটফর্ম দেখাবে, status না থাকলেও দেখাবে
+                        if (platform.status === undefined || platform.status === 'active') {
+                            allPlatforms.push({
+                                id: id,
+                                name: platform.name || 'প্ল্যাটফর্ম',
+                                description: platform.description || '',
+                                price: platform.price || '৳ 0',
+                                features: platform.features || [],
+                                icon: platform.icon || 'visa'
+                            });
+                        }
+                    });
+                    displayPlatforms(allPlatforms);
+                    attachBuyButtons();
+                })
+                .catch(error => {
+                    console.error('publicData.json লোড করতে ব্যর্থ:', error);
+                    platformsGrid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#ff9800;">ডেটা লোড করা সম্ভব হয়নি। পরে আবার চেষ্টা করুন।</div>';
                 });
-                displayPlatforms(allPlatforms);
-                attachBuyButtons();
-            });
         }
         
         function displayPlatforms(platforms) {
@@ -1165,7 +1185,7 @@
         document.addEventListener('DOMContentLoaded', function() { checkCookieConsent(); loadPlatforms(); });
     </script>
 
-    <!-- ================== সম্পূর্ণ সিকিউরিটি স্ক্রিপ্ট (Privacy Policy পৃষ্ঠার মতো) ================== -->
+    <!-- ================== সম্পূর্ণ সিকিউরিটি স্ক্রিপ্ট (অপরিবর্তিত) ================== -->
     <script>
     (function() {
         'use strict';
