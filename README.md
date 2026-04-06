@@ -1,6 +1,6 @@
 # EasyPremium - Premium E-Commerce Website
 
-![EasyPremium](https://easy-premium.vercel.app/og-image.jpg) <!-- যদি থাকে তাহলে রাখুন, না থাকলে এই লাইনটা মুছে দিন -->
+![https://cdn-icons-png.flaticon.com/512/8701/8701941.png](https://easy-premium.vercel.app/og-image.jpg) <!-- যদি থাকে তাহলে রাখুন, না থাকলে এই লাইনটা মুছে দিন -->
 
 **EasyPremium** হলো একটি আধুনিক, সুন্দর এবং দ্রুত **ই-কমার্স ওয়েবসাইট**। এখানে প্রিমিয়াম প্রোডাক্ট কেনা-বেচা করা যায়।
 
