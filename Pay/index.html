@@ -412,7 +412,7 @@
         const database = firebase.database();
         const auth = firebase.auth();
         
-        // ========== Helper Functions (unchanged except plan fetch) ==========
+        // ========== Helper Functions ==========
         function decryptData(encrypted) {
             try {
                 const urlDecoded = decodeURIComponent(encrypted);
@@ -479,7 +479,7 @@
             }
         }
         
-        // ----- NEW: Fetch plan data from publicData.json instead of Firebase -----
+        // ----- CORRECTED: Fetch plan data from publicData.json (NOT Firebase) -----
         let cachedPublicData = null;
         
         async function loadPublicData() {
@@ -500,16 +500,16 @@
             const publicData = await loadPublicData();
             if (!publicData) return null;
             
-            // Search in pricingPlans1 (object with numeric keys)
+            // 1) Try pricingPlans1 (object with numeric keys or direct mapping)
             if (publicData.pricingPlans1 && typeof publicData.pricingPlans1 === 'object') {
                 for (const key in publicData.pricingPlans1) {
                     const plan = publicData.pricingPlans1[key];
-                    if (plan && (plan.product === platformId || plan.Products === platformId)) {
+                    if (plan && (plan.product === platformId || plan.Products === platformId || key === platformId)) {
                         return {
-                            name: plan.name || platformId,
-                            ServicCharge: Number(plan.serviceCharge) || 0,
-                            Products: plan.product || platformId,
-                            D: plan.description || '',
+                            name: plan.name || plan.title || platformId,
+                            ServicCharge: Number(plan.serviceCharge) || Number(plan.ServicCharge) || 0,
+                            Products: plan.product || plan.Products || platformId,
+                            D: plan.description || plan.D || '',
                             faceValue: plan.faceValue ? Number(plan.faceValue) : null,
                             price: plan.price
                         };
@@ -517,7 +517,23 @@
                 }
             }
             
-            // Search in products.products array
+            // 2) Try pricingPlan (singular) - from user's screenshot structure
+            if (publicData.pricingPlan && typeof publicData.pricingPlan === 'object') {
+                const plan = publicData.pricingPlan;
+                // If platformId matches something inside pricingPlan? Usually pricingPlan is a single object, but we can still check
+                if (plan.product === platformId || plan.Products === platformId || platformId === 'default') {
+                    return {
+                        name: plan.name || 'Premium Service',
+                        ServicCharge: Number(plan.serviceCharge) || Number(plan.ServicCharge) || 0,
+                        Products: plan.product || plan.Products || platformId,
+                        D: plan.description || plan.D || '',
+                        faceValue: plan.faceValue ? Number(plan.faceValue) : null,
+                        price: plan.price
+                    };
+                }
+            }
+            
+            // 3) Try products array (from earlier examples)
             if (publicData.products && Array.isArray(publicData.products.products)) {
                 const found = publicData.products.products.find(p => p.product === platformId);
                 if (found) {
@@ -532,10 +548,25 @@
                 }
             }
             
+            // 4) Fallback: try any top-level object that has a product field matching
+            for (const key in publicData) {
+                const item = publicData[key];
+                if (item && typeof item === 'object' && (item.product === platformId || item.Products === platformId)) {
+                    return {
+                        name: item.name || key,
+                        ServicCharge: Number(item.serviceCharge) || Number(item.ServicCharge) || 0,
+                        Products: item.product || item.Products || platformId,
+                        D: item.description || item.D || '',
+                        faceValue: item.faceValue ? Number(item.faceValue) : null,
+                        price: item.price
+                    };
+                }
+            }
+            
             return null;
         }
         
-        // Admin active logic (unchanged, still from Firebase)
+        // Admin active logic (unchanged from original, stays Firebase based)
         async function setActiveAdminNumber() {
             try {
                 const snapshot = await database.ref('publicAdminInfo').once('value');
@@ -642,11 +673,11 @@
                     return;
                 }
                 
-                // ----- FETCH PLAN DATA FROM JSON (not Firebase) -----
+                // ----- FETCH PLAN DATA FROM publicData.json (NOT Firebase) -----
                 const planData = await fetchPlanData(urlData.platformId);
                 if (!planData) {
                     console.error("Plan not found in publicData.json");
-                    redirectToMain();
+                    output.innerHTML = '<div class="error">প্ল্যান তথ্য পাওয়া যায়নি। অনুগ্রহ করে সহায়তা নিন।</div>';
                     return;
                 }
                 
@@ -677,7 +708,7 @@
                     dFieldHTML = `
                         <div class="card" style="margin-top:10px;">
                             <div style="color:#ff9800; margin-bottom:8px; font-weight:600;">📝 বিস্তারিত বিবরণ</div>
-                            <div style="color:#b0bec5; font-size:14px; white-space: pre-line;">${descriptionText}</div>
+                            <div style="color:#b0bec5; font-size:14px; white-space: pre-line;">${escapeHtml(descriptionText)}</div>
                         </div>
                     `;
                 }
@@ -685,8 +716,8 @@
                 output.innerHTML = `
                     <div class="card">
                         <h2 style="color:#ff9800; margin-bottom:15px; text-align:center;">📋 অর্ডার তথ্য</h2>
-                        <div class="info-row"><span class="label">অর্ডার আইডি:</span><span class="value">${urlData.orderId}</span></div>
-                        <div class="info-row"><span class="label">প্ল্যাটফর্ম:</span><span class="value">${platformName}</span></div>
+                        <div class="info-row"><span class="label">অর্ডার আইডি:</span><span class="value">${escapeHtml(urlData.orderId)}</span></div>
+                        <div class="info-row"><span class="label">প্ল্যাটফর্ম:</span><span class="value">${escapeHtml(platformName)}</span></div>
                         <div class="info-row"><span class="label">মূল্য:</span><span class="value">${productPrice} ৳</span></div>
                         <div class="info-row"><span class="label">সার্ভিস চার্জ:</span><span class="value">${serviceCharge} ৳</span></div>
                         <div class="info-row"><span class="label"><strong>সর্বমোট:</strong></span><span class="value" style="color:#ff0000;">${totalAmount} ৳</span></div>
@@ -741,7 +772,7 @@
                     });
                 });
                 
-                // VERIFY button
+                // VERIFY button with validation
                 const verifyBtn = document.getElementById('verifyInsideBtn');
                 verifyBtn.addEventListener('click', async function() {
                     const selected = document.querySelector('input[name="payment_method"]:checked');
@@ -829,7 +860,7 @@
                             paymentPanel.innerHTML = `
                                 <div class="card" style="text-align:center; padding:40px;">
                                     <h3 style="color:#ff9800;">✅ অর্ডার গৃহীত হয়েছে</h3>
-                                    <p>অর্ডার আইডি: ${result.trx || urlData.orderId}</p>
+                                    <p>অর্ডার আইডি: ${escapeHtml(result.trx || urlData.orderId)}</p>
                                     <p>মূল্য: ${productPrice} ৳</p>
                                     <p>সার্ভিস চার্জ: ${serviceCharge} ৳</p>
                                     <p><strong>মোট: ${productPrice + serviceCharge} ৳</strong></p>
@@ -850,7 +881,7 @@
                 document.querySelectorAll('.copy-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
                         const num = this.dataset.number;
-                        navigator.clipboard?.writeText(num);
+                        if (num) navigator.clipboard?.writeText(num);
                         this.textContent = 'Copied!';
                         setTimeout(() => this.textContent = 'Copy', 2000);
                     });
@@ -860,6 +891,18 @@
                 listenToAdminStatus();
             });
         });
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+                return c;
+            });
+        }
     </script>
 </head>
 <body>
