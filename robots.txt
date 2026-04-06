@@ -1,9 +1,4 @@
 
 User-agent: *
-
-Allow: /
-
-Disallow: /publicData.json
 Disallow: /api/
-
 Sitemap: https://www.easy-premium.com/sitemap.xml
