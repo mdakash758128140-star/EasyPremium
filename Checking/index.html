@@ -92,39 +92,6 @@
                 } catch { return iso; }
             }
 
-            // স্ট্যাটাস আপডেট ফাংশন (অপরিবর্তিত)
-            async function updateOrderStatus(orderId) {
-                if (!orderId) return;
-                try {
-                    const response = await fetch(`/api/relograde-orders?trx=${encodeURIComponent(orderId)}`);
-                    const result = await response.json();
-                    if (!response.ok || !result.success) {
-                        console.warn('স্ট্যাটাস পাওয়া যায়নি', result.error);
-                        return;
-                    }
-                    const order = result.data;
-                    if (!order) return;
-
-                    let statusBangla = order.orderStatus || 'অজানা';
-                    if (statusBangla === 'created') statusBangla = 'অপেক্ষমান';
-                    else if (statusBangla === 'finished') statusBangla = 'সম্পন্ন';
-                    else if (statusBangla === 'cancelled') statusBangla = 'বাতিল';
-                    else statusBangla = statusBangla;
-
-                    const labels = document.querySelectorAll('.info-label');
-                    for (let label of labels) {
-                        if (label.textContent.trim() === 'স্ট্যাটাস') {
-                            const valueDiv = label.nextElementSibling;
-                            if (valueDiv && valueDiv.classList.contains('info-value')) {
-                                valueDiv.textContent = statusBangla;
-                            }
-                            break;
-                        }
-                    }
-                } catch (err) {
-                    console.error('স্ট্যাটাস আপডেট ব্যর্থ', err);
-                }
-            }
 
             function renderOrder(data) {
                 if(!data) return '<div class="error"><i class="fas fa-exclamation-triangle"></i><h3>ডেটা পাওয়া যায়নি</h3></div>';
