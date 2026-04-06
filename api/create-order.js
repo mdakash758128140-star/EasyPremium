@@ -192,7 +192,7 @@ export default async function handler(req, res) {
     };
     const jsonString = JSON.stringify(orderLinkData);
     const base64Data = Buffer.from(jsonString).toString('base64');
-    const orderLink = `https://www.easy-premium.com/Checking.html?data=${encodeURIComponent(base64Data)}`;
+    const orderLink = `https://www.easy-premium.com/Checking?data=${encodeURIComponent(base64Data)}`;
 
     async function sendEmailWithLink() {
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY || !EMAILJS_PRIVATE_KEY) {
