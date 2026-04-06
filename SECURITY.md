@@ -1,45 +1,61 @@
-Security Policy
+# Security Policy
 
-Supported Versions
+EasyPremium একটি স্ট্যাটিক ই-কমার্স ওয়েবসাইট। আমরা সাইটের নিরাপত্তাকে অত্যন্ত গুরুত্ব দেই।
 
-Currently, the following versions of this project are being supported with security updates:
-
-Version Supported
-1.0.x :white_check_mark:
-< 1.0 :x:
-
-Reporting a Vulnerability
-
-If you discover a security vulnerability in this project, please do NOT create a public GitHub issue.
-
-How to Report:
-
-1. Private Contact:
-      Send an email to: admin@easy-premium.com
-      Subject: Security Vulnerability Report - [Brief Description]
-2. What to Include:
-   · Detailed description of the vulnerability
-   · Steps to reproduce
-   · Possible impact
-   · Suggested fix (if any)
-
-Response Time:
-
-· You will receive an acknowledgment within 48 hours
-· We will investigate and provide an update within 7 days
-· If the vulnerability is accepted, a fix will be released as soon as possible
-· If declined, we will explain why
-
-Disclosure Policy
-
-· We follow responsible disclosure practices
-· Do not disclose the vulnerability publicly until we have released a fix
-· We will credit you in the release notes (unless you wish to remain anonymous)
-
-Security Practices
-
-· Regular dependency updates
-· Automated security scanning enabled
-· HTTPS enforced on all deployments
+যদি আপনি এই প্রজেক্টে কোনো **সিকিউরিটি ভালনারেবিলিটি** (দুর্বলতা) খুঁজে পান, তাহলে অনুগ্রহ করে দয়া করে **দায়িত্বশীলভাবে** রিপোর্ট করুন।
 
 ---
+
+## Supported Versions
+
+| Version       | Supported          |
+|---------------|--------------------|
+| Latest (main) | ✅ Yes            |
+| Older versions| ❌ No             |
+
+---
+
+## Reporting a Vulnerability
+
+আপনি যদি কোনো সিকিউরিটি সমস্যা খুঁজে পান, তাহলে **পাবলিক ইস্যু** তৈরি করবেন না।  
+পরিবর্তে নিচের উপায়ে রিপোর্ট করুন:
+
+**ইমেইল করুন:**  
+📧 **security@easy-premium.com**  
+(যদি এই ইমেইল না থাকে, তাহলে আপনার ব্যক্তিগত Gmail বা অন্য ইমেইল দিয়ে বলুন।)
+
+রিপোর্টে নিচের তথ্যগুলো দিন (যতটা সম্ভব):
+
+- ভালনারেবিলিটির বিস্তারিত বর্ণনা
+- কীভাবে রিপ্রোডিউস (reproduce) করা যায় (ধাপে ধাপে)
+- সম্ভাব্য প্রভাব (যেমন: XSS, data leak, payment issue ইত্যাদি)
+- স্ক্রিনশট বা প্রুফ (যদি থাকে)
+
+---
+
+## Response Time
+
+- **প্রাথমিক রেসপন্স:** 1 ঘণ্টার মধ্যে (সাধারণত 24 ঘণ্টায়)।
+- **ফিক্সের সময়:** সমস্যার গুরুত্ব অনুসারে 7 দিনের মধ্যে চেষ্টা করবো।
+- আমরা আপনাকে আপডেট দিয়ে যাবো।
+
+---
+
+## আমাদের সিকিউরিটি প্র্যাকটিস
+
+- কোনো সেনসিটিভ ডেটা (API Key, Password, Payment Secret) রিপোজিটরিতে কমিট করা হয় না।
+- Vercel-এ Environment Variables ব্যবহার করা হয়।
+- `api/` ফোল্ডারে শুধু প্রয়োজনীয় সার্ভারলেস ফাংশন রাখা হয়েছে।
+- robots.txt-এ sensitive ফোল্ডারগুলো ব্লক করা আছে।
+
+---
+
+## ধন্যবাদ
+
+আপনার সাহায্যের জন্য অনেক ধন্যবাদ!  
+সিকিউরিটি রিপোর্ট করার জন্য আপনার সময় ও প্রচেষ্টার মূল্যায়ন করি। ❤️
+
+---
+
+**EasyPremium Team**  
+যেকোনো প্রশ্ন থাকলে README.md দেখুন অথবা Issue তৈরি করুন (সাধারণ ইস্যু)।
