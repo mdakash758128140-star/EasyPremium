@@ -447,7 +447,7 @@
             window.location.href = "https://www.easy-premium.com";
         }
         
-        // 🆕 NEW: Check if order status is already "waiting"
+        // NEW: Check if order status is already "waiting"
         async function checkOrderStatus(orderId) {
             try {
                 const snapshot = await database.ref(`transactions/${orderId}`).once('value');
@@ -470,13 +470,11 @@
                 }
                 const order = snapshot.val();
                 
-                // 1. Status must be "pending" (if it's waiting, we already redirected earlier)
                 if (order.status !== "pending") {
                     console.warn("Order status not pending:", order.status);
                     return false;
                 }
                 
-                // 2. Check 24 hours validity
                 const orderTimestamp = order.timestamp || order.orderDate ? new Date(order.orderDate).getTime() : null;
                 if (!orderTimestamp) {
                     console.warn("Order timestamp missing");
@@ -489,7 +487,6 @@
                     return false;
                 }
                 
-                // 3. User match (userId or email)
                 const dbUserId = order.userId || "";
                 const dbUserEmail = order.userEmail || "";
                 if (dbUserId !== expectedUserId && dbUserEmail.toLowerCase() !== expectedUserEmail.toLowerCase()) {
@@ -565,29 +562,35 @@
             });
         }
         
+        // 🔁 MODIFIED: Fetch plan data from local publicData.json instead of Firebase
         async function fetchPlanData(platformId) {
             try {
-                const plans2 = await database.ref('publicData/pricingPlans2').once('value');
-                if (plans2.exists()) {
-                    const allPlans = plans2.val();
-                    for (let key in allPlans) {
-                        if (key === platformId || allPlans[key].Products === platformId) {
-                            return allPlans[key];
-                        }
-                    }
+                const response = await fetch('publicData.json');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const jsonData = await response.json();
+                // Try pricingPlans1 first, then pricingPlans2 if exists
+                let plans = null;
+                if (jsonData.pricingPlans1) plans = jsonData.pricingPlans1;
+                else if (jsonData.pricingPlans2) plans = jsonData.pricingPlans2;
+                else if (jsonData.products && jsonData.products.products) {
+                    // fallback: if products array exists, convert to object keyed by product field
+                    const arr = jsonData.products.products;
+                    const map = {};
+                    arr.forEach(p => { if(p.product) map[p.product] = p; });
+                    plans = map;
                 }
-                const plans1 = await database.ref('publicData/pricingPlans1').once('value');
-                if (plans1.exists()) {
-                    const allPlans = plans1.val();
-                    for (let key in allPlans) {
-                        if (key === platformId || allPlans[key].Products === platformId) {
-                            return allPlans[key];
-                        }
+                if (!plans) return null;
+                
+                // Find plan where product field matches platformId OR key matches
+                for (let key in plans) {
+                    const plan = plans[key];
+                    if (plan.product === platformId || key === platformId || (plan.Products && plan.Products === platformId)) {
+                        return plan;
                     }
                 }
                 return null;
-            } catch (e) {
-                console.error("Fetch error:", e);
+            } catch (err) {
+                console.error("fetchPlanData from publicData.json failed:", err);
                 return null;
             }
         }
@@ -619,7 +622,7 @@
                     return;
                 }
                 
-                // 🆕 Check if order is already waiting – if yes, redirect to main
+                // Check if order is already waiting – if yes, redirect to main
                 const isWaiting = await checkOrderStatus(urlData.orderId);
                 if (isWaiting) {
                     console.log("Order is already waiting, redirecting to main");
@@ -627,23 +630,29 @@
                     return;
                 }
                 
-                // Check if logged-in user is the order owner
+                // Check user match
                 if (user.uid !== urlData.userId && user.email !== urlData.userEmail) {
                     console.warn("User mismatch");
                     redirectToMain();
                     return;
                 }
                 
-                // Validate order (status, 24h, user match again for safety)
                 const isValid = await validateOrder(urlData.orderId, urlData.userId, urlData.userEmail);
                 if (!isValid) {
                     redirectToMain();
                     return;
                 }
                 
-                // All validations passed – load plan data and display UI
+                // Fetch plan from publicData.json (local file)
                 const planData = await fetchPlanData(urlData.platformId);
-                const serviceCharge = planData?.ServicCharge ? Number(planData.ServicCharge) : 0;
+                // Use serviceCharge (lowercase) from JSON, fallback to ServicCharge or 0
+                let serviceCharge = 0;
+                if (planData) {
+                    if (typeof planData.serviceCharge === 'number') serviceCharge = planData.serviceCharge;
+                    else if (typeof planData.ServicCharge === 'number') serviceCharge = planData.ServicCharge;
+                    else if (planData.serviceCharge) serviceCharge = Number(planData.serviceCharge) || 0;
+                    else if (planData.ServicCharge) serviceCharge = Number(planData.ServicCharge) || 0;
+                }
                 const productPrice = Number(urlData.price) || 0;
                 const totalAmount = productPrice + serviceCharge;
                 
@@ -654,7 +663,7 @@
                 }
                 
                 const platformName = planData?.name || urlData.platformId.replace(/_/g, ' ').toUpperCase();
-                const productSlug = planData?.Products || urlData.platformId;
+                const productSlug = planData?.product || planData?.Products || urlData.platformId;
                 const dField = planData?.D || planData?.description || '';
                 
                 let dFieldHTML = '';
@@ -667,7 +676,7 @@
                     `;
                 }
                 
-                const isVariable = productSlug.includes('variable');
+                const isVariable = productSlug && productSlug.includes('variable');
                 let minFace = 1, maxFace = 1000;
                 let faceValueFromDB = null;
                 if (isVariable) {
@@ -769,7 +778,6 @@
                     const txid = txInput.value.trim();
                     const adminNumber = adminNumberElement ? adminNumberElement.textContent.trim() : '';
                     
-                    // Length validation: 1 to 20 characters (inclusive)
                     if (account.length < 1 || account.length > 20) {
                         alert('অ্যাকাউন্ট নম্বর ১ থেকে ২০ অক্ষরের মধ্যে হতে হবে');
                         return;
