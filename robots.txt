@@ -1,17 +1,9 @@
-# সকল সার্চ ইঞ্জিন ক্রলারকে অনুমতি
+
 User-agent: *
 
-# পুরো সাইট ক্রল করার অনুমতি
 Allow: /
 
-# সংবেদনশীল ফাইল ও ফোল্ডার ক্রল করা বন্ধ
 Disallow: /publicData.json
-Disallow: /ADMIN/
 Disallow: /api/
-Disallow: /AccountDelete
-Disallow: /Checking
-Disallow: /old/
-Disallow: /verce.json
 
-# সাইটম্যাপের ঠিকানা
 Sitemap: https://www.easy-premium.com/sitemap.xml
