@@ -2,15 +2,15 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Easy Premium - Relograde Order Management + Voice Call</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Easy Premium - অর্ডার ম্যানেজমেন্ট + এডমিন ভয়েস কল</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Firebase SDKs (Compat) -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <style>
-        /* ========== মূল স্টাইল (অপরিবর্তিত + ভয়েস সেকশন সাপোর্ট) ========== */
+        /* ========== মূল স্টাইল (অপরিবর্তিত) + ভয়েস কলের জন্য বাড়তি স্টাইল ========== */
         * {
             margin: 0;
             padding: 0;
@@ -451,7 +451,7 @@
             color: #b0bec5;
             font-style: italic;
         }
-        /* Voice Section Styles */
+        /* ভয়েস কল স্টাইল */
         .voice-participants-grid {
             display: flex;
             flex-wrap: wrap;
@@ -577,30 +577,56 @@
     </style>
 </head>
 <body>
-    <div class="login-screen" id="loginScreen">...</div> <!-- same as original, hidden for brevity but intact -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-box">
+            <div class="logo">
+                <div class="logo-icon"><i class="fas fa-crown"></i></div>
+                <div class="logo-text"><h1>Easy Premium</h1><p>Relograde Order Management</p></div>
+            </div>
+            <h2 class="login-title">এডমিন লগইন</h2>
+            <button id="googleLoginBtn" class="google-login-btn"><i class="fab fa-google"></i> Sign in with Google</button>
+            <div id="loginError" class="error-message"></div>
+        </div>
+    </div>
+    
     <div class="admin-panel" id="adminPanel">
-        <header class="admin-header">...</header>
+        <header class="admin-header">
+            <div class="admin-info"><div class="admin-avatar" id="adminAvatar"><i class="fas fa-user-shield"></i></div><div class="admin-details"><h3 id="adminName">Loading...</h3><p id="adminEmail">Loading...</p></div></div>
+            <div style="display: flex; gap: 10px;"><button id="refreshOrdersBtn" class="refresh-btn"><i class="fas fa-sync-alt"></i> রিফ্রেশ</button><button id="logoutBtn" class="logout-btn"><i class="fas fa-sign-out-alt"></i> লগ আউট</button></div>
+        </header>
+        
         <div class="main-content">
-            <!-- Stats section -->
-            <div class="section">...</div>
-            <!-- Orders Table -->
-            <div class="section">...</div>
-            <!-- Transactions Table -->
-            <div class="section">...</div>
+            <!-- Transactions Dashboard -->
+            <div class="section">
+                <h2 class="section-title">Transactions অর্ডার ড্যাশবোর্ড</h2>
+                <div class="form-row">
+                    <div class="stats-card"><div class="stat-value" id="adminTotalAmount">0.00</div><div class="stat-label">আপনার মোট সম্পন্ন (USD)</div></div>
+                    <div class="stats-card"><div class="stat-value" id="totalAmountSum">0</div><div class="stat-label">মোট অর্ডার (BDT)</div></div>
+                    <div class="stats-card"><div class="stat-value" id="completedTransactionsCount">0</div><div class="stat-label">সম্পূর্ণ লেনদেন</div></div>
+                    <div class="stats-card"><div class="stat-value" id="relogradeBalance">—</div><div class="stat-label">Relograde ব্যালেন্স (USD)</div></div>
+                </div>
+                <div class="system-info" id="systemInfo"></div>
+            </div>
             
-            <!-- ========== NEW: ADMIN VOICE CALL SECTION ========== -->
+            <!-- Orders Table -->
+            <div class="section">
+                <h2 class="section-title">Relograde অর্ডার তালিকা <span id="orderCount"></span></h2>
+                <div style="overflow-x: auto;"><table class="orders-table"><thead><tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>এডমিন নম্বর</th><th>কারেন্সি</th><th>অ্যাকশন</th></tr></thead><tbody id="ordersTable"></tbody></table></div>
+            </div>
+
+            <!-- Transactions Table -->
+            <div class="section">
+                <h2 class="section-title">লেনদেন তালিকা Transactions <span id="transactionCount"></span></h2>
+                <div style="overflow-x: auto;"><table class="transactions-table"><thead><tr><th>অর্ডার আইডি</th><th>পরিমাণ (BDT)</th><th>স্ট্যাটাস</th><th>পেমেন্ট পদ্ধতি</th><th>ফোন</th><th>TXID</th><th>Relograde TRX</th><th>এডমিন নম্বর</th><th>তারিখ</th></tr></thead><tbody id="transactionsTable"></tbody></table></div>
+            </div>
+
+            <!-- এডমিন গ্রুপ ভয়েস কল সেকশন (নতুন) -->
             <div class="section" id="voiceCallSection">
                 <h2 class="section-title"><i class="fas fa-headset"></i> এডমিন গ্রুপ ভয়েস কল</h2>
                 <div class="info-note"><i class="fas fa-info-circle"></i> মাইক ব্যবহার করতে নিচের "জয়েন কল" বাটনে ক্লিক করুন। কথা বললে আপনার বৃত্ত ঘুরবে। অডিও না শুনলে "অডিও ফোর্স প্লে" বাটন ব্যবহার করুন।</div>
                 <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
-                    <div style="flex:2; min-width: 200px;">
-                        <label style="font-size:0.8rem;">রুম আইডি</label>
-                        <input type="text" id="voiceRoomId" class="password-input" style="margin:0;" value="easy-premium-admin-group" readonly>
-                    </div>
-                    <div style="flex:2; min-width: 200px;">
-                        <label style="font-size:0.8rem;">আপনার নাম (এডমিন)</label>
-                        <input type="text" id="voiceUserName" class="password-input" style="margin:0;" placeholder="আপনার নাম" readonly>
-                    </div>
+                    <div style="flex:2; min-width: 200px;"><label style="font-size:0.8rem;">রুম আইডি</label><input type="text" id="voiceRoomId" class="password-input" style="margin:0;" value="easy-premium-admin-group" readonly></div>
+                    <div style="flex:2; min-width: 200px;"><label style="font-size:0.8rem;">আপনার নাম (এডমিন)</label><input type="text" id="voiceUserName" class="password-input" style="margin:0;" placeholder="আপনার নাম" readonly></div>
                     <div class="voice-controls" style="flex:3; justify-content: flex-end;">
                         <button id="voiceJoinBtn" class="voice-btn voice-btn-success"><i class="fas fa-phone-alt"></i> জয়েন কল</button>
                         <button id="voiceLeaveBtn" class="voice-btn voice-btn-danger" disabled><i class="fas fa-phone-slash"></i> কল ছাড়ুন</button>
@@ -615,25 +641,36 @@
         </div>
     </div>
 
-    <!-- Order Details Modal (same) -->
-    <div class="modal" id="orderDetailsModal">...</div>
-    <div class="modal password-modal" id="passwordModal">...</div>
+    <!-- Order Details Modal -->
+    <div class="modal" id="orderDetailsModal"><div class="modal-content"><button class="modal-close" id="closeDetailsModalBtn">&times;</button><h2 class="modal-title">অর্ডার বিস্তারিত</h2><div class="modal-section"><div class="modal-section-title">অর্ডার তথ্য</div><div class="order-info-grid" id="orderInfoGrid"></div></div><div class="modal-section"><div class="modal-section-title">রেফারেন্স তথ্য</div><div id="referenceContainer"></div></div></div></div>
+    
+    <!-- Password Modal -->
+    <div class="modal password-modal" id="passwordModal"><div class="modal-content"><button class="modal-close" id="closePasswordModalBtn">&times;</button><h2 class="modal-title" id="passwordModalTitle">পাসওয়ার্ড দিন</h2><div class="modal-section"><p id="passwordModalMessage">অর্ডার সম্পন্ন করতে পাসওয়ার্ড প্রয়োজন।</p><input type="password" id="adminPasswordInput" class="password-input" placeholder="পাসওয়ার্ড লিখুন"><button id="submitPasswordBtn" class="password-submit"><i class="fas fa-lock"></i> যাচাই করুন</button><div id="passwordErrorMsg" class="password-error"></div></div></div></div>
 
     <script>
-        // ========== FIREBASE INIT & EXISTING LOGIC (PRESERVED) ==========
-        const firebaseConfig = { apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw", authDomain: "easy-premium.firebaseapp.com", databaseURL: "https://easy-premium-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "easy-premium", storageBucket: "easy-premium.firebasestorage.app", messagingSenderId: "155891252265", appId: "1:155891252265:web:77ab41de24231e8e5ef038" };
+        // ---------- Firebase Config ----------
+        const firebaseConfig = {
+            apiKey: "AIzaSyBt9t6mcjUtXxX2igAJdseuIIc8pP_QPEw",
+            authDomain: "easy-premium.firebaseapp.com",
+            databaseURL: "https://easy-premium-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "easy-premium",
+            storageBucket: "easy-premium.firebasestorage.app",
+            messagingSenderId: "155891252265",
+            appId: "1:155891252265:web:77ab41de24231e8e5ef038"
+        };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const database = firebase.database();
 
+        // ---------- Global Variables (অর্ডার ও এডমিন লজিক) ----------
         let orders = [], currentAdminEmail = null, currentAdminUid = null, isPrimaryAdmin = false;
         let primaryUpdateInterval = null, recheckInterval = null;
-        let transactionsListenerRef = null;
+        let transactionsListenerRef = null, currentTransactions = [];
         const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'ytchannel9997100@gmail.com', 'allwork204571@gmail.com'];
         const ACTIVE_WINDOW = 60 * 1000, UPDATE_INTERVAL = 60 * 1000;
         const publicAdminInfoRef = database.ref('publicAdminInfo');
 
-        // DOM shortcuts (kept from original)
+        // DOM elements (অর্ডার ও ট্রানজ্যাকশন)
         const loginScreen = document.getElementById('loginScreen'), adminPanel = document.getElementById('adminPanel');
         const googleLoginBtn = document.getElementById('googleLoginBtn'), logoutBtn = document.getElementById('logoutBtn'), refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
         const adminNameSpan = document.getElementById('adminName'), adminEmailSpan = document.getElementById('adminEmail'), adminAvatarDiv = document.getElementById('adminAvatar');
@@ -645,47 +682,58 @@
         const transactionsTable = document.getElementById('transactionsTable'), transactionCountSpan = document.getElementById('transactionCount');
         const passwordModal = document.getElementById('passwordModal'), closePasswordModalBtn = document.getElementById('closePasswordModalBtn');
         const adminPasswordInput = document.getElementById('adminPasswordInput'), submitPasswordBtn = document.getElementById('submitPasswordBtn'), passwordErrorMsg = document.getElementById('passwordErrorMsg');
-        
-        // ========== EXISTING FUNCTIONS (keep core) ==========
-        async function fetchAdminCompletedTotal() { /* original */ if(!currentAdminEmail) return; try{ const snap=await database.ref('completedOrders').once('value'); let total=0; for(const trx in snap.val()||{}){ if(snap.val()[trx].completedBy===currentAdminEmail) total+=(snap.val()[trx].orderData?.priceAmount||0); } adminTotalAmountEl.textContent=total.toFixed(2); }catch(e){ adminTotalAmountEl.textContent='0.00'; } }
+        let pendingAction = null, pendingTrxId = null, pendingEvent = null, pendingOrdersCallback = null, globalAdminPassword = null;
+
+        // Helper functions (অর্ডার ও এডমিন ম্যানেজমেন্ট)
+        async function fetchAdminCompletedTotal() { if(!currentAdminEmail) return; try{ const snap=await database.ref('completedOrders').once('value'); let total=0; for(const trx in snap.val()||{}) if(snap.val()[trx].completedBy===currentAdminEmail) total+=(snap.val()[trx].orderData?.priceAmount||0); adminTotalAmountEl.textContent=total.toFixed(2); }catch(e){ adminTotalAmountEl.textContent='0.00'; } }
         async function fetchRelogradeBalance() { try{ const res=await fetch('/api/relograde-balance'); const data=await res.json(); if(data.success) relogradeBalanceEl.textContent=`$${data.balance.toFixed(2)}`; else relogradeBalanceEl.textContent='—'; }catch(e){ relogradeBalanceEl.textContent='ত্রুটি'; } }
         setInterval(fetchRelogradeBalance,30000); fetchRelogradeBalance();
-        function setupEventListeners(){ googleLoginBtn.onclick=handleGoogleLogin; logoutBtn.onclick=handleLogout; refreshOrdersBtn.onclick=()=>{ loadOrders(); refreshTransactions(); fetchRelogradeBalance(); fetchAdminCompletedTotal(); }; closeDetailsModalBtn.onclick=()=>orderDetailsModal.classList.remove('active'); window.onclick=(e)=>{if(e.target===orderDetailsModal) orderDetailsModal.classList.remove('active');}; closePasswordModalBtn.onclick=()=>closePasswordModal(); submitPasswordBtn.onclick=()=>verifyAndPerformAction(); adminPasswordInput.addEventListener('keypress',(e)=>{if(e.key==='Enter') verifyAndPerformAction();}); }
-        function closePasswordModal(){ passwordModal.classList.remove('active'); adminPasswordInput.value=''; passwordErrorMsg.textContent=''; pendingAction=null; pendingTrxId=null; }
-        let pendingAction=null, pendingTrxId=null, pendingEvent=null, pendingOrdersCallback=null, globalAdminPassword=null;
-        function showPasswordModalForOrders(callback){ pendingOrdersCallback=callback; pendingAction='orders'; passwordModal.classList.add('active'); adminPasswordInput.focus(); }
-        async function verifyAndPerformAction(){ /* ... same logic simplified but kept functional */ const pwd=adminPasswordInput.value.trim(); if(!pwd){ passwordErrorMsg.textContent='পাসওয়ার্ড দিন'; return; } submitPasswordBtn.disabled=true; try{ globalAdminPassword=pwd; if(pendingAction==='complete') await performCompleteOrder(pendingTrxId,pwd,pendingEvent); else if(pendingAction==='fail') await performFailOrder(pendingTrxId,pwd,pendingEvent); else if(pendingAction==='orders' && pendingOrdersCallback) pendingOrdersCallback(pwd); closePasswordModal(); }catch(error){ passwordErrorMsg.textContent=error.message||'ভুল পাসওয়ার্ড'; adminPasswordInput.value=''; globalAdminPassword=null; } finally{ submitPasswordBtn.disabled=false; } }
-        async function completeOrder(trxId,event){ if(!isPrimaryAdmin){ showToast('শুধু প্রধান এডমিন অর্ডার সম্পন্ন করতে পারেন','error'); return; } event.stopPropagation(); if(!confirm('সম্পন্ন করবেন?')) return; showPasswordModal('complete',trxId,event); }
-        async function cancelOrder(trxId,event){ if(!isPrimaryAdmin){ showToast('শুধু প্রধান এডমিন অর্ডার বাতিল করতে পারেন','error'); return; } event.stopPropagation(); if(!confirm('ফেল করবেন?')) return; showPasswordModal('fail',trxId,event); }
-        function showPasswordModal(action,trxId,event){ pendingAction=action; pendingTrxId=trxId; pendingEvent=event; passwordModal.classList.add('active'); adminPasswordInput.focus(); }
-        async function performCompleteOrder(trxId,password,event){ const btn=event.target.closest('.action-complete'); if(!btn) return; const original=btn.innerHTML; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>...'; btn.disabled=true; try{ const orderData=orders.find(o=>o.trx===trxId); const res=await fetch('/api/order_completed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trxId,action:'complete',adminEmail:currentAdminEmail,orderData,password})}); const result=await res.json(); if(res.ok&&result.success){ const idx=orders.findIndex(o=>o.trx===trxId); if(idx!==-1) orders[idx].orderStatus='finished'; refreshOrdersDisplay(); showToast('✅ সম্পন্ন','success'); fetchAdminCompletedTotal(); } else throw new Error(result.error); }catch(e){ showToast('ব্যর্থ: '+e.message,'error'); throw e; } finally{ btn.innerHTML=original; btn.disabled=false; } }
-        async function performFailOrder(trxId,password,event){ const btn=event.target.closest('.action-cancel'); if(!btn) return; const original=btn.innerHTML; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>...'; btn.disabled=true; try{ const orderData=orders.find(o=>o.trx===trxId); const res=await fetch('/api/order_completed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trxId,action:'fail',adminEmail:currentAdminEmail,orderData,password})}); const result=await res.json(); if(res.ok&&result.success){ const idx=orders.findIndex(o=>o.trx===trxId); if(idx!==-1) orders[idx].orderStatus='fail'; refreshOrdersDisplay(); showToast('✅ ফেল করা হয়েছে','success'); } else throw new Error(result.error); }catch(e){ showToast('ব্যর্থ: '+e.message,'error'); throw e; } finally{ btn.innerHTML=original; btn.disabled=false; } }
-        async function getPrimaryAdmin(){ const snap=await publicAdminInfoRef.once('value'); const admins=snap.val()||{}; const now=Date.now(); let latestUid=null,latestTime=0; for(const[uid,info]of Object.entries(admins)){ if(info.lastActive){ const ts=new Date(info.lastActive).getTime(); if((now-ts)<=ACTIVE_WINDOW && ts>latestTime){ latestTime=ts; latestUid=uid; } } } return {primaryUid:latestUid, isCurrentPrimary:latestUid===currentAdminUid}; }
+
+        function showToast(msg,type){ const toast=document.createElement('div'); toast.className='toast'; toast.textContent=msg; toast.style.background=type==='error'?'#dc3545':type==='success'?'#28a745':'#ff9800'; document.body.appendChild(toast); setTimeout(()=>{ toast.style.animation='slideIn 0.3s ease reverse'; setTimeout(()=>toast.remove(),300); },3000); }
+
+        // Primary admin logic
+        async function getPrimaryAdmin(){ const snap=await publicAdminInfoRef.once('value'); const admins=snap.val()||{}; const now=Date.now(); let latestUid=null,latestTime=0; for(const[uid,info]of Object.entries(admins)) if(info.lastActive){ const ts=new Date(info.lastActive).getTime(); if((now-ts)<=ACTIVE_WINDOW && ts>latestTime){ latestTime=ts; latestUid=uid; } } return {primaryUid:latestUid, isCurrentPrimary:latestUid===currentAdminUid}; }
         async function evaluatePrimaryStatus(){ const{isCurrentPrimary}=await getPrimaryAdmin(); if(isCurrentPrimary && !isPrimaryAdmin){ isPrimaryAdmin=true; startPrimaryUpdates(); showToast('প্রধান এডমিন সক্রিয়','success'); refreshOrdersDisplay(); updateSystemInfo(); } else if(!isCurrentPrimary && isPrimaryAdmin){ isPrimaryAdmin=false; stopAllIntervals(); if(!recheckInterval) startRecheckLoop(); showToast('শুধু দেখার মোড','info'); refreshOrdersDisplay(); updateSystemInfo(); } }
         function startPrimaryUpdates(){ if(primaryUpdateInterval) clearInterval(primaryUpdateInterval); primaryUpdateInterval=setInterval(()=>{ if(isPrimaryAdmin) publicAdminInfoRef.child(currentAdminUid).update({lastActive:new Date().toISOString()}); },UPDATE_INTERVAL); publicAdminInfoRef.child(currentAdminUid).update({lastActive:new Date().toISOString()}); }
         function stopAllIntervals(){ if(primaryUpdateInterval) clearInterval(primaryUpdateInterval); primaryUpdateInterval=null; if(recheckInterval) clearInterval(recheckInterval); recheckInterval=null; }
         function startRecheckLoop(){ if(recheckInterval) clearInterval(recheckInterval); recheckInterval=setInterval(evaluatePrimaryStatus,UPDATE_INTERVAL); }
+
+        // অর্ডার লোড ও ডিসপ্লে
+        async function loadOrders(){ if(globalAdminPassword) await fetchOrdersWithPassword(globalAdminPassword); else showPasswordModalForOrders(async(password)=>await fetchOrdersWithPassword(password)); }
+        async function fetchOrdersWithPassword(password){ ordersTable.innerHTML=`<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>`; try{ const res=await fetch(`/api/relograde-orders?password=${encodeURIComponent(password)}`); const result=await res.json(); if(!res.ok || !result.success){ if(res.status===401||res.status===403){ globalAdminPassword=null; loadOrders(); return; } throw new Error(result.error); } orders=result.data||[]; orderCountEl.textContent=`(${orders.length}টি)`; refreshOrdersDisplay(); showToast(`${orders.length}টি অর্ডার লোড`,'success'); }catch(e){ ordersTable.innerHTML=`<td colspan="8" class="no-data">${e.message}</td>`; } }
+        function refreshOrdersDisplay(){ displayOrders(orders); }
+        function displayOrders(list){ if(!list.length){ ordersTable.innerHTML='<td colspan="8" class="no-data">কোন অর্ডার নেই'; return; } let html=''; list.slice(0,50).forEach(o=>{ const date=o.dateCreated?new Date(o.dateCreated).toLocaleString('bn-BD'):'তারিখ নেই'; let statusClass='status-pending', statusText=o.orderStatus||'unknown'; if(statusText==='finished'){statusClass='status-completed';statusText='সম্পূর্ণ';} else if(statusText==='fail'){statusClass='status-cancelled';statusText='ফেল';} else statusText='পেন্ডিং'; const items=(o.items||[]).map(i=>`${i.product?.name||i.productSlug} x${i.amount}`).join('<br>')||'—'; const total=o.priceInclVat||o.priceAmount||0; const adminNumber=o.reference? (()=>{try{return JSON.parse(o.reference).admin||o.reference.substring(0,30);}catch(e){return o.reference.substring(0,30);}})():'—'; const isPending=(o.orderStatus==='created'); let actionButtons=''; if(isPending && isPrimaryAdmin){ actionButtons=`<div class="action-buttons" onclick="event.stopPropagation()"><button class="action-btn action-complete" onclick="completeOrder('${o.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button><button class="action-btn action-cancel" onclick="cancelOrder('${o.trx}', event)"><i class="fas fa-ban"></i> ক্যানসেল</button></div>`; } else actionButtons='<span style="color:#888;">—</span>'; html+=`<tr onclick="showOrderDetails('${o.trx}')" style="cursor:pointer;"><td style="font-family:monospace;">${o.trx||'N/A'}</td><td>${date}</td><td><span class="status-badge ${statusClass}">${statusText}</span></td><td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td><td style="color:#00bcd4;">${total} ${o.priceCurrency||'USD'}</td><td><div style="max-width:150px;">${adminNumber}</div></td><td>${o.paymentCurrency||o.priceCurrency||'USD'}</td><td>${actionButtons}</td></tr>`; }); ordersTable.innerHTML=html; }
+
+        // ট্রানজ্যাকশন লিসেনার
+        function setupTransactionsListener(){ if(transactionsListenerRef) transactionsListenerRef.off(); transactionsTable.innerHTML=`<td colspan="9" class="loading-spinner"><div class="spinner"></div><p>লেনদেন লোড হচ্ছে...</p>`; transactionsListenerRef=database.ref('transactions').on('value',(snapshot)=>{ const data=snapshot.val()||{}; const transactionList=Object.values(data).filter(tx=>(tx.orderId||tx.id||'').toString().startsWith('E')); currentTransactions=transactionList; displayTransactions(transactionList); transactionCountSpan.textContent=`(${transactionList.length}টি)`; let totalAmount=0,completed=0; transactionList.forEach(tx=>{ const amt=parseFloat(tx.amount||tx.totalAmount||0); if(!isNaN(amt)) totalAmount+=amt; if((tx.status||tx.orderStatus||'').toLowerCase()==='completed') completed++; }); totalAmountSumEl.textContent=totalAmount.toFixed(2); completedTransactionsCountEl.textContent=completed; }); }
+        function displayTransactions(transactions){ if(!transactions.length){ transactionsTable.innerHTML='<td colspan="9" class="no-data">কোনো লেনদেন নেই'; return; } let html=''; transactions.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).forEach(tx=>{ const status=(tx.status||tx.orderStatus||'unknown').toLowerCase(); let statusClass='status-pending',statusText=status; if(status==='completed'){statusClass='status-completed';statusText='সম্পূর্ণ';}else if(status==='fail'){statusClass='status-cancelled';statusText='ফেল';}else statusText='পেন্ডিং'; html+=`<tr><td>${tx.orderId||tx.id||'—'}</td><td style="color:#00bcd4;">${tx.amount||tx.totalAmount||0} ৳</td><td><span class="status-badge ${statusClass}">${statusText}</span></td><td>${tx.paymentMethod||tx.method||'—'}</td><td>${tx.phone||'—'}</td><td style="font-family:monospace;">${tx.txid||tx.transactionId||'—'}</td><td style="font-family:monospace;">${tx.relogradeTrx||'—'}</td><td>${tx.admin||'—'}</td><td>${tx.timestamp?new Date(tx.timestamp).toLocaleString('bn-BD'):'—'}</td></tr>`; }); transactionsTable.innerHTML=html; }
+        function refreshTransactions(){ displayTransactions(currentTransactions); transactionCountSpan.textContent=`(${currentTransactions.length}টি)`; }
+
+        // অর্ডার অ্যাকশন (সম্পন্ন/বাতিল) - পাসওয়ার্ড মডাল সহ
+        function closePasswordModal(){ passwordModal.classList.remove('active'); adminPasswordInput.value=''; passwordErrorMsg.textContent=''; pendingAction=null; pendingTrxId=null; pendingEvent=null; pendingOrdersCallback=null; }
+        function showPasswordModalForOrders(callback){ pendingOrdersCallback=callback; pendingAction='orders'; passwordModal.classList.add('active'); adminPasswordInput.focus(); }
+        function showPasswordModal(action,trxId,event){ pendingAction=action; pendingTrxId=trxId; pendingEvent=event; passwordModal.classList.add('active'); adminPasswordInput.focus(); }
+        async function verifyAndPerformAction(){ const pwd=adminPasswordInput.value.trim(); if(!pwd){ passwordErrorMsg.textContent='পাসওয়ার্ড দিন'; return; } submitPasswordBtn.disabled=true; try{ globalAdminPassword=pwd; if(pendingAction==='complete') await performCompleteOrder(pendingTrxId,pwd,pendingEvent); else if(pendingAction==='fail') await performFailOrder(pendingTrxId,pwd,pendingEvent); else if(pendingAction==='orders' && pendingOrdersCallback) pendingOrdersCallback(pwd); closePasswordModal(); }catch(error){ passwordErrorMsg.textContent=error.message||'ভুল পাসওয়ার্ড'; adminPasswordInput.value=''; globalAdminPassword=null; } finally{ submitPasswordBtn.disabled=false; } }
+        async function performCompleteOrder(trxId,password,event){ const btn=event.target.closest('.action-complete'); if(!btn) return; const original=btn.innerHTML; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>...'; btn.disabled=true; try{ const orderData=orders.find(o=>o.trx===trxId); const res=await fetch('/api/order_completed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trxId,action:'complete',adminEmail:currentAdminEmail,orderData,password})}); const result=await res.json(); if(res.ok&&result.success){ const idx=orders.findIndex(o=>o.trx===trxId); if(idx!==-1) orders[idx].orderStatus='finished'; refreshOrdersDisplay(); showToast('✅ সম্পন্ন','success'); fetchAdminCompletedTotal(); } else throw new Error(result.error); }catch(e){ showToast('ব্যর্থ: '+e.message,'error'); throw e; } finally{ btn.innerHTML=original; btn.disabled=false; } }
+        async function performFailOrder(trxId,password,event){ const btn=event.target.closest('.action-cancel'); if(!btn) return; const original=btn.innerHTML; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>...'; btn.disabled=true; try{ const orderData=orders.find(o=>o.trx===trxId); const res=await fetch('/api/order_completed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trxId,action:'fail',adminEmail:currentAdminEmail,orderData,password})}); const result=await res.json(); if(res.ok&&result.success){ const idx=orders.findIndex(o=>o.trx===trxId); if(idx!==-1) orders[idx].orderStatus='fail'; refreshOrdersDisplay(); showToast('✅ ফেল করা হয়েছে','success'); } else throw new Error(result.error); }catch(e){ showToast('ব্যর্থ: '+e.message,'error'); throw e; } finally{ btn.innerHTML=original; btn.disabled=false; } }
+        window.completeOrder=function(trxId,event){ if(!isPrimaryAdmin){ showToast('শুধু প্রধান এডমিন অর্ডার সম্পন্ন করতে পারেন','error'); return; } event.stopPropagation(); if(!confirm('সম্পন্ন করবেন?')) return; showPasswordModal('complete',trxId,event); };
+        window.cancelOrder=function(trxId,event){ if(!isPrimaryAdmin){ showToast('শুধু প্রধান এডমিন অর্ডার বাতিল করতে পারেন','error'); return; } event.stopPropagation(); if(!confirm('ফেল করবেন?')) return; showPasswordModal('fail',trxId,event); };
+        window.showOrderDetails=function(trxId){ const order=orders.find(o=>o.trx===trxId); if(!order) return; orderInfoGrid.innerHTML=`<div class="info-item"><div class="info-label">TRX ID</div><div class="info-value">${order.trx}</div></div><div class="info-item"><div class="info-label">স্ট্যাটাস</div><div class="info-value">${order.orderStatus}</div></div><div class="info-item"><div class="info-label">আইটেম</div><div class="info-value">${(order.items||[]).map(i=>i.product?.name||i.productSlug).join(',')}</div></div><div class="info-item"><div class="info-label">মোট</div><div class="info-value">${order.priceInclVat||order.priceAmount} ${order.priceCurrency}</div></div>`; const refRaw=order.reference||''; let items=[]; try{ const parsed=JSON.parse(refRaw); items=Object.entries(parsed).map(([k,v])=>`${k}: ${v}`); }catch(e){ items=refRaw.split(/[,\n]/).filter(s=>s.trim()); } if(items.length===0) referenceContainer.innerHTML='<div class="empty-reference">কোন রেফারেন্স নেই</div>'; else{ let refHtml='<ul class="reference-list">'; items.forEach(it=>{ refHtml+=`<li class="reference-item" onclick="copyToClipboard('${it.replace(/'/g,"\\'")}')"><span class="reference-text">${it}</span><span class="copy-icon"><i class="fas fa-copy"></i></span></li>`; }); refHtml+='</ul>'; referenceContainer.innerHTML=refHtml; } orderDetailsModal.classList.add('active'); };
+        window.copyToClipboard=function(text){ navigator.clipboard.writeText(text).then(()=>showToast('কপি!','success')).catch(()=>showToast('ব্যর্থ','error')); };
+        function updateSystemInfo(){ const roleText=isPrimaryAdmin?'<span style="color:#4caf50;">প্রধান এডমিন</span>':'<span style="color:#ff9800;">শুধু দেখার</span>'; systemInfo.innerHTML=`<div>লগইন: ${new Date().toLocaleString('bn-BD')} | এডমিন: ${currentAdminEmail} | রোল: ${roleText}</div>`; }
+
+        // লগইন ও আউথ
         async function loadAdminData(user){ adminNameSpan.textContent=user.displayName||user.email; adminEmailSpan.textContent=user.email; adminAvatarDiv.innerHTML=user.photoURL?`<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">`:`<span>${(user.displayName||user.email).charAt(0).toUpperCase()}</span>`; try{ await database.ref(`adminUsers/${user.uid}`).update({email:user.email,name:user.displayName||'',lastLogin:firebase.database.ServerValue.TIMESTAMP,status:'active'}); const existing=await publicAdminInfoRef.child(user.uid).once('value'); if(!existing.exists()) await publicAdminInfoRef.child(user.uid).set({name:user.displayName||'Admin',number:''}); }catch(e){} }
         function checkAdminAuth(){ auth.onAuthStateChanged(async(user)=>{ if(user && ALLOWED_ADMIN_EMAILS.includes(user.email)){ currentAdminEmail=user.email; currentAdminUid=user.uid; await loadAdminData(user); stopAllIntervals(); isPrimaryAdmin=false; await evaluatePrimaryStatus(); startRecheckLoop(); showAdminPanel(); loadOrders(); setupTransactionsListener(); fetchAdminCompletedTotal(); initVoiceForAdmin(); } else if(user){ await auth.signOut(); showLoginScreen(); } else{ stopAllIntervals(); showLoginScreen(); } }); }
         async function handleGoogleLogin(){ try{ const result=await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); if(!ALLOWED_ADMIN_EMAILS.includes(result.user.email)){ await auth.signOut(); showToast('এক্সেস নেই','error'); } }catch(e){ showToast('লগইন ব্যর্থ','error'); } }
         async function handleLogout(){ stopAllIntervals(); if(transactionsListenerRef) transactionsListenerRef.off(); if(window.voiceCleanup) await window.voiceCleanup(); await auth.signOut(); showLoginScreen(); }
         function showLoginScreen(){ loginScreen.style.display='flex'; adminPanel.style.display='none'; }
         function showAdminPanel(){ loginScreen.style.display='none'; adminPanel.style.display='block'; updateSystemInfo(); }
-        async function loadOrders(){ if(globalAdminPassword) await fetchOrdersWithPassword(globalAdminPassword); else showPasswordModalForOrders(async(password)=>await fetchOrdersWithPassword(password)); }
-        async function fetchOrdersWithPassword(password){ ordersTable.innerHTML=`<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>`; try{ const res=await fetch(`/api/relograde-orders?password=${encodeURIComponent(password)}`); const result=await res.json(); if(!res.ok || !result.success){ if(res.status===401||res.status===403){ globalAdminPassword=null; loadOrders(); return; } throw new Error(result.error); } orders=result.data||[]; orderCountEl.textContent=`(${orders.length}টি)`; refreshOrdersDisplay(); showToast(`${orders.length}টি অর্ডার লোড`,'success'); }catch(e){ ordersTable.innerHTML=`<td colspan="8" class="no-data">${e.message}</td>`; } }
-        function refreshOrdersDisplay(){ displayOrders(orders); }
-        function displayOrders(list){ if(!list.length){ ordersTable.innerHTML='<td colspan="8" class="no-data">কোন অর্ডার নেই'; return; } let html=''; list.slice(0,50).forEach(o=>{ const date=o.dateCreated?new Date(o.dateCreated).toLocaleString('bn-BD'):'তারিখ নেই'; let statusClass='status-pending', statusText=o.orderStatus||'unknown'; if(statusText==='finished'){statusClass='status-completed';statusText='সম্পূর্ণ';} else if(statusText==='fail'){statusClass='status-cancelled';statusText='ফেল';} else if(statusText==='created'){statusClass='status-pending';statusText='পেন্ডিং';} const items=(o.items||[]).map(i=>`${i.product?.name||i.productSlug} x${i.amount}`).join('<br>')||'—'; const total=o.priceInclVat||o.priceAmount||0; const adminNumber=o.reference? (()=>{try{return JSON.parse(o.reference).admin||o.reference.substring(0,30);}catch(e){return o.reference.substring(0,30);}})():'—'; const isPending=(o.orderStatus==='created'); let actionButtons=''; if(isPending && isPrimaryAdmin){ actionButtons=`<div class="action-buttons" onclick="event.stopPropagation()"><button class="action-btn action-complete" onclick="completeOrder('${o.trx}', event)"><i class="fas fa-check-circle"></i> সম্পন্ন</button><button class="action-btn action-cancel" onclick="cancelOrder('${o.trx}', event)"><i class="fas fa-ban"></i> ক্যানসেল</button></div>`; } else actionButtons='<span style="color:#888;">—</span>'; html+=`<tr onclick="showOrderDetails('${o.trx}')" style="cursor:pointer;"><td style="font-family:monospace;">${o.trx||'N/A'}</td><td>${date}</td><td><span class="status-badge ${statusClass}">${statusText}</span></td><td><div style="max-width:200px;font-size:0.85rem;">${items}</div></td><td style="color:#00bcd4;">${total} ${o.priceCurrency||'USD'}</td><td><div style="max-width:150px;">${adminNumber}</div></td><td>${o.paymentCurrency||o.priceCurrency||'USD'}</td><td>${actionButtons}</td></tr>`; }); ordersTable.innerHTML=html; }
-        function setupTransactionsListener(){ if(transactionsListenerRef) transactionsListenerRef.off(); transactionsTable.innerHTML=`<td colspan="9" class="loading-spinner"><div class="spinner"></div><p>লেনদেন লোড হচ্ছে...</p>`; transactionsListenerRef=database.ref('transactions').on('value',(snapshot)=>{ const data=snapshot.val()||{}; const transactionList=Object.values(data).filter(tx=>(tx.orderId||tx.id||'').toString().startsWith('E')); currentTransactions=transactionList; displayTransactions(transactionList); transactionCountSpan.textContent=`(${transactionList.length}টি)`; updateTransactionStats(transactionList); }); }
-        let currentTransactions=[]; function updateTransactionStats(transactions){ let totalAmount=0,completed=0; transactions.forEach(tx=>{ const amt=parseFloat(tx.amount||tx.totalAmount||0); if(!isNaN(amt)) totalAmount+=amt; if((tx.status||tx.orderStatus||'').toLowerCase()==='completed') completed++; }); totalAmountSumEl.textContent=totalAmount.toFixed(2); completedTransactionsCountEl.textContent=completed; }
-        function displayTransactions(transactions){ if(!transactions.length){ transactionsTable.innerHTML='<td colspan="9" class="no-data">কোনো লেনদেন নেই'; return; } let html=''; transactions.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).forEach(tx=>{ const status=(tx.status||tx.orderStatus||'unknown').toLowerCase(); let statusClass='status-pending',statusText=status; if(status==='completed'){statusClass='status-completed';statusText='সম্পূর্ণ';}else if(status==='fail'){statusClass='status-cancelled';statusText='ফেল';}else statusText='পেন্ডিং'; html+=`<tr><td>${tx.orderId||tx.id||'—'}</td><td style="color:#00bcd4;">${tx.amount||tx.totalAmount||0} ৳</td><td><span class="status-badge ${statusClass}">${statusText}</span></td><td>${tx.paymentMethod||tx.method||'—'}</td><td>${tx.phone||'—'}</td><td style="font-family:monospace;">${tx.txid||tx.transactionId||'—'}</td><td style="font-family:monospace;">${tx.relogradeTrx||'—'}</td><td>${tx.admin||'—'}</td><td>${tx.timestamp?new Date(tx.timestamp).toLocaleString('bn-BD'):'—'}</td></tr>`; }); transactionsTable.innerHTML=html; }
-        function refreshTransactions(){ displayTransactions(currentTransactions); transactionCountSpan.textContent=`(${currentTransactions.length}টি)`; updateTransactionStats(currentTransactions); }
-        window.showOrderDetails=function(trxId){ const order=orders.find(o=>o.trx===trxId); if(!order) return; orderInfoGrid.innerHTML=`<div class="info-item"><div class="info-label">TRX ID</div><div class="info-value">${order.trx}</div></div><div class="info-item"><div class="info-label">স্ট্যাটাস</div><div class="info-value">${order.orderStatus}</div></div><div class="info-item"><div class="info-label">আইটেম</div><div class="info-value">${(order.items||[]).map(i=>i.product?.name||i.productSlug).join(',')}</div></div><div class="info-item"><div class="info-label">মোট</div><div class="info-value">${order.priceInclVat||order.priceAmount} ${order.priceCurrency}</div></div>`; const refRaw=order.reference||''; let items=[]; try{ const parsed=JSON.parse(refRaw); items=Object.entries(parsed).map(([k,v])=>`${k}: ${v}`); }catch(e){ items=refRaw.split(/[,\n]/).filter(s=>s.trim()); } if(items.length===0) referenceContainer.innerHTML='<div class="empty-reference">কোন রেফারেন্স নেই</div>'; else{ let refHtml='<ul class="reference-list">'; items.forEach(it=>{ refHtml+=`<li class="reference-item" onclick="copyToClipboard('${it.replace(/'/g,"\\'")}')"><span class="reference-text">${it}</span><span class="copy-icon"><i class="fas fa-copy"></i></span></li>`; }); refHtml+='</ul>'; referenceContainer.innerHTML=refHtml; } orderDetailsModal.classList.add('active'); };
-        window.copyToClipboard=function(text){ navigator.clipboard.writeText(text).then(()=>showToast('কপি!','success')).catch(()=>showToast('ব্যর্থ','error')); };
-        function updateSystemInfo(){ const roleText=isPrimaryAdmin?'<span style="color:#4caf50;">প্রধান এডমিন</span>':'<span style="color:#ff9800;">শুধু দেখার</span>'; systemInfo.innerHTML=`<div>লগইন: ${new Date().toLocaleString('bn-BD')} | এডমিন: ${currentAdminEmail} | রোল: ${roleText}</div>`; }
-        function showToast(msg,type){ const toast=document.createElement('div'); toast.className='toast'; toast.textContent=msg; toast.style.background=type==='error'?'#dc3545':type==='success'?'#28a745':'#ff9800'; document.body.appendChild(toast); setTimeout(()=>{ toast.style.animation='slideIn 0.3s ease reverse'; setTimeout(()=>toast.remove(),300); },3000); }
-        window.completeOrder=completeOrder; window.cancelOrder=cancelOrder; window.showOrderDetails=showOrderDetails;
+        googleLoginBtn.onclick=handleGoogleLogin; logoutBtn.onclick=handleLogout; refreshOrdersBtn.onclick=()=>{ loadOrders(); refreshTransactions(); fetchRelogradeBalance(); fetchAdminCompletedTotal(); };
+        closeDetailsModalBtn.onclick=()=>orderDetailsModal.classList.remove('active'); window.onclick=(e)=>{if(e.target===orderDetailsModal) orderDetailsModal.classList.remove('active');}; closePasswordModalBtn.onclick=closePasswordModal; submitPasswordBtn.onclick=verifyAndPerformAction; adminPasswordInput.addEventListener('keypress',(e)=>{if(e.key==='Enter') verifyAndPerformAction();});
+        document.addEventListener('DOMContentLoaded',()=>{ checkAdminAuth(); });
 
-        // ========== VOICE CALL INTEGRATION (USING EXISTING AUTH, DATABASE) ==========
+        // ========== এডমিন ভয়েস কল লজিক (WebRTC + TURN) ==========
         let voiceState = { roomId: null, userId: null, localStream: null, isMicActive: false, peerConnections: new Map(), remoteAudios: new Map(), roomUsersRef: null, iceServers: [], animFrame: null, audioCtx: null };
         const voiceRoomInput=document.getElementById('voiceRoomId'), voiceUserName=document.getElementById('voiceUserName'), voiceJoinBtn=document.getElementById('voiceJoinBtn'), voiceLeaveBtn=document.getElementById('voiceLeaveBtn'), voiceMicToggle=document.getElementById('voiceMicToggle'), voiceForcePlayBtn=document.getElementById('voiceForcePlayBtn'), voiceStatusDiv=document.getElementById('voiceStatusArea'), voiceParticipantGrid=document.getElementById('voiceParticipantGrid'), voiceDebugLog=document.getElementById('voiceDebugLog');
         function voiceAddLog(msg,isErr=false){ const div=document.createElement('div'); div.textContent=`[${new Date().toLocaleTimeString()}] ${msg}`; div.style.color=isErr?'#f87171':'#86efac'; div.style.marginBottom='2px'; voiceDebugLog.appendChild(div); voiceDebugLog.scrollTop=voiceDebugLog.scrollHeight; while(voiceDebugLog.children.length>50) voiceDebugLog.removeChild(voiceDebugLog.firstChild); console.log(msg); }
@@ -704,7 +752,6 @@
         async function initVoiceForAdmin(){ if(currentAdminEmail){ voiceUserName.value=currentAdminEmail.split('@')[0]||"Admin"; voiceRoomInput.value="easy-premium-admin-group"; await voiceLoadIceServers(); } }
         window.voiceCleanup=async()=>{ await voiceLeave(); };
         voiceJoinBtn.onclick=voiceJoin; voiceLeaveBtn.onclick=voiceLeave; voiceMicToggle.onclick=voiceToggleMic; voiceForcePlayBtn.onclick=voiceForcePlayAll;
-        document.addEventListener('DOMContentLoaded',()=>{ setupEventListeners(); checkAdminAuth(); });
     </script>
 </body>
 </html>
