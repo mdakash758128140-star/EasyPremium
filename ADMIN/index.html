@@ -599,7 +599,7 @@
             <!-- ========== এডমিন গ্রুপ ভয়েস কল সেকশন ========== -->
             <div class="section" id="voiceCallSection">
                 <h2 class="section-title"><i class="fas fa-headset"></i> এডমিন গ্রুপ ভয়েস কল <span style="font-size:0.8rem;">(স্বয়ংক্রিয় সংযোগ)</span></h2>
-                <div class="info-note"><i class="fas fa-info-circle"></i> লগইন করলেই আপনি গ্রুপ কলে সংযুক্ত হবেন। কথা বললে আপনার বৃত্ত ঘুরবে। অডিও না শুনলে "অডিও ফোর্স প্লে" বাটন ব্যবহার করুন।</div>
+                <div class="info-note"><i class="fas fa-info-circle"></i> লগইন করলেই আপনি গ্রুপ কলে সংযুক্ত হবেন। কথা বললে আপনার বৃত্ত ঘুরবে। অডিও না শুনলে "অডিও ফোর্স প্লে" বাটন ক্লিক করুন।</div>
                 <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
                     <div style="flex:2; min-width: 200px;"><label style="font-size:0.8rem;">রুম আইডি</label><input type="text" id="voiceRoomId" class="password-input" style="margin:0;" value="easy-premium-admin-group" readonly></div>
                     <div style="flex:2; min-width: 200px;"><label style="font-size:0.8rem;">আপনার নাম (এডমিন)</label><input type="text" id="voiceUserName" class="password-input" style="margin:0;" placeholder="এডমিন নাম" readonly></div>
@@ -667,7 +667,7 @@
         let orders = [], currentAdminEmail = null, currentAdminUid = null, isPrimaryAdmin = false;
         let primaryUpdateInterval = null, recheckInterval = null;
         let transactionsListenerRef = null, currentTransactions = [];
-        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'mdpuashpa@gmail.com', 'ytchannel9997100@gmail.com', 'allwork204571@gmail.com'];
+        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'ytchannel9997100@gmail.com', 'allwork204571@gmail.com'];
         const ACTIVE_WINDOW = 60 * 1000, UPDATE_INTERVAL = 60 * 1000;
         const publicAdminInfoRef = database.ref('publicAdminInfo');
 
@@ -692,7 +692,7 @@
 
         function showToast(msg,type){ const toast=document.createElement('div'); toast.className='toast'; toast.textContent=msg; toast.style.background=type==='error'?'#dc3545':type==='success'?'#28a745':'#ff9800'; document.body.appendChild(toast); setTimeout(()=>{ toast.style.animation='slideIn 0.3s ease reverse'; setTimeout(()=>toast.remove(),300); },3000); }
 
-        // Primary admin logic (সঠিক ভেরিয়েবল সহ)
+        // Primary admin logic
         async function getPrimaryAdmin(){ 
             const snap=await publicAdminInfoRef.once('value'); 
             const admins=snap.val()||{}; 
@@ -767,7 +767,7 @@
         function displayTransactions(transactions){ if(!transactions.length){ transactionsTable.innerHTML='<td colspan="9" class="no-data">কোনো লেনদেন নেই'; return; } let html=''; transactions.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).forEach(tx=>{ const status=(tx.status||tx.orderStatus||'unknown').toLowerCase(); let statusClass='status-pending',statusText=status; if(status==='completed'){statusClass='status-completed';statusText='সম্পূর্ণ';}else if(status==='fail'){statusClass='status-cancelled';statusText='ফেল';}else statusText='পেন্ডিং'; html+=`<tr><td>${tx.orderId||tx.id||'—'}</td><td style="color:#00bcd4;">${tx.amount||tx.totalAmount||0} ৳</td><td><span class="status-badge ${statusClass}">${statusText}</span></td><td>${tx.paymentMethod||tx.method||'—'}</td><td>${tx.phone||'—'}</td><td style="font-family:monospace;">${tx.txid||tx.transactionId||'—'}</td><td style="font-family:monospace;">${tx.relogradeTrx||'—'}</td><td>${tx.admin||'—'}</td><td>${tx.timestamp?new Date(tx.timestamp).toLocaleString('bn-BD'):'—'}</td></tr>`; }); transactionsTable.innerHTML=html; }
         function refreshTransactions(){ displayTransactions(currentTransactions); transactionCountSpan.textContent=`(${currentTransactions.length}টি)`; }
 
-        // অর্ডার অ্যাকশন (সম্পন্ন/বাতিল) - পাসওয়ার্ড মডাল সহ
+        // অর্ডার অ্যাকশন
         function closePasswordModal(){ passwordModal.classList.remove('active'); adminPasswordInput.value=''; passwordErrorMsg.textContent=''; pendingAction=null; pendingTrxId=null; pendingEvent=null; pendingOrdersCallback=null; }
         function showPasswordModalForOrders(callback){ pendingOrdersCallback=callback; pendingAction='orders'; passwordModal.classList.add('active'); adminPasswordInput.focus(); }
         function showPasswordModal(action,trxId,event){ pendingAction=action; pendingTrxId=trxId; pendingEvent=event; passwordModal.classList.add('active'); adminPasswordInput.focus(); }
@@ -811,7 +811,6 @@
                     loadOrders(); 
                     setupTransactionsListener(); 
                     fetchAdminCompletedTotal(); 
-                    // স্বয়ংক্রিয়ভাবে ভয়েস কলে জয়েন
                     await autoJoinVoiceCall();
                 } else if(user){ 
                     console.log("Unauthorized user:", user.email);
@@ -868,44 +867,70 @@
             checkAdminAuth(); 
         });
 
-        // ========== এডমিন ভয়েস কল লজিক (পুরনো কাজ করা ভার্সন) ==========
+        // ========== এডমিন ভয়েস কল লজিক (হার্ডকোডেড TURN ক্রেডেনশিয়াল সহ) ==========
         let voiceState = { roomId: null, userId: null, localStream: null, isMicActive: false, peerConnections: new Map(), remoteAudios: new Map(), roomUsersRef: null, iceServers: [], animFrame: null, audioCtx: null };
         const voiceRoomInput=document.getElementById('voiceRoomId'), voiceUserName=document.getElementById('voiceUserName'), voiceMicToggle=document.getElementById('voiceMicToggle'), voiceForcePlayBtn=document.getElementById('voiceForcePlayBtn'), voiceStatusDiv=document.getElementById('voiceStatusArea'), voiceParticipantGrid=document.getElementById('voiceParticipantGrid'), voiceDebugLog=document.getElementById('voiceDebugLog');
         
         function voiceAddLog(msg,isErr=false){ const div=document.createElement('div'); div.textContent=`[${new Date().toLocaleTimeString()}] ${msg}`; div.style.color=isErr?'#f87171':'#86efac'; div.style.marginBottom='2px'; voiceDebugLog.appendChild(div); voiceDebugLog.scrollTop=voiceDebugLog.scrollHeight; while(voiceDebugLog.children.length>50) voiceDebugLog.removeChild(voiceDebugLog.firstChild); console.log(msg); }
         
-        async function voiceLoadIceServers(){ 
-            try{ 
-                const res=await fetch("https://easy-premium.metered.live/api/v1/turn/credentials?apiKey=546ad2772f911ebe6c4b6e0ae95f76ac36d3"); 
-                const data=await res.json(); 
-                voiceState.iceServers=Array.isArray(data)?data:(data.iceServers||data); 
-                if(!voiceState.iceServers.length) throw new Error("no TURN"); 
-                voiceAddLog(`✅ TURN লোড (${voiceState.iceServers.length} servers)`); 
-            }catch(e){ 
-                voiceAddLog(`⚠️ TURN fail, STUN fallback`,true); 
-                voiceState.iceServers=[{urls:"stun:stun.l.google.com:19302"}]; 
-            } 
+        // সরাসরি TURN সার্ভার কনফিগারেশন (আপনার দেওয়া ক্রেডেনশিয়াল)
+        function setupIceServers(){
+            voiceState.iceServers = [
+                { urls: "stun:stun.l.google.com:19302" },
+                { 
+                    urls: "turn:global.turn.metered.live:443?transport=tcp",
+                    username: "b9edfe7cf7ed451c3c98484d",
+                    credential: "sfu9oVQVpjbjLaNN"
+                },
+                { 
+                    urls: "turn:global.turn.metered.live:443?transport=udp",
+                    username: "b9edfe7cf7ed451c3c98484d",
+                    credential: "sfu9oVQVpjbjLaNN"
+                },
+                { 
+                    urls: "turn:global.turn.metered.live:80?transport=tcp",
+                    username: "b9edfe7cf7ed451c3c98484d",
+                    credential: "sfu9oVQVpjbjLaNN"
+                },
+                { 
+                    urls: "turn:global.turn.metered.live:80?transport=udp",
+                    username: "b9edfe7cf7ed451c3c98484d",
+                    credential: "sfu9oVQVpjbjLaNN"
+                }
+            ];
+            voiceAddLog(`✅ TURN সার্ভার কনফিগার করা হয়েছে`);
         }
         
         function voiceShowStatus(msg,isErr=false){ voiceStatusDiv.innerHTML=isErr?`❌ ${msg}`:`✅ ${msg}`; voiceStatusDiv.style.background=isErr?'rgba(220,38,38,0.7)':'rgba(34,197,94,0.7)'; voiceAddLog(msg,isErr); }
         
         async function voiceCreatePeerConnection(targetUserId){ 
             if(voiceState.peerConnections.has(targetUserId)) return voiceState.peerConnections.get(targetUserId); 
-            const pc=new RTCPeerConnection({iceServers:voiceState.iceServers}); // relay সরানো হয়েছে
+            const pc=new RTCPeerConnection({iceServers:voiceState.iceServers,iceTransportPolicy:'relay'}); 
             if(voiceState.localStream) voiceState.localStream.getTracks().forEach(t=>pc.addTrack(t,voiceState.localStream)); 
             pc.onicecandidate=event=>{ if(event.candidate) database.ref(`voice_rooms/${voiceState.roomId}/candidates/${targetUserId}`).push({from:voiceState.userId,candidate:event.candidate}); }; 
             pc.ontrack=event=>{ 
                 voiceAddLog(`📢 রিমোট ট্র্যাক পেলাম ${targetUserId}`);
-                let audio=voiceState.remoteAudios.get(targetUserId); 
+                let audio = voiceState.remoteAudios.get(targetUserId); 
                 if(!audio){ 
-                    audio=new Audio(); 
-                    audio.autoplay=true; 
-                    audio.volume=1; 
+                    audio = new Audio(); 
+                    audio.autoplay = false;
+                    audio.volume = 1.0;
+                    audio.style.display = 'none';
                     document.body.appendChild(audio); 
-                    voiceState.remoteAudios.set(targetUserId,audio); 
+                    voiceState.remoteAudios.set(targetUserId, audio); 
                 } 
-                audio.srcObject=event.streams[0]; 
-                audio.play().catch(e=>voiceAddLog(`🔇 প্লে ব্যাক ${targetUserId}: ${e.message}`,true)); 
+                audio.srcObject = event.streams[0];
+                // অটোপ্লে পলিসি এড়াতে user interaction প্রয়োজন
+                const playAudio = () => {
+                    audio.play().then(() => {
+                        voiceAddLog(`✅ অডিও প্লে শুরু: ${targetUserId}`);
+                    }).catch(e => {
+                        voiceAddLog(`⚠️ অডিও প্লে ব্যর্থ: ${e.message}`, true);
+                        voiceShowStatus("অডিও শুনতে 'অডিও ফোর্স প্লে' বাটনে ক্লিক করুন", true);
+                    });
+                };
+                // যদি ইতিমধ্যে user interaction থাকে, try to play
+                playAudio();
             }; 
             pc.onconnectionstatechange=()=>{ voiceAddLog(`🔗 ${targetUserId}: ${pc.connectionState}`); voiceUpdateParticipantsList(); }; 
             voiceState.peerConnections.set(targetUserId,pc); return pc; 
@@ -979,7 +1004,8 @@
             voiceState.roomId=roomId;
             voiceState.userId=userId;
             voiceShowStatus("মাইক্রোফোন অনুমতি নিচ্ছি...");
-            if(!voiceState.iceServers.length) await voiceLoadIceServers();
+            // TURN সার্ভার সেটআপ
+            setupIceServers();
             try{ 
                 const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
                 voiceState.localStream=stream;
@@ -1038,11 +1064,17 @@
         
         function voiceForcePlayAll(){ 
             let played=0; 
-            for(let audio of voiceState.remoteAudios.values()){ 
-                if(audio.paused) audio.play().then(()=>played++).catch(e=>voiceAddLog(`force play fail: ${e.message}`,true)); 
+            for(let [uid, audio] of voiceState.remoteAudios.entries()){ 
+                if(audio.paused) {
+                    audio.play().then(()=>{
+                        played++;
+                        voiceAddLog(`🔊 ফোর্স প্লে সফল: ${uid}`);
+                    }).catch(e=>voiceAddLog(`⚠️ ফোর্স প্লে ব্যর্থ ${uid}: ${e.message}`,true));
+                }
             } 
-            if(played) voiceShowStatus(`${played}টি অডিও চালু করা হয়েছে`); 
-            else voiceAddLog("সব অডিও ইতিমধ্যে চালু বা নেই"); 
+            if(played>0) voiceShowStatus(`${played}টি অডিও চালু করা হয়েছে`); 
+            else if(voiceState.remoteAudios.size===0) voiceAddLog("কোন রিমোট অডিও নেই");
+            else voiceAddLog("সব অডিও ইতিমধ্যে চালু আছে");
         }
         
         window.voiceCleanup=async()=>{ await voiceLeave(); };
