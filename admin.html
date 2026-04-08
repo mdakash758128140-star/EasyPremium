@@ -2,10 +2,10 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Easy Premium - অর্ডার ম্যানেজমেন্ট + এডমিন ভয়েস কল</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDKs (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -596,6 +596,23 @@
         </header>
         
         <div class="main-content">
+            <!-- ========== এডমিন গ্রুপ ভয়েস কল সেকশন (সবার উপরে) ========== -->
+            <div class="section" id="voiceCallSection">
+                <h2 class="section-title"><i class="fas fa-headset"></i> এডমিন গ্রুপ ভয়েস কল <span style="font-size:0.8rem;">(স্বয়ংক্রিয় সংযোগ)</span></h2>
+                <div class="info-note"><i class="fas fa-info-circle"></i> লগইন করলেই আপনি গ্রুপ কলে সংযুক্ত হবেন। কথা বললে আপনার বৃত্ত ঘুরবে। অডিও না শুনলে "অডিও ফোর্স প্লে" বাটন ব্যবহার করুন।</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
+                    <div style="flex:2; min-width: 200px;"><label style="font-size:0.8rem;">রুম আইডি</label><input type="text" id="voiceRoomId" class="password-input" style="margin:0;" value="easy-premium-admin-group" readonly></div>
+                    <div style="flex:2; min-width: 200px;"><label style="font-size:0.8rem;">আপনার নাম (এডমিন)</label><input type="text" id="voiceUserName" class="password-input" style="margin:0;" placeholder="এডমিন নাম" readonly></div>
+                    <div class="voice-controls" style="flex:3; justify-content: flex-end;">
+                        <button id="voiceMicToggle" class="voice-btn voice-btn-warning" disabled><i class="fas fa-microphone"></i> মাইক চালু</button>
+                        <button id="voiceForcePlayBtn" class="voice-btn" style="background:#8b5cf6;" disabled><i class="fas fa-volume-up"></i> অডিও ফোর্স প্লে</button>
+                    </div>
+                </div>
+                <div id="voiceStatusArea" class="voice-status"><i class="fas fa-circle-notch fa-spin"></i> সংযোগ হচ্ছে...</div>
+                <div class="voice-participants-grid" id="voiceParticipantGrid"><div style="color:gray;">কেউ নেই</div></div>
+                <div class="debug-log-small" id="voiceDebugLog"></div>
+            </div>
+
             <!-- Transactions Dashboard -->
             <div class="section">
                 <h2 class="section-title">Transactions অর্ডার ড্যাশবোর্ড</h2>
@@ -618,25 +635,6 @@
             <div class="section">
                 <h2 class="section-title">লেনদেন তালিকা Transactions <span id="transactionCount"></span></h2>
                 <div style="overflow-x: auto;"><table class="transactions-table"><thead><tr><th>অর্ডার আইডি</th><th>পরিমাণ (BDT)</th><th>স্ট্যাটাস</th><th>পেমেন্ট পদ্ধতি</th><th>ফোন</th><th>TXID</th><th>Relograde TRX</th><th>এডমিন নম্বর</th><th>তারিখ</th></tr></thead><tbody id="transactionsTable"></tbody></table></div>
-            </div>
-
-            <!-- এডমিন গ্রুপ ভয়েস কল সেকশন (নতুন) -->
-            <div class="section" id="voiceCallSection">
-                <h2 class="section-title"><i class="fas fa-headset"></i> এডমিন গ্রুপ ভয়েস কল</h2>
-                <div class="info-note"><i class="fas fa-info-circle"></i> মাইক ব্যবহার করতে নিচের "জয়েন কল" বাটনে ক্লিক করুন। কথা বললে আপনার বৃত্ত ঘুরবে। অডিও না শুনলে "অডিও ফোর্স প্লে" বাটন ব্যবহার করুন।</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
-                    <div style="flex:2; min-width: 200px;"><label style="font-size:0.8rem;">রুম আইডি</label><input type="text" id="voiceRoomId" class="password-input" style="margin:0;" value="easy-premium-admin-group" readonly></div>
-                    <div style="flex:2; min-width: 200px;"><label style="font-size:0.8rem;">আপনার নাম (এডমিন)</label><input type="text" id="voiceUserName" class="password-input" style="margin:0;" placeholder="আপনার নাম" readonly></div>
-                    <div class="voice-controls" style="flex:3; justify-content: flex-end;">
-                        <button id="voiceJoinBtn" class="voice-btn voice-btn-success"><i class="fas fa-phone-alt"></i> জয়েন কল</button>
-                        <button id="voiceLeaveBtn" class="voice-btn voice-btn-danger" disabled><i class="fas fa-phone-slash"></i> কল ছাড়ুন</button>
-                        <button id="voiceMicToggle" class="voice-btn voice-btn-warning" disabled><i class="fas fa-microphone"></i> মাইক চালু</button>
-                        <button id="voiceForcePlayBtn" class="voice-btn" style="background:#8b5cf6;" disabled><i class="fas fa-volume-up"></i> অডিও ফোর্স প্লে</button>
-                    </div>
-                </div>
-                <div id="voiceStatusArea" class="voice-status"><i class="fas fa-circle-notch fa-spin"></i> সংযোগ করতে জয়েন করুন</div>
-                <div class="voice-participants-grid" id="voiceParticipantGrid"><div style="color:gray;">কেউ নেই</div></div>
-                <div class="debug-log-small" id="voiceDebugLog"></div>
             </div>
         </div>
     </div>
@@ -684,11 +682,10 @@
         const adminPasswordInput = document.getElementById('adminPasswordInput'), submitPasswordBtn = document.getElementById('submitPasswordBtn'), passwordErrorMsg = document.getElementById('passwordErrorMsg');
         let pendingAction = null, pendingTrxId = null, pendingEvent = null, pendingOrdersCallback = null, globalAdminPassword = null;
 
-        // Helper functions (অর্ডার ও এডমিন ম্যানেজমেন্ট)
+        // Helper functions (অর্ডার ও এডমিন ম্যানেজমেন্ট) - same as before but kept compact
         async function fetchAdminCompletedTotal() { if(!currentAdminEmail) return; try{ const snap=await database.ref('completedOrders').once('value'); let total=0; for(const trx in snap.val()||{}) if(snap.val()[trx].completedBy===currentAdminEmail) total+=(snap.val()[trx].orderData?.priceAmount||0); adminTotalAmountEl.textContent=total.toFixed(2); }catch(e){ adminTotalAmountEl.textContent='0.00'; } }
         async function fetchRelogradeBalance() { try{ const res=await fetch('/api/relograde-balance'); const data=await res.json(); if(data.success) relogradeBalanceEl.textContent=`$${data.balance.toFixed(2)}`; else relogradeBalanceEl.textContent='—'; }catch(e){ relogradeBalanceEl.textContent='ত্রুটি'; } }
         setInterval(fetchRelogradeBalance,30000); fetchRelogradeBalance();
-
         function showToast(msg,type){ const toast=document.createElement('div'); toast.className='toast'; toast.textContent=msg; toast.style.background=type==='error'?'#dc3545':type==='success'?'#28a745':'#ff9800'; document.body.appendChild(toast); setTimeout(()=>{ toast.style.animation='slideIn 0.3s ease reverse'; setTimeout(()=>toast.remove(),300); },3000); }
 
         // Primary admin logic
@@ -724,7 +721,9 @@
 
         // লগইন ও আউথ
         async function loadAdminData(user){ adminNameSpan.textContent=user.displayName||user.email; adminEmailSpan.textContent=user.email; adminAvatarDiv.innerHTML=user.photoURL?`<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">`:`<span>${(user.displayName||user.email).charAt(0).toUpperCase()}</span>`; try{ await database.ref(`adminUsers/${user.uid}`).update({email:user.email,name:user.displayName||'',lastLogin:firebase.database.ServerValue.TIMESTAMP,status:'active'}); const existing=await publicAdminInfoRef.child(user.uid).once('value'); if(!existing.exists()) await publicAdminInfoRef.child(user.uid).set({name:user.displayName||'Admin',number:''}); }catch(e){} }
-        function checkAdminAuth(){ auth.onAuthStateChanged(async(user)=>{ if(user && ALLOWED_ADMIN_EMAILS.includes(user.email)){ currentAdminEmail=user.email; currentAdminUid=user.uid; await loadAdminData(user); stopAllIntervals(); isPrimaryAdmin=false; await evaluatePrimaryStatus(); startRecheckLoop(); showAdminPanel(); loadOrders(); setupTransactionsListener(); fetchAdminCompletedTotal(); initVoiceForAdmin(); } else if(user){ await auth.signOut(); showLoginScreen(); } else{ stopAllIntervals(); showLoginScreen(); } }); }
+        function checkAdminAuth(){ auth.onAuthStateChanged(async(user)=>{ if(user && ALLOWED_ADMIN_EMAILS.includes(user.email)){ currentAdminEmail=user.email; currentAdminUid=user.uid; await loadAdminData(user); stopAllIntervals(); isPrimaryAdmin=false; await evaluatePrimaryStatus(); startRecheckLoop(); showAdminPanel(); loadOrders(); setupTransactionsListener(); fetchAdminCompletedTotal(); // ভয়েস কল অটো জয়েন (এডমিনের নাম ডাটাবেজ থেকে নিয়ে)
+            await autoJoinVoiceCall();
+         } else if(user){ await auth.signOut(); showLoginScreen(); } else{ stopAllIntervals(); showLoginScreen(); } }); }
         async function handleGoogleLogin(){ try{ const result=await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); if(!ALLOWED_ADMIN_EMAILS.includes(result.user.email)){ await auth.signOut(); showToast('এক্সেস নেই','error'); } }catch(e){ showToast('লগইন ব্যর্থ','error'); } }
         async function handleLogout(){ stopAllIntervals(); if(transactionsListenerRef) transactionsListenerRef.off(); if(window.voiceCleanup) await window.voiceCleanup(); await auth.signOut(); showLoginScreen(); }
         function showLoginScreen(){ loginScreen.style.display='flex'; adminPanel.style.display='none'; }
@@ -733,9 +732,9 @@
         closeDetailsModalBtn.onclick=()=>orderDetailsModal.classList.remove('active'); window.onclick=(e)=>{if(e.target===orderDetailsModal) orderDetailsModal.classList.remove('active');}; closePasswordModalBtn.onclick=closePasswordModal; submitPasswordBtn.onclick=verifyAndPerformAction; adminPasswordInput.addEventListener('keypress',(e)=>{if(e.key==='Enter') verifyAndPerformAction();});
         document.addEventListener('DOMContentLoaded',()=>{ checkAdminAuth(); });
 
-        // ========== এডমিন ভয়েস কল লজিক (WebRTC + TURN) ==========
+        // ========== এডমিন ভয়েস কল লজিক (অটো জয়েন, ডাটাবেজ থেকে নাম) ==========
         let voiceState = { roomId: null, userId: null, localStream: null, isMicActive: false, peerConnections: new Map(), remoteAudios: new Map(), roomUsersRef: null, iceServers: [], animFrame: null, audioCtx: null };
-        const voiceRoomInput=document.getElementById('voiceRoomId'), voiceUserName=document.getElementById('voiceUserName'), voiceJoinBtn=document.getElementById('voiceJoinBtn'), voiceLeaveBtn=document.getElementById('voiceLeaveBtn'), voiceMicToggle=document.getElementById('voiceMicToggle'), voiceForcePlayBtn=document.getElementById('voiceForcePlayBtn'), voiceStatusDiv=document.getElementById('voiceStatusArea'), voiceParticipantGrid=document.getElementById('voiceParticipantGrid'), voiceDebugLog=document.getElementById('voiceDebugLog');
+        const voiceRoomInput=document.getElementById('voiceRoomId'), voiceUserName=document.getElementById('voiceUserName'), voiceMicToggle=document.getElementById('voiceMicToggle'), voiceForcePlayBtn=document.getElementById('voiceForcePlayBtn'), voiceStatusDiv=document.getElementById('voiceStatusArea'), voiceParticipantGrid=document.getElementById('voiceParticipantGrid'), voiceDebugLog=document.getElementById('voiceDebugLog');
         function voiceAddLog(msg,isErr=false){ const div=document.createElement('div'); div.textContent=`[${new Date().toLocaleTimeString()}] ${msg}`; div.style.color=isErr?'#f87171':'#86efac'; div.style.marginBottom='2px'; voiceDebugLog.appendChild(div); voiceDebugLog.scrollTop=voiceDebugLog.scrollHeight; while(voiceDebugLog.children.length>50) voiceDebugLog.removeChild(voiceDebugLog.firstChild); console.log(msg); }
         async function voiceLoadIceServers(){ try{ const res=await fetch("https://easy-premium.metered.live/api/v1/turn/credentials?apiKey=546ad2772f911ebe6c4b6e0ae95f76ac36d3"); const data=await res.json(); voiceState.iceServers=Array.isArray(data)?data:(data.iceServers||data); if(!voiceState.iceServers.length) throw new Error("no TURN"); voiceAddLog(`✅ TURN লোড (${voiceState.iceServers.length} servers)`); }catch(e){ voiceAddLog(`⚠️ TURN fail, STUN fallback`,true); voiceState.iceServers=[{urls:"stun:stun.l.google.com:19302"}]; } }
         function voiceShowStatus(msg,isErr=false){ voiceStatusDiv.innerHTML=isErr?`❌ ${msg}`:`✅ ${msg}`; voiceStatusDiv.style.background=isErr?'rgba(220,38,38,0.7)':'rgba(34,197,94,0.7)'; voiceAddLog(msg,isErr); }
@@ -745,13 +744,46 @@
         function voiceUpdateParticipantsList(){ const users=[...voiceState.peerConnections.keys(),voiceState.userId]; if(users.length===0){ voiceParticipantGrid.innerHTML='<div style="color:gray;">কেউ নেই</div>'; return; } let html=''; for(let uid of users){ const isMe=uid===voiceState.userId; const conn=voiceState.peerConnections.has(uid); const badge=conn?'<span class="voice-badge voice-connected"></span>':'<span class="voice-badge voice-disconnected"></span>'; html+=`<div class="voice-participant-card"><div class="voice-circle" id="voiceCircle-${uid.replace(/[^a-zA-Z0-9]/g,'_')}"><span style="font-size:28px;">${isMe?'🎤':'👤'}</span></div><div class="voice-name">${badge} ${uid.substring(0,12)}${isMe?' (আপনি)':''}</div></div>`; } voiceParticipantGrid.innerHTML=html; }
         function voiceSetSpeaking(uid,isSpeaking){ const safeId=uid.replace(/[^a-zA-Z0-9]/g,'_'); const circle=document.getElementById(`voiceCircle-${safeId}`); if(circle){ if(isSpeaking) circle.classList.add('speaking'); else circle.classList.remove('speaking'); } }
         function voiceStartVolumeDetection(stream){ if(voiceState.animFrame) cancelAnimationFrame(voiceState.animFrame); if(!voiceState.audioCtx) voiceState.audioCtx=new (window.AudioContext||window.webkitAudioContext)(); const source=voiceState.audioCtx.createMediaStreamSource(stream); const analyser=voiceState.audioCtx.createAnalyser(); analyser.fftSize=256; const dataArray=new Uint8Array(analyser.frequencyBinCount); source.connect(analyser); voiceState.audioCtx.resume(); function detect(){ if(!analyser||!voiceState.userId) return; analyser.getByteFrequencyData(dataArray); let sum=0; for(let i=0;i<dataArray.length;i++) sum+=dataArray[i]; const avg=sum/dataArray.length; const speaking=avg>18; voiceSetSpeaking(voiceState.userId,speaking); voiceState.animFrame=requestAnimationFrame(detect); } detect(); }
-        async function voiceJoin(){ if(voiceState.localStream) await voiceLeave(); const roomId=voiceRoomInput.value.trim()||"easy-premium-admin-group"; const userId=voiceUserName.value.trim()||currentAdminEmail?.split('@')[0]||"Admin"; if(!userId){ voiceShowStatus("নাম দিন",true); return; } voiceState.roomId=roomId; voiceState.userId=userId.replace(/[.#$\[\]\/]/g,'_'); voiceShowStatus("মাইক্রোফোন অনুমতি নিচ্ছি..."); if(!voiceState.iceServers.length) await voiceLoadIceServers(); try{ const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}); voiceState.localStream=stream; voiceState.isMicActive=true; voiceMicToggle.disabled=false; voiceMicToggle.innerHTML='<i class="fas fa-microphone-slash"></i> মাইক বন্ধ'; voiceForcePlayBtn.disabled=false; voiceStartVolumeDetection(stream); await database.ref(`voice_rooms/${voiceState.roomId}/users/${voiceState.userId}`).set({joined:Date.now(),name:userId}); voiceSetupListeners(); const snap=await database.ref(`voice_rooms/${voiceState.roomId}/users`).once('value'); const users=snap.val()||{}; const others=Object.keys(users).filter(uid=>uid!==voiceState.userId); for(let uid of others) setTimeout(()=>voiceCallUser(uid),500); const newUserRef=database.ref(`voice_rooms/${voiceState.roomId}/users`); newUserRef.on('child_added',(snap)=>{ const uid=snap.key; if(uid!==voiceState.userId && !voiceState.peerConnections.has(uid)) voiceCallUser(uid); voiceUpdateParticipantsList(); }); newUserRef.on('child_removed',(snap)=>{ const uid=snap.key; if(voiceState.peerConnections.has(uid)){ voiceState.peerConnections.get(uid).close(); voiceState.peerConnections.delete(uid); } if(voiceState.remoteAudios.has(uid)){ voiceState.remoteAudios.get(uid).remove(); voiceState.remoteAudios.delete(uid); } voiceUpdateParticipantsList(); }); voiceState.roomUsersRef=newUserRef; voiceUpdateParticipantsList(); voiceJoinBtn.disabled=true; voiceLeaveBtn.disabled=false; voiceShowStatus("রুমে জয়েন করেছেন! কথা বলুন"); }catch(err){ voiceShowStatus(`মাইক অনুমতি দেননি: ${err.message}`,true); if(voiceState.localStream) voiceState.localStream.getTracks().forEach(t=>t.stop()); voiceState.localStream=null; } }
-        async function voiceLeave(){ if(!voiceState.roomId || !voiceState.userId) return; if(voiceState.animFrame) cancelAnimationFrame(voiceState.animFrame); for(let [uid,pc] of voiceState.peerConnections){ pc.close(); } voiceState.peerConnections.clear(); voiceState.remoteAudios.forEach(a=>a.remove()); voiceState.remoteAudios.clear(); if(voiceState.localStream){ voiceState.localStream.getTracks().forEach(t=>t.stop()); voiceState.localStream=null; } if(voiceState.roomUsersRef){ await database.ref(`voice_rooms/${voiceState.roomId}/users/${voiceState.userId}`).remove(); voiceState.roomUsersRef.off(); } voiceState.roomId=null; voiceState.userId=null; voiceJoinBtn.disabled=false; voiceLeaveBtn.disabled=true; voiceMicToggle.disabled=true; voiceForcePlayBtn.disabled=true; voiceMicToggle.innerHTML='<i class="fas fa-microphone"></i> মাইক চালু'; voiceStatusDiv.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> সংযোগ করতে জয়েন করুন'; voiceParticipantGrid.innerHTML='<div style="color:gray;">কেউ নেই</div>'; voiceAddLog("কল ছেড়েছেন"); }
+        async function autoJoinVoiceCall(){ if(!currentAdminEmail) return; // ডাটাবেজ থেকে এডমিনের নাম সংগ্রহ
+            let adminDisplayName = currentAdminEmail.split('@')[0]; // fallback
+            try{ const adminSnap=await database.ref(`adminUsers/${currentAdminUid}`).once('value'); if(adminSnap.exists() && adminSnap.val().name) adminDisplayName=adminSnap.val().name; else{ const publicSnap=await publicAdminInfoRef.child(currentAdminUid).once('value'); if(publicSnap.exists() && publicSnap.val().name) adminDisplayName=publicSnap.val().name; } }catch(e){ voiceAddLog(`নাম লোড ব্যর্থ: ${e.message}`,true); }
+            voiceUserName.value=adminDisplayName;
+            const roomId=voiceRoomInput.value.trim()||"easy-premium-admin-group";
+            const userId=adminDisplayName.replace(/[.#$\[\]\/]/g,'_')+'_'+currentAdminUid.substring(0,6);
+            voiceState.roomId=roomId;
+            voiceState.userId=userId;
+            voiceShowStatus("মাইক্রোফোন অনুমতি নিচ্ছি...");
+            if(!voiceState.iceServers.length) await voiceLoadIceServers();
+            try{ const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+                voiceState.localStream=stream;
+                voiceState.isMicActive=true;
+                voiceMicToggle.disabled=false;
+                voiceMicToggle.innerHTML='<i class="fas fa-microphone-slash"></i> মাইক বন্ধ';
+                voiceForcePlayBtn.disabled=false;
+                voiceStartVolumeDetection(stream);
+                await database.ref(`voice_rooms/${voiceState.roomId}/users/${voiceState.userId}`).set({joined:Date.now(),name:adminDisplayName});
+                voiceSetupListeners();
+                const snap=await database.ref(`voice_rooms/${voiceState.roomId}/users`).once('value');
+                const users=snap.val()||{};
+                const others=Object.keys(users).filter(uid=>uid!==voiceState.userId);
+                for(let uid of others) setTimeout(()=>voiceCallUser(uid),500);
+                const newUserRef=database.ref(`voice_rooms/${voiceState.roomId}/users`);
+                newUserRef.on('child_added',(snap)=>{ const uid=snap.key; if(uid!==voiceState.userId && !voiceState.peerConnections.has(uid)) voiceCallUser(uid); voiceUpdateParticipantsList(); });
+                newUserRef.on('child_removed',(snap)=>{ const uid=snap.key; if(voiceState.peerConnections.has(uid)){ voiceState.peerConnections.get(uid).close(); voiceState.peerConnections.delete(uid); } if(voiceState.remoteAudios.has(uid)){ voiceState.remoteAudios.get(uid).remove(); voiceState.remoteAudios.delete(uid); } voiceUpdateParticipantsList(); });
+                voiceState.roomUsersRef=newUserRef;
+                voiceUpdateParticipantsList();
+                voiceShowStatus("রুমে জয়েন করেছেন! কথা বলুন");
+                voiceAddLog(`✅ ভয়েস কল অটো জয়েন: ${adminDisplayName}`);
+            }catch(err){ voiceShowStatus(`মাইক অনুমতি দেননি: ${err.message}`,true); if(voiceState.localStream) voiceState.localStream.getTracks().forEach(t=>t.stop()); voiceState.localStream=null; }
+        }
+        async function voiceLeave(){ if(!voiceState.roomId || !voiceState.userId) return; if(voiceState.animFrame) cancelAnimationFrame(voiceState.animFrame); for(let [uid,pc] of voiceState.peerConnections){ pc.close(); } voiceState.peerConnections.clear(); voiceState.remoteAudios.forEach(a=>a.remove()); voiceState.remoteAudios.clear(); if(voiceState.localStream){ voiceState.localStream.getTracks().forEach(t=>t.stop()); voiceState.localStream=null; } if(voiceState.roomUsersRef){ await database.ref(`voice_rooms/${voiceState.roomId}/users/${voiceState.userId}`).remove(); voiceState.roomUsersRef.off(); } voiceState.roomId=null; voiceState.userId=null; voiceMicToggle.disabled=true; voiceForcePlayBtn.disabled=true; voiceMicToggle.innerHTML='<i class="fas fa-microphone"></i> মাইক চালু'; voiceStatusDiv.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> সংযোগ করতে জয়েন করুন'; voiceParticipantGrid.innerHTML='<div style="color:gray;">কেউ নেই</div>'; voiceAddLog("কল ছেড়েছেন"); }
         function voiceToggleMic(){ if(!voiceState.localStream) return; const audioTrack=voiceState.localStream.getAudioTracks()[0]; if(audioTrack){ audioTrack.enabled=!audioTrack.enabled; voiceState.isMicActive=audioTrack.enabled; voiceMicToggle.innerHTML=voiceState.isMicActive?'<i class="fas fa-microphone-slash"></i> মাইক বন্ধ':'<i class="fas fa-microphone"></i> মাইক চালু'; voiceShowStatus(voiceState.isMicActive?"মাইক চালু":"মাইক বন্ধ"); } }
         function voiceForcePlayAll(){ let played=0; for(let audio of voiceState.remoteAudios.values()){ if(audio.paused) audio.play().then(()=>played++).catch(e=>voiceAddLog(`force play fail: ${e.message}`,true)); } if(played) voiceShowStatus(`${played}টি অডিও চালু করা হয়েছে`); else voiceAddLog("সব অডিও ইতিমধ্যে চালু বা নেই"); }
-        async function initVoiceForAdmin(){ if(currentAdminEmail){ voiceUserName.value=currentAdminEmail.split('@')[0]||"Admin"; voiceRoomInput.value="easy-premium-admin-group"; await voiceLoadIceServers(); } }
         window.voiceCleanup=async()=>{ await voiceLeave(); };
-        voiceJoinBtn.onclick=voiceJoin; voiceLeaveBtn.onclick=voiceLeave; voiceMicToggle.onclick=voiceToggleMic; voiceForcePlayBtn.onclick=voiceForcePlayAll;
+        voiceMicToggle.onclick=voiceToggleMic;
+        voiceForcePlayBtn.onclick=voiceForcePlayAll;
+        // Ensure voice leaves on page unload
+        window.addEventListener('beforeunload',()=>{ if(voiceState.localStream) voiceLeave(); });
     </script>
 </body>
 </html>
