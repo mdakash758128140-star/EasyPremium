@@ -596,10 +596,10 @@
         </header>
         
         <div class="main-content">
-            <!-- ========== এডমিন গ্রুপ ভয়েস কল সেকশন (সবার উপরে) ========== -->
+            <!-- ========== এডমিন গ্রুপ ভয়েস কল সেকশন ========== -->
             <div class="section" id="voiceCallSection">
                 <h2 class="section-title"><i class="fas fa-headset"></i> এডমিন গ্রুপ ভয়েস কল <span style="font-size:0.8rem;">(স্বয়ংক্রিয় সংযোগ)</span></h2>
-                <div class="info-note"><i class="fas fa-info-circle"></i> লগইন করলেই আপনি গ্রুপ কলে সংযুক্ত হবেন। কথা বললে আপনার বৃত্ত ঘুরবে। অডিও না শুনলে "অডিও ফোর্স প্লে" বাটন ব্যবহার করুন।</div>
+                <div class="info-note"><i class="fas fa-info-circle"></i> লগইন করলেই আপনি গ্রুপ কলে সংযুক্ত হবেন। কথা বললে আপনার বৃত্ত ঘুরবে।</div>
                 <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
                     <div style="flex:2; min-width: 200px;"><label style="font-size:0.8rem;">রুম আইডি</label><input type="text" id="voiceRoomId" class="password-input" style="margin:0;" value="easy-premium-admin-group" readonly></div>
                     <div style="flex:2; min-width: 200px;"><label style="font-size:0.8rem;">আপনার নাম (এডমিন)</label><input type="text" id="voiceUserName" class="password-input" style="margin:0;" placeholder="এডমিন নাম" readonly></div>
@@ -656,11 +656,14 @@
             messagingSenderId: "155891252265",
             appId: "1:155891252265:web:77ab41de24231e8e5ef038"
         };
+        
+        console.log("Firebase initializing...");
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const database = firebase.database();
+        console.log("Firebase initialized");
 
-        // ---------- Global Variables (অর্ডার ও এডমিন লজিক) ----------
+        // ---------- Global Variables ----------
         let orders = [], currentAdminEmail = null, currentAdminUid = null, isPrimaryAdmin = false;
         let primaryUpdateInterval = null, recheckInterval = null;
         let transactionsListenerRef = null, currentTransactions = [];
@@ -668,7 +671,7 @@
         const ACTIVE_WINDOW = 60 * 1000, UPDATE_INTERVAL = 60 * 1000;
         const publicAdminInfoRef = database.ref('publicAdminInfo');
 
-        // DOM elements (অর্ডার ও ট্রানজ্যাকশন)
+        // DOM elements
         const loginScreen = document.getElementById('loginScreen'), adminPanel = document.getElementById('adminPanel');
         const googleLoginBtn = document.getElementById('googleLoginBtn'), logoutBtn = document.getElementById('logoutBtn'), refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
         const adminNameSpan = document.getElementById('adminName'), adminEmailSpan = document.getElementById('adminEmail'), adminAvatarDiv = document.getElementById('adminAvatar');
@@ -682,7 +685,7 @@
         const adminPasswordInput = document.getElementById('adminPasswordInput'), submitPasswordBtn = document.getElementById('submitPasswordBtn'), passwordErrorMsg = document.getElementById('passwordErrorMsg');
         let pendingAction = null, pendingTrxId = null, pendingEvent = null, pendingOrdersCallback = null, globalAdminPassword = null;
 
-        // Helper functions (অর্ডার ও এডমিন ম্যানেজমেন্ট) - সম্পূর্ণ মূল লজিক অপরিবর্তিত
+        // Helper functions
         async function fetchAdminCompletedTotal() { if(!currentAdminEmail) return; try{ const snap=await database.ref('completedOrders').once('value'); let total=0; for(const trx in snap.val()||{}) if(snap.val()[trx].completedBy===currentAdminEmail) total+=(snap.val()[trx].orderData?.priceAmount||0); adminTotalAmountEl.textContent=total.toFixed(2); }catch(e){ adminTotalAmountEl.textContent='0.00'; } }
         async function fetchRelogradeBalance() { try{ const res=await fetch('/api/relograde-balance'); const data=await res.json(); if(data.success) relogradeBalanceEl.textContent=`$${data.balance.toFixed(2)}`; else relogradeBalanceEl.textContent='—'; }catch(e){ relogradeBalanceEl.textContent='ত্রুটি'; } }
         setInterval(fetchRelogradeBalance,30000); fetchRelogradeBalance();
@@ -698,7 +701,7 @@
         function startRecheckLoop(){ if(recheckInterval) clearInterval(recheckInterval); recheckInterval=setInterval(evaluatePrimaryStatus, UPDATE_INTERVAL); }
         async function tryBecomePrimary(){ const{primaryUid}=await getPrimaryAdmin(); if(primaryUid!==null) return false; try{ await publicAdminInfoRef.child(currentAdminUid).update({lastActive:new Date().toISOString()}); const{isCurrentPrimary}=await getPrimaryAdmin(); return isCurrentPrimary; }catch(err){ return false; } }
 
-        // অর্ডার লোড ও ডিসপ্লে (পাসওয়ার্ড সহ)
+        // অর্ডার লোড ও ডিসপ্লে
         async function loadOrders(){ if(globalAdminPassword) await fetchOrdersWithPassword(globalAdminPassword); else showPasswordModalForOrders(async(password)=>await fetchOrdersWithPassword(password)); }
         async function fetchOrdersWithPassword(password){ ordersTable.innerHTML=`<td colspan="8" class="loading-spinner"><div class="spinner"></div><p>লোড হচ্ছে...</p>`; try{ const res=await fetch(`/api/relograde-orders?password=${encodeURIComponent(password)}`); const result=await res.json(); if(!res.ok || !result.success){ if(res.status===401||res.status===403){ globalAdminPassword=null; loadOrders(); return; } throw new Error(result.error); } orders=result.data||[]; orderCountEl.textContent=`(${orders.length}টি)`; refreshOrdersDisplay(); showToast(`${orders.length}টি অর্ডার লোড`,'success'); }catch(e){ ordersTable.innerHTML=`<td colspan="8" class="no-data">${e.message}</td>`; } }
         function refreshOrdersDisplay(){ displayOrders(orders); }
@@ -709,7 +712,7 @@
         function displayTransactions(transactions){ if(!transactions.length){ transactionsTable.innerHTML='<td colspan="9" class="no-data">কোনো লেনদেন নেই'; return; } let html=''; transactions.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).forEach(tx=>{ const status=(tx.status||tx.orderStatus||'unknown').toLowerCase(); let statusClass='status-pending',statusText=status; if(status==='completed'){statusClass='status-completed';statusText='সম্পূর্ণ';}else if(status==='fail'){statusClass='status-cancelled';statusText='ফেল';}else statusText='পেন্ডিং'; html+=`<tr><td>${tx.orderId||tx.id||'—'}</td><td style="color:#00bcd4;">${tx.amount||tx.totalAmount||0} ৳</td><td><span class="status-badge ${statusClass}">${statusText}</span></td><td>${tx.paymentMethod||tx.method||'—'}</td><td>${tx.phone||'—'}</td><td style="font-family:monospace;">${tx.txid||tx.transactionId||'—'}</td><td style="font-family:monospace;">${tx.relogradeTrx||'—'}</td><td>${tx.admin||'—'}</td><td>${tx.timestamp?new Date(tx.timestamp).toLocaleString('bn-BD'):'—'}</td></tr>`; }); transactionsTable.innerHTML=html; }
         function refreshTransactions(){ displayTransactions(currentTransactions); transactionCountSpan.textContent=`(${currentTransactions.length}টি)`; }
 
-        // অর্ডার অ্যাকশন (সম্পন্ন/বাতিল) - পাসওয়ার্ড মডাল সহ
+        // অর্ডার অ্যাকশন
         function closePasswordModal(){ passwordModal.classList.remove('active'); adminPasswordInput.value=''; passwordErrorMsg.textContent=''; pendingAction=null; pendingTrxId=null; pendingEvent=null; pendingOrdersCallback=null; }
         function showPasswordModalForOrders(callback){ pendingOrdersCallback=callback; pendingAction='orders'; passwordModal.classList.add('active'); adminPasswordInput.focus(); }
         function showPasswordModal(action,trxId,event){ pendingAction=action; pendingTrxId=trxId; pendingEvent=event; passwordModal.classList.add('active'); adminPasswordInput.focus(); }
@@ -723,33 +726,186 @@
         function updateSystemInfo(){ const roleText=isPrimaryAdmin?'<span style="color:#4caf50;">প্রধান এডমিন (সম্পূর্ণ অ্যাক্সেস)</span>':'<span style="color:#ff9800;">শুধু দেখার (রিড-অনলি)</span>'; systemInfo.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;"><div><strong>লগইন সময়:</strong> ${new Date().toLocaleString('bn-BD')}</div><div><strong>এডমিন:</strong> ${currentAdminEmail||'N/A'}</div><div><strong>স্ট্যাটাস:</strong> অনলাইন</div><div><strong>রোল:</strong> ${roleText}</div></div>`; }
 
         // লগইন ও আউথ
-        async function loadAdminData(user){ adminNameSpan.textContent=user.displayName||user.email; adminEmailSpan.textContent=user.email; adminAvatarDiv.innerHTML=user.photoURL?`<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">`:`<span>${(user.displayName||user.email).charAt(0).toUpperCase()}</span>`; try{ await database.ref(`adminUsers/${user.uid}`).update({email:user.email,name:user.displayName||'',photoURL:user.photoURL||'',lastLogin:firebase.database.ServerValue.TIMESTAMP,status:'active'}); const existing=await publicAdminInfoRef.child(user.uid).once('value'); if(!existing.exists()) await publicAdminInfoRef.child(user.uid).set({name:user.displayName||'Admin',number:''}); }catch(err){} }
-        function checkAdminAuth(){ auth.onAuthStateChanged(async(user)=>{ if(user && ALLOWED_ADMIN_EMAILS.includes(user.email)){ currentAdminEmail=user.email; currentAdminUid=user.uid; await loadAdminData(user); stopAllIntervals(); isPrimaryAdmin=false; await evaluatePrimaryStatus(); startRecheckLoop(); showAdminPanel(); loadOrders(); setupTransactionsListener(); fetchAdminCompletedTotal(); // স্বয়ংক্রিয়ভাবে ভয়েস কলে জয়েন
-            await autoJoinVoiceCall();
-         } else if(user){ await auth.signOut(); showLoginScreen(); showToast('এক্সেস নেই','error'); } else{ stopAllIntervals(); showLoginScreen(); } }); }
-        async function handleGoogleLogin(){ try{ const result=await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); if(!ALLOWED_ADMIN_EMAILS.includes(result.user.email)){ await auth.signOut(); showToast('এক্সেস নেই','error'); } }catch(e){ showToast('লগইন ব্যর্থ','error'); } }
-        async function handleLogout(){ stopAllIntervals(); if(transactionsListenerRef) transactionsListenerRef.off(); if(window.voiceCleanup) await window.voiceCleanup(); await auth.signOut(); showLoginScreen(); showToast('লগ আউট','success'); }
+        async function loadAdminData(user){ 
+            console.log("Loading admin data for:", user.email);
+            adminNameSpan.textContent=user.displayName||user.email; 
+            adminEmailSpan.textContent=user.email; 
+            adminAvatarDiv.innerHTML=user.photoURL?`<img src="${user.photoURL}" style="width:100%;height:100%;border-radius:50%;">`:`<span>${(user.displayName||user.email).charAt(0).toUpperCase()}</span>`; 
+            try{ 
+                await database.ref(`adminUsers/${user.uid}`).update({email:user.email,name:user.displayName||'',photoURL:user.photoURL||'',lastLogin:firebase.database.ServerValue.TIMESTAMP,status:'active'}); 
+                const existing=await publicAdminInfoRef.child(user.uid).once('value'); 
+                if(!existing.exists()) await publicAdminInfoRef.child(user.uid).set({name:user.displayName||'Admin',number:''}); 
+                console.log("Admin data saved");
+            }catch(err){ console.warn("Save admin info failed:", err); } 
+        }
+        
+        function checkAdminAuth(){ 
+            console.log("Setting up auth state listener");
+            auth.onAuthStateChanged(async(user)=>{ 
+                console.log("Auth state changed:", user ? user.email : "null");
+                if(user && ALLOWED_ADMIN_EMAILS.includes(user.email)){ 
+                    console.log("Authorized admin:", user.email);
+                    currentAdminEmail=user.email; 
+                    currentAdminUid=user.uid; 
+                    await loadAdminData(user); 
+                    stopAllIntervals(); 
+                    isPrimaryAdmin=false; 
+                    await evaluatePrimaryStatus(); 
+                    startRecheckLoop(); 
+                    showAdminPanel(); 
+                    loadOrders(); 
+                    setupTransactionsListener(); 
+                    fetchAdminCompletedTotal(); 
+                    // স্বয়ংক্রিয়ভাবে ভয়েস কলে জয়েন
+                    await autoJoinVoiceCall();
+                } else if(user){ 
+                    console.log("Unauthorized user:", user.email);
+                    await auth.signOut(); 
+                    showLoginScreen(); 
+                    showToast('এক্সেস নেই','error'); 
+                } else{ 
+                    console.log("No user logged in");
+                    stopAllIntervals(); 
+                    showLoginScreen(); 
+                } 
+            }); 
+        }
+        
+        async function handleGoogleLogin(){ 
+            console.log("Google login clicked");
+            try{ 
+                const provider = new firebase.auth.GoogleAuthProvider();
+                const result=await auth.signInWithPopup(provider); 
+                console.log("Sign in result:", result.user.email);
+                if(!ALLOWED_ADMIN_EMAILS.includes(result.user.email)){ 
+                    await auth.signOut(); 
+                    showToast('এক্সেস নেই','error'); 
+                } 
+            } catch(e){ 
+                console.error("Login error:", e);
+                showToast('লগইন ব্যর্থ: '+e.message,'error'); 
+            } 
+        }
+        
+        async function handleLogout(){ 
+            stopAllIntervals(); 
+            if(transactionsListenerRef) transactionsListenerRef.off(); 
+            if(window.voiceCleanup) await window.voiceCleanup(); 
+            await auth.signOut(); 
+            showLoginScreen(); 
+            showToast('লগ আউট','success'); 
+        }
+        
         function showLoginScreen(){ loginScreen.style.display='flex'; adminPanel.style.display='none'; }
         function showAdminPanel(){ loginScreen.style.display='none'; adminPanel.style.display='block'; updateSystemInfo(); }
-        googleLoginBtn.onclick=handleGoogleLogin; logoutBtn.onclick=handleLogout; refreshOrdersBtn.onclick=()=>{ loadOrders(); refreshTransactions(); fetchRelogradeBalance(); fetchAdminCompletedTotal(); };
-        closeDetailsModalBtn.onclick=()=>orderDetailsModal.classList.remove('active'); window.onclick=(e)=>{if(e.target===orderDetailsModal) orderDetailsModal.classList.remove('active');}; closePasswordModalBtn.onclick=closePasswordModal; submitPasswordBtn.onclick=verifyAndPerformAction; adminPasswordInput.addEventListener('keypress',(e)=>{if(e.key==='Enter') verifyAndPerformAction();});
-        document.addEventListener('DOMContentLoaded',()=>{ checkAdminAuth(); });
+        
+        googleLoginBtn.onclick=handleGoogleLogin; 
+        logoutBtn.onclick=handleLogout; 
+        refreshOrdersBtn.onclick=()=>{ loadOrders(); refreshTransactions(); fetchRelogradeBalance(); fetchAdminCompletedTotal(); };
+        closeDetailsModalBtn.onclick=()=>orderDetailsModal.classList.remove('active'); 
+        window.onclick=(e)=>{if(e.target===orderDetailsModal) orderDetailsModal.classList.remove('active');}; 
+        closePasswordModalBtn.onclick=closePasswordModal; 
+        submitPasswordBtn.onclick=verifyAndPerformAction; 
+        adminPasswordInput.addEventListener('keypress',(e)=>{if(e.key==='Enter') verifyAndPerformAction();});
+        
+        document.addEventListener('DOMContentLoaded',()=>{ 
+            console.log("DOM loaded, checking auth");
+            checkAdminAuth(); 
+        });
 
-        // ========== এডমিন ভয়েস কল লজিক (অটো জয়েন, ডাটাবেজ থেকে নাম) ==========
+        // ========== এডমিন ভয়েস কল লজিক ==========
         let voiceState = { roomId: null, userId: null, localStream: null, isMicActive: false, peerConnections: new Map(), remoteAudios: new Map(), roomUsersRef: null, iceServers: [], animFrame: null, audioCtx: null };
         const voiceRoomInput=document.getElementById('voiceRoomId'), voiceUserName=document.getElementById('voiceUserName'), voiceMicToggle=document.getElementById('voiceMicToggle'), voiceForcePlayBtn=document.getElementById('voiceForcePlayBtn'), voiceStatusDiv=document.getElementById('voiceStatusArea'), voiceParticipantGrid=document.getElementById('voiceParticipantGrid'), voiceDebugLog=document.getElementById('voiceDebugLog');
+        
         function voiceAddLog(msg,isErr=false){ const div=document.createElement('div'); div.textContent=`[${new Date().toLocaleTimeString()}] ${msg}`; div.style.color=isErr?'#f87171':'#86efac'; div.style.marginBottom='2px'; voiceDebugLog.appendChild(div); voiceDebugLog.scrollTop=voiceDebugLog.scrollHeight; while(voiceDebugLog.children.length>50) voiceDebugLog.removeChild(voiceDebugLog.firstChild); console.log(msg); }
-        async function voiceLoadIceServers(){ try{ const res=await fetch("https://easy-premium.metered.live/api/v1/turn/credentials?apiKey=546ad2772f911ebe6c4b6e0ae95f76ac36d3"); const data=await res.json(); voiceState.iceServers=Array.isArray(data)?data:(data.iceServers||data); if(!voiceState.iceServers.length) throw new Error("no TURN"); voiceAddLog(`✅ TURN লোড (${voiceState.iceServers.length} servers)`); }catch(e){ voiceAddLog(`⚠️ TURN fail, STUN fallback`,true); voiceState.iceServers=[{urls:"stun:stun.l.google.com:19302"}]; } }
+        
+        async function voiceLoadIceServers(){ 
+            try{ 
+                const res=await fetch("https://easy-premium.metered.live/api/v1/turn/credentials?apiKey=546ad2772f911ebe6c4b6e0ae95f76ac36d3"); 
+                const data=await res.json(); 
+                voiceState.iceServers=Array.isArray(data)?data:(data.iceServers||data); 
+                if(!voiceState.iceServers.length) throw new Error("no TURN"); 
+                voiceAddLog(`✅ TURN লোড (${voiceState.iceServers.length} servers)`); 
+            }catch(e){ 
+                voiceAddLog(`⚠️ TURN fail, STUN fallback`,true); 
+                voiceState.iceServers=[{urls:"stun:stun.l.google.com:19302"}]; 
+            } 
+        }
+        
         function voiceShowStatus(msg,isErr=false){ voiceStatusDiv.innerHTML=isErr?`❌ ${msg}`:`✅ ${msg}`; voiceStatusDiv.style.background=isErr?'rgba(220,38,38,0.7)':'rgba(34,197,94,0.7)'; voiceAddLog(msg,isErr); }
-        async function voiceCreatePeerConnection(targetUserId){ if(voiceState.peerConnections.has(targetUserId)) return voiceState.peerConnections.get(targetUserId); const pc=new RTCPeerConnection({iceServers:voiceState.iceServers,iceTransportPolicy:'relay'}); if(voiceState.localStream) voiceState.localStream.getTracks().forEach(t=>pc.addTrack(t,voiceState.localStream)); pc.onicecandidate=event=>{ if(event.candidate) database.ref(`voice_rooms/${voiceState.roomId}/candidates/${targetUserId}`).push({from:voiceState.userId,candidate:event.candidate}); }; pc.ontrack=event=>{ let audio=voiceState.remoteAudios.get(targetUserId); if(!audio){ audio=new Audio(); audio.autoplay=false; audio.volume=1; document.body.appendChild(audio); voiceState.remoteAudios.set(targetUserId,audio); } audio.srcObject=event.streams[0]; audio.play().catch(e=>voiceAddLog(`🔇 প্লে ব্যাক ${targetUserId}: ${e.message}`,true)); }; pc.onconnectionstatechange=()=>{ voiceAddLog(`🔗 ${targetUserId}: ${pc.connectionState}`); voiceUpdateParticipantsList(); }; voiceState.peerConnections.set(targetUserId,pc); return pc; }
-        async function voiceCallUser(targetUserId){ if(targetUserId===voiceState.userId || voiceState.peerConnections.has(targetUserId)) return; voiceAddLog(`📞 কল করছি ${targetUserId}`); const pc=await voiceCreatePeerConnection(targetUserId); const offer=await pc.createOffer(); await pc.setLocalDescription(offer); await database.ref(`voice_rooms/${voiceState.roomId}/offers/${targetUserId}`).push({from:voiceState.userId,offer:{type:offer.type,sdp:offer.sdp}}); }
-        function voiceSetupListeners(){ const offersRef=database.ref(`voice_rooms/${voiceState.roomId}/offers/${voiceState.userId}`); offersRef.on('child_added',async(snap)=>{ const data=snap.val(); if(!data||data.from===voiceState.userId) return; let pc=voiceState.peerConnections.get(data.from); if(!pc) pc=await voiceCreatePeerConnection(data.from); await pc.setRemoteDescription(new RTCSessionDescription(data.offer)); const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await database.ref(`voice_rooms/${voiceState.roomId}/answers/${data.from}`).push({from:voiceState.userId,answer:{type:answer.type,sdp:answer.sdp}}); await snap.ref.remove(); }); const answersRef=database.ref(`voice_rooms/${voiceState.roomId}/answers/${voiceState.userId}`); answersRef.on('child_added',async(snap)=>{ const data=snap.val(); if(!data||data.from===voiceState.userId) return; const pc=voiceState.peerConnections.get(data.from); if(pc && pc.signalingState==='have-local-offer'){ await pc.setRemoteDescription(new RTCSessionDescription(data.answer)); await snap.ref.remove(); } }); const candidatesRef=database.ref(`voice_rooms/${voiceState.roomId}/candidates/${voiceState.userId}`); candidatesRef.on('child_added',async(snap)=>{ const data=snap.val(); if(!data||data.from===voiceState.userId) return; const pc=voiceState.peerConnections.get(data.from); if(pc && data.candidate){ await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); await snap.ref.remove(); } }); }
-        function voiceUpdateParticipantsList(){ const users=[...voiceState.peerConnections.keys(),voiceState.userId]; if(users.length===0){ voiceParticipantGrid.innerHTML='<div style="color:gray;">কেউ নেই</div>'; return; } let html=''; for(let uid of users){ const isMe=uid===voiceState.userId; const conn=voiceState.peerConnections.has(uid); const badge=conn?'<span class="voice-badge voice-connected"></span>':'<span class="voice-badge voice-disconnected"></span>'; html+=`<div class="voice-participant-card"><div class="voice-circle" id="voiceCircle-${uid.replace(/[^a-zA-Z0-9]/g,'_')}"><span style="font-size:28px;">${isMe?'🎤':'👤'}</span></div><div class="voice-name">${badge} ${uid.substring(0,12)}${isMe?' (আপনি)':''}</div></div>`; } voiceParticipantGrid.innerHTML=html; }
+        
+        async function voiceCreatePeerConnection(targetUserId){ 
+            if(voiceState.peerConnections.has(targetUserId)) return voiceState.peerConnections.get(targetUserId); 
+            const pc=new RTCPeerConnection({iceServers:voiceState.iceServers,iceTransportPolicy:'relay'}); 
+            if(voiceState.localStream) voiceState.localStream.getTracks().forEach(t=>pc.addTrack(t,voiceState.localStream)); 
+            pc.onicecandidate=event=>{ if(event.candidate) database.ref(`voice_rooms/${voiceState.roomId}/candidates/${targetUserId}`).push({from:voiceState.userId,candidate:event.candidate}); }; 
+            pc.ontrack=event=>{ let audio=voiceState.remoteAudios.get(targetUserId); if(!audio){ audio=new Audio(); audio.autoplay=false; audio.volume=1; document.body.appendChild(audio); voiceState.remoteAudios.set(targetUserId,audio); } audio.srcObject=event.streams[0]; audio.play().catch(e=>voiceAddLog(`🔇 প্লে ব্যাক ${targetUserId}: ${e.message}`,true)); }; 
+            pc.onconnectionstatechange=()=>{ voiceAddLog(`🔗 ${targetUserId}: ${pc.connectionState}`); voiceUpdateParticipantsList(); }; 
+            voiceState.peerConnections.set(targetUserId,pc); return pc; 
+        }
+        
+        async function voiceCallUser(targetUserId){ 
+            if(targetUserId===voiceState.userId || voiceState.peerConnections.has(targetUserId)) return; 
+            voiceAddLog(`📞 কল করছি ${targetUserId}`); 
+            const pc=await voiceCreatePeerConnection(targetUserId); 
+            const offer=await pc.createOffer(); 
+            await pc.setLocalDescription(offer); 
+            await database.ref(`voice_rooms/${voiceState.roomId}/offers/${targetUserId}`).push({from:voiceState.userId,offer:{type:offer.type,sdp:offer.sdp}}); 
+        }
+        
+        function voiceSetupListeners(){ 
+            const offersRef=database.ref(`voice_rooms/${voiceState.roomId}/offers/${voiceState.userId}`); 
+            offersRef.on('child_added',async(snap)=>{ const data=snap.val(); if(!data||data.from===voiceState.userId) return; let pc=voiceState.peerConnections.get(data.from); if(!pc) pc=await voiceCreatePeerConnection(data.from); await pc.setRemoteDescription(new RTCSessionDescription(data.offer)); const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); await database.ref(`voice_rooms/${voiceState.roomId}/answers/${data.from}`).push({from:voiceState.userId,answer:{type:answer.type,sdp:answer.sdp}}); await snap.ref.remove(); }); 
+            const answersRef=database.ref(`voice_rooms/${voiceState.roomId}/answers/${voiceState.userId}`); 
+            answersRef.on('child_added',async(snap)=>{ const data=snap.val(); if(!data||data.from===voiceState.userId) return; const pc=voiceState.peerConnections.get(data.from); if(pc && pc.signalingState==='have-local-offer'){ await pc.setRemoteDescription(new RTCSessionDescription(data.answer)); await snap.ref.remove(); } }); 
+            const candidatesRef=database.ref(`voice_rooms/${voiceState.roomId}/candidates/${voiceState.userId}`); 
+            candidatesRef.on('child_added',async(snap)=>{ const data=snap.val(); if(!data||data.from===voiceState.userId) return; const pc=voiceState.peerConnections.get(data.from); if(pc && data.candidate){ await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); await snap.ref.remove(); } }); 
+        }
+        
+        function voiceUpdateParticipantsList(){ 
+            const users=[...voiceState.peerConnections.keys(),voiceState.userId]; 
+            if(users.length===0){ voiceParticipantGrid.innerHTML='<div style="color:gray;">কেউ নেই</div>'; return; } 
+            let html=''; 
+            for(let uid of users){ 
+                const isMe=uid===voiceState.userId; 
+                const conn=voiceState.peerConnections.has(uid); 
+                const badge=conn?'<span class="voice-badge voice-connected"></span>':'<span class="voice-badge voice-disconnected"></span>'; 
+                html+=`<div class="voice-participant-card"><div class="voice-circle" id="voiceCircle-${uid.replace(/[^a-zA-Z0-9]/g,'_')}"><span style="font-size:28px;">${isMe?'🎤':'👤'}</span></div><div class="voice-name">${badge} ${uid.substring(0,12)}${isMe?' (আপনি)':''}</div></div>`; 
+            } voiceParticipantGrid.innerHTML=html; 
+        }
+        
         function voiceSetSpeaking(uid,isSpeaking){ const safeId=uid.replace(/[^a-zA-Z0-9]/g,'_'); const circle=document.getElementById(`voiceCircle-${safeId}`); if(circle){ if(isSpeaking) circle.classList.add('speaking'); else circle.classList.remove('speaking'); } }
-        function voiceStartVolumeDetection(stream){ if(voiceState.animFrame) cancelAnimationFrame(voiceState.animFrame); if(!voiceState.audioCtx) voiceState.audioCtx=new (window.AudioContext||window.webkitAudioContext)(); const source=voiceState.audioCtx.createMediaStreamSource(stream); const analyser=voiceState.audioCtx.createAnalyser(); analyser.fftSize=256; const dataArray=new Uint8Array(analyser.frequencyBinCount); source.connect(analyser); voiceState.audioCtx.resume(); function detect(){ if(!analyser||!voiceState.userId) return; analyser.getByteFrequencyData(dataArray); let sum=0; for(let i=0;i<dataArray.length;i++) sum+=dataArray[i]; const avg=sum/dataArray.length; const speaking=avg>18; voiceSetSpeaking(voiceState.userId,speaking); voiceState.animFrame=requestAnimationFrame(detect); } detect(); }
-        async function autoJoinVoiceCall(){ if(!currentAdminEmail) return; // ডাটাবেজ থেকে এডমিনের নাম সংগ্রহ
-            let adminDisplayName = currentAdminEmail.split('@')[0]; // fallback
-            try{ const adminSnap=await database.ref(`adminUsers/${currentAdminUid}`).once('value'); if(adminSnap.exists() && adminSnap.val().name) adminDisplayName=adminSnap.val().name; else{ const publicSnap=await publicAdminInfoRef.child(currentAdminUid).once('value'); if(publicSnap.exists() && publicSnap.val().name) adminDisplayName=publicSnap.val().name; } }catch(e){ voiceAddLog(`নাম লোড ব্যর্থ: ${e.message}`,true); }
+        
+        function voiceStartVolumeDetection(stream){ 
+            if(voiceState.animFrame) cancelAnimationFrame(voiceState.animFrame); 
+            if(!voiceState.audioCtx) voiceState.audioCtx=new (window.AudioContext||window.webkitAudioContext)(); 
+            const source=voiceState.audioCtx.createMediaStreamSource(stream); 
+            const analyser=voiceState.audioCtx.createAnalyser(); 
+            analyser.fftSize=256; 
+            const dataArray=new Uint8Array(analyser.frequencyBinCount); 
+            source.connect(analyser); 
+            voiceState.audioCtx.resume(); 
+            function detect(){ 
+                if(!analyser||!voiceState.userId) return; 
+                analyser.getByteFrequencyData(dataArray); 
+                let sum=0; for(let i=0;i<dataArray.length;i++) sum+=dataArray[i]; 
+                const avg=sum/dataArray.length; 
+                const speaking=avg>18; 
+                voiceSetSpeaking(voiceState.userId,speaking); 
+                voiceState.animFrame=requestAnimationFrame(detect); 
+            } detect(); 
+        }
+        
+        async function autoJoinVoiceCall(){ 
+            if(!currentAdminEmail) { console.log("No admin email, skipping voice join"); return; }
+            console.log("Auto joining voice call for:", currentAdminEmail);
+            let adminDisplayName = currentAdminEmail.split('@')[0]; 
+            try{ 
+                const adminSnap=await database.ref(`adminUsers/${currentAdminUid}`).once('value'); 
+                if(adminSnap.exists() && adminSnap.val().name) adminDisplayName=adminSnap.val().name; 
+                else{ const publicSnap=await publicAdminInfoRef.child(currentAdminUid).once('value'); 
+                if(publicSnap.exists() && publicSnap.val().name) adminDisplayName=publicSnap.val().name; } 
+            }catch(e){ voiceAddLog(`নাম লোড ব্যর্থ: ${e.message}`,true); }
             voiceUserName.value=adminDisplayName;
             const roomId=voiceRoomInput.value.trim()||"easy-premium-admin-group";
             const userId=adminDisplayName.replace(/[.#$\[\]\/]/g,'_')+'_'+currentAdminUid.substring(0,6);
@@ -757,7 +913,8 @@
             voiceState.userId=userId;
             voiceShowStatus("মাইক্রোফোন অনুমতি নিচ্ছি...");
             if(!voiceState.iceServers.length) await voiceLoadIceServers();
-            try{ const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+            try{ 
+                const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
                 voiceState.localStream=stream;
                 voiceState.isMicActive=true;
                 voiceMicToggle.disabled=false;
@@ -777,15 +934,53 @@
                 voiceUpdateParticipantsList();
                 voiceShowStatus("রুমে জয়েন করেছেন! কথা বলুন");
                 voiceAddLog(`✅ ভয়েস কল অটো জয়েন: ${adminDisplayName}`);
-            }catch(err){ voiceShowStatus(`মাইক অনুমতি দেননি: ${err.message}`,true); if(voiceState.localStream) voiceState.localStream.getTracks().forEach(t=>t.stop()); voiceState.localStream=null; }
+            }catch(err){ 
+                voiceShowStatus(`মাইক অনুমতি দেননি: ${err.message}`,true); 
+                if(voiceState.localStream) voiceState.localStream.getTracks().forEach(t=>t.stop()); 
+                voiceState.localStream=null; 
+            }
         }
-        async function voiceLeave(){ if(!voiceState.roomId || !voiceState.userId) return; if(voiceState.animFrame) cancelAnimationFrame(voiceState.animFrame); for(let [uid,pc] of voiceState.peerConnections){ pc.close(); } voiceState.peerConnections.clear(); voiceState.remoteAudios.forEach(a=>a.remove()); voiceState.remoteAudios.clear(); if(voiceState.localStream){ voiceState.localStream.getTracks().forEach(t=>t.stop()); voiceState.localStream=null; } if(voiceState.roomUsersRef){ await database.ref(`voice_rooms/${voiceState.roomId}/users/${voiceState.userId}`).remove(); voiceState.roomUsersRef.off(); } voiceState.roomId=null; voiceState.userId=null; voiceMicToggle.disabled=true; voiceForcePlayBtn.disabled=true; voiceMicToggle.innerHTML='<i class="fas fa-microphone"></i> মাইক চালু'; voiceStatusDiv.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> সংযোগ করতে জয়েন করুন'; voiceParticipantGrid.innerHTML='<div style="color:gray;">কেউ নেই</div>'; voiceAddLog("কল ছেড়েছেন"); }
-        function voiceToggleMic(){ if(!voiceState.localStream) return; const audioTrack=voiceState.localStream.getAudioTracks()[0]; if(audioTrack){ audioTrack.enabled=!audioTrack.enabled; voiceState.isMicActive=audioTrack.enabled; voiceMicToggle.innerHTML=voiceState.isMicActive?'<i class="fas fa-microphone-slash"></i> মাইক বন্ধ':'<i class="fas fa-microphone"></i> মাইক চালু'; voiceShowStatus(voiceState.isMicActive?"মাইক চালু":"মাইক বন্ধ"); } }
-        function voiceForcePlayAll(){ let played=0; for(let audio of voiceState.remoteAudios.values()){ if(audio.paused) audio.play().then(()=>played++).catch(e=>voiceAddLog(`force play fail: ${e.message}`,true)); } if(played) voiceShowStatus(`${played}টি অডিও চালু করা হয়েছে`); else voiceAddLog("সব অডিও ইতিমধ্যে চালু বা নেই"); }
+        
+        async function voiceLeave(){ 
+            if(!voiceState.roomId || !voiceState.userId) return; 
+            if(voiceState.animFrame) cancelAnimationFrame(voiceState.animFrame); 
+            for(let [uid,pc] of voiceState.peerConnections){ pc.close(); } 
+            voiceState.peerConnections.clear(); 
+            voiceState.remoteAudios.forEach(a=>a.remove()); 
+            voiceState.remoteAudios.clear(); 
+            if(voiceState.localStream){ voiceState.localStream.getTracks().forEach(t=>t.stop()); voiceState.localStream=null; } 
+            if(voiceState.roomUsersRef){ await database.ref(`voice_rooms/${voiceState.roomId}/users/${voiceState.userId}`).remove(); voiceState.roomUsersRef.off(); } 
+            voiceState.roomId=null; voiceState.userId=null; 
+            voiceMicToggle.disabled=true; voiceForcePlayBtn.disabled=true; 
+            voiceMicToggle.innerHTML='<i class="fas fa-microphone"></i> মাইক চালু'; 
+            voiceStatusDiv.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> সংযোগ করতে জয়েন করুন'; 
+            voiceParticipantGrid.innerHTML='<div style="color:gray;">কেউ নেই</div>'; 
+            voiceAddLog("কল ছেড়েছেন"); 
+        }
+        
+        function voiceToggleMic(){ 
+            if(!voiceState.localStream) return; 
+            const audioTrack=voiceState.localStream.getAudioTracks()[0]; 
+            if(audioTrack){ 
+                audioTrack.enabled=!audioTrack.enabled; 
+                voiceState.isMicActive=audioTrack.enabled; 
+                voiceMicToggle.innerHTML=voiceState.isMicActive?'<i class="fas fa-microphone-slash"></i> মাইক বন্ধ':'<i class="fas fa-microphone"></i> মাইক চালু'; 
+                voiceShowStatus(voiceState.isMicActive?"মাইক চালু":"মাইক বন্ধ"); 
+            } 
+        }
+        
+        function voiceForcePlayAll(){ 
+            let played=0; 
+            for(let audio of voiceState.remoteAudios.values()){ 
+                if(audio.paused) audio.play().then(()=>played++).catch(e=>voiceAddLog(`force play fail: ${e.message}`,true)); 
+            } 
+            if(played) voiceShowStatus(`${played}টি অডিও চালু করা হয়েছে`); 
+            else voiceAddLog("সব অডিও ইতিমধ্যে চালু বা নেই"); 
+        }
+        
         window.voiceCleanup=async()=>{ await voiceLeave(); };
         voiceMicToggle.onclick=voiceToggleMic;
         voiceForcePlayBtn.onclick=voiceForcePlayAll;
-        // পেজ আনলোড হলে ভয়েস কল ছেড়ে দিন
         window.addEventListener('beforeunload',()=>{ if(voiceState.localStream) voiceLeave(); });
     </script>
 </body>
