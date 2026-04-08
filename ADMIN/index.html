@@ -599,6 +599,7 @@
             <!-- ========== এডমিন গ্রুপ ভয়েস কল সেকশন ========== -->
             <div class="section" id="voiceCallSection">
                 <h2 class="section-title"><i class="fas fa-headset"></i> এডমিন গ্রুপ ভয়েস কল <span style="font-size:0.8rem;">(স্বয়ংক্রিয় সংযোগ)</span></h2>
+                <div class="info-note"><i class="fas fa-info-circle"></i> লগইন করলেই আপনি গ্রুপ কলে সংযুক্ত হবেন। কথা বললে আপনার বৃত্ত ঘুরবে। অডিও না শুনলে "অডিও ফোর্স প্লে" বাটন ব্যবহার করুন।</div>
                 <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
                     <div style="flex:2; min-width: 200px;"><label style="font-size:0.8rem;">রুম আইডি</label><input type="text" id="voiceRoomId" class="password-input" style="margin:0;" value="easy-premium-admin-group" readonly></div>
                     <div style="flex:2; min-width: 200px;"><label style="font-size:0.8rem;">আপনার নাম (এডমিন)</label><input type="text" id="voiceUserName" class="password-input" style="margin:0;" placeholder="এডমিন নাম" readonly></div>
@@ -627,7 +628,7 @@
             <!-- Orders Table -->
             <div class="section">
                 <h2 class="section-title">Relograde অর্ডার তালিকা <span id="orderCount"></span></h2>
-                <div style="overflow-x: auto;"><table class="orders-table"><thead><tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>এডমিন নম্বর</th><th>কারেন্সি</th><th>অ্যাকশন</th></tr></thead><tbody id="ordersTable"></tbody></tr></div>
+                <div style="overflow-x: auto;"><table class="orders-table"><thead><tr><th>TRX ID</th><th>তারিখ</th><th>স্ট্যাটাস</th><th>আইটেম</th><th>মোট দাম</th><th>এডমিন নম্বর</th><th>কারেন্সি</th><th>অ্যাকশন</th></tr></thead><tbody id="ordersTable"></tbody></table></div>
             </div>
 
             <!-- Transactions Table -->
@@ -666,7 +667,7 @@
         let orders = [], currentAdminEmail = null, currentAdminUid = null, isPrimaryAdmin = false;
         let primaryUpdateInterval = null, recheckInterval = null;
         let transactionsListenerRef = null, currentTransactions = [];
-        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'mdpuashpa@gmail.com', 'ytchannel9997100@gmail.com', 'allwork204571@gmail.com'];
+        const ALLOWED_ADMIN_EMAILS = ['mdashikislam017705@gmail.com', 'mdsojib1388888@gmail.com', 'admin@easy-premium.com', 'ytchannel9997100@gmail.com', 'allwork204571@gmail.com'];
         const ACTIVE_WINDOW = 60 * 1000, UPDATE_INTERVAL = 60 * 1000;
         const publicAdminInfoRef = database.ref('publicAdminInfo');
 
@@ -727,7 +728,6 @@
                     refreshOrdersDisplay(); 
                     updateSystemInfo(); 
                 } else { 
-                    // যদি কোনো প্রধান এডমিন না থাকে, তাহলে নিজেকে প্রধান করার চেষ্টা করি
                     if(!primaryUid){ 
                         const claimed = await tryBecomePrimary(); 
                         if(claimed){ 
@@ -868,7 +868,7 @@
             checkAdminAuth(); 
         });
 
-        // ========== এডমিন ভয়েস কল লজিক ==========
+        // ========== এডমিন ভয়েস কল লজিক (পুরনো কাজ করা ভার্সন) ==========
         let voiceState = { roomId: null, userId: null, localStream: null, isMicActive: false, peerConnections: new Map(), remoteAudios: new Map(), roomUsersRef: null, iceServers: [], animFrame: null, audioCtx: null };
         const voiceRoomInput=document.getElementById('voiceRoomId'), voiceUserName=document.getElementById('voiceUserName'), voiceMicToggle=document.getElementById('voiceMicToggle'), voiceForcePlayBtn=document.getElementById('voiceForcePlayBtn'), voiceStatusDiv=document.getElementById('voiceStatusArea'), voiceParticipantGrid=document.getElementById('voiceParticipantGrid'), voiceDebugLog=document.getElementById('voiceDebugLog');
         
@@ -891,10 +891,22 @@
         
         async function voiceCreatePeerConnection(targetUserId){ 
             if(voiceState.peerConnections.has(targetUserId)) return voiceState.peerConnections.get(targetUserId); 
-            const pc=new RTCPeerConnection({iceServers:voiceState.iceServers,iceTransportPolicy:'relay'}); 
+            const pc=new RTCPeerConnection({iceServers:voiceState.iceServers}); // relay সরানো হয়েছে
             if(voiceState.localStream) voiceState.localStream.getTracks().forEach(t=>pc.addTrack(t,voiceState.localStream)); 
             pc.onicecandidate=event=>{ if(event.candidate) database.ref(`voice_rooms/${voiceState.roomId}/candidates/${targetUserId}`).push({from:voiceState.userId,candidate:event.candidate}); }; 
-            pc.ontrack=event=>{ let audio=voiceState.remoteAudios.get(targetUserId); if(!audio){ audio=new Audio(); audio.autoplay=false; audio.volume=1; document.body.appendChild(audio); voiceState.remoteAudios.set(targetUserId,audio); } audio.srcObject=event.streams[0]; audio.play().catch(e=>voiceAddLog(`🔇 প্লে ব্যাক ${targetUserId}: ${e.message}`,true)); }; 
+            pc.ontrack=event=>{ 
+                voiceAddLog(`📢 রিমোট ট্র্যাক পেলাম ${targetUserId}`);
+                let audio=voiceState.remoteAudios.get(targetUserId); 
+                if(!audio){ 
+                    audio=new Audio(); 
+                    audio.autoplay=true; 
+                    audio.volume=1; 
+                    document.body.appendChild(audio); 
+                    voiceState.remoteAudios.set(targetUserId,audio); 
+                } 
+                audio.srcObject=event.streams[0]; 
+                audio.play().catch(e=>voiceAddLog(`🔇 প্লে ব্যাক ${targetUserId}: ${e.message}`,true)); 
+            }; 
             pc.onconnectionstatechange=()=>{ voiceAddLog(`🔗 ${targetUserId}: ${pc.connectionState}`); voiceUpdateParticipantsList(); }; 
             voiceState.peerConnections.set(targetUserId,pc); return pc; 
         }
