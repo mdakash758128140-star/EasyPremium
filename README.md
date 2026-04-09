@@ -32,7 +32,9 @@
 
 ## 📁 প্রজেক্ট স্ট্রাকচার
 - EasyPremium
-- ADMIN অ্যাডমিন প্যানেল
+- index.html মেইন ল্যান্ডিং হোমপেজ
+- ADMIN
+  - index.html অ্যাডমিন প্যানেল
 - AccountDelete অ্যাকাউন্ট ডিলিট করার পেজ
 - Checking অর্ডার চেকিং স্ট্যাটাস চেক করার পেজ
 - Demo ডেমো ফাইল (firebase_database.json সহ)
