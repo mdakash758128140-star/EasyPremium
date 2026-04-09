@@ -1,6 +1,6 @@
 # EasyPremium - Premium E-Commerce Website
 
-**EasyPremium** হলো একটি আধুনিক, সুন্দর এবং দ্রুত **ই-কমার্স ওয়েবসাইট**। এখানে প্রিমিয়াম প্রোডাক্ট কেনা-বেচা করা যায়।
+**EasyPremium** হলো একটি আধুনিক, সুন্দর এবং দ্রুত **ই-কমার্স ওয়েবসাইট**। এখানে প্রিমিয়াম সাবস্ক্রিপশন কেনাকাটা করার জন্য ভার্চুয়াল ক্রেডিট কার্ড পাওয়া যায়।
 
 লাইভ ওয়েবসাইট: [https://easy-premium.com](https://www.easy-premium.com)  
 অথবা Vercel লিংক: [https://easy-premium-xmj9-b08dw44fk-mdakash758128140-stars-projects.vercel.app](https://easy-premium-xmj9-git-main-mdakash758128140-stars-projects.vercel.app)
