@@ -42,26 +42,27 @@
 - Checking
   - index.html অর্ডার চেকিং স্ট্যাটাস চেক করার পেজ
 
-- Demo
-  - firebase_database.json
-  - firebase_rules.json
+- Profile
+  - index.html ইউজার প্রোফাইল ম্যানেজমেন্
 
 - Pay
   - index.html পেমেন্ট পকরার পেজ
   
-- Profile
-  - index.html ইউজার প্রোফাইল ম্যানেজমেন্ট
-
 - privacy-refund-policy-terms-of-service
   - index.html প্রাইভেসি, রিফান্ড ও টার্মস অফ সার্ভিস পেজ
-
-- 404.html  কাস্টম ৪০৪ এরর পেজ
-
-- publicData.json পাবলিক ডেটা প্রোডাক্ট কনফিগারেশন
-
+  
 - api API
   - create-order.js
   -  order_completed.js
   -  relograde-balance.js
   -  relograde-orders.js
   -  webhook.js
+
+- Demo
+  - firebase_database.json
+  - firebase_rules.json
+
+- 404.html  কাস্টম ৪০৪ এরর পেজ
+
+- publicData.json পাবলিক ডেটা প্রোডাক্ট কনফিগারেশন
+
