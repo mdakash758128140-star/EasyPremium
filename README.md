@@ -38,8 +38,13 @@
 - Demo ডেমো ফাইল (firebase_database.json সহ)
 - Pay পেমেন্ট প্রসেসিং পেজ
 - Profile ইউজার প্রোফাইল ম্যানেজমেন্ট
-- api API রিলেটেড ফাইল (বর্তমানে খালি কম, trustpilot.js ডিলিট করা হয়েছে)
 - privacy-refund-policy-terms-of-service প্রাইভেসি, রিফান্ড ও টার্মস অফ সার্ভিস পেজ
 - 404.html  কাস্টম ৪০৪ এরর পেজ
 - index.html মেইন ল্যান্ডিং হোমপেজ
 - publicData.json পাবলিক ডেটা (প্রোডাক্ট কনফিগারেশন)
+-   api API জাভাস্ক্রিপ্ট
+-   create-order.js
+-   order_completed.js
+-   relograde-balance.js
+-   relograde-orders.js
+-   webhook.js
