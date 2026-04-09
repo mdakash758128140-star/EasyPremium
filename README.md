@@ -49,4 +49,6 @@ EasyPremium/
 ├── google1bd386723e561509.html
 ├── robots.txt
 ├── sitemap.xml
+├── verce.json
+├── sitemap.xml
 ├── verce.json                      # Vercel deployment config (vercel.json হওয়ার কথা)
