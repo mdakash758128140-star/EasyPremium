@@ -52,15 +52,15 @@
   - index.html প্রাইভেসি, রিফান্ড ও টার্মস অফ সার্ভিস পেজ
   
 - api API
-  - create-order.js
-  -  order_completed.js
-  -  relograde-balance.js
-  -  relograde-orders.js
-  -  webhook.js
+  - create-order.js অর্ডার তৈরি জাভাস্ক্রিপ্ট
+  -  order_completed.js  অর্ডার কনফার্ম জাভাস্ক্রিপ্ট
+  -  relograde-balance.js Relograde অ্যাকাউন্টের ব্যালেন্স চেক জাভাস্ক্রিপ্ট
+  -  relograde-orders.js অর্ডারের লিস্ট দেখানো জাভাস্ক্রিপ্ট
+  -  webhook.js ইউজারের কাছে ভাউচার পৌঁছে দেওয়া জাভাস্ক্রিপ্ট
 
 - Demo
-  - firebase_database.json
-  - firebase_rules.json
+  - firebase_database.json ডাটাবেস দেখার জন্য ডেমো
+  - firebase_rules.json ডাটাবেস নিয়ম দেখার জন্য ডেমো
 
 - 404.html  কাস্টম ৪০৪ এরর পেজ
 
