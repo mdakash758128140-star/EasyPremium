@@ -31,24 +31,18 @@
 ---
 
 ## 📁 প্রজেক্ট স্ট্রাকচার
-EasyPremium/
-├── ADMIN/ অ্যাডমিন প্যানেল
-├── AccountDelete/  অ্যাকাউন্ট ডিলিট করার পেজ
-├── Checking/ অর্ডার চেকিং / স্ট্যাটাস চেক করার পেজ
-├── Demo/ ডেমো ফাইল (firebase_database.json সহ)
-├── Pay/ পেমেন্ট প্রসেসিং পেজ
-├── Profile/ ইউজার প্রোফাইল ম্যানেজমেন্ট
-├── api/ API রিলেটেড ফাইল (বর্তমানে খালি/কম, trustpilot.js ডিলিট করা হয়েছে)
-├── privacy-refund-policy-terms-of-service/ প্রাইভেসি, রিফান্ড ও টার্মস অফ সার্ভিস পেজ
-│
-├── 404.html  কাস্টম ৪০৪ এরর পেজ
-├── index.html মেইন ল্যান্ডিং/হোমপেজ
-├── publicData.json পাবলিক ডেটা (প্রোডাক্ট/কনফিগারেশন)
-├── README.md
-├── SECURITY.md
-├── google1bd386723e561509.html
-├── robots.txt
-├── sitemap.xml
-├── verce.json
+-EasyPremium/
+-ADMIN/ অ্যাডমিন প্যানেল
+-AccountDelete/  অ্যাকাউন্ট ডিলিট করার পেজ
+-Checking/ অর্ডার চেকিং / স্ট্যাটাস চেক করার পেজ
+-Demo/ ডেমো ফাইল (firebase_database.json সহ)
+-Pay/ পেমেন্ট প্রসেসিং পেজ
+-Profile/ ইউজার প্রোফাইল ম্যানেজমেন্ট
+-api/ API রিলেটেড ফাইল (বর্তমানে খালি/কম, trustpilot.js ডিলিট করা হয়েছে)
+-privacy-refund-policy-terms-of-service/ প্রাইভেসি, রিফান্ড ও টার্মস অফ সার্ভিস পেজ
+-
+-404.html  কাস্টম ৪০৪ এরর পেজ
+-index.html মেইন ল্যান্ডিং/হোমপেজ
+-publicData.json পাবলিক ডেটা (প্রোডাক্ট/কনফিগারেশন)
 ├── sitemap.xml
 ├── verce.json                      # Vercel deployment config (vercel.json হওয়ার কথা)
