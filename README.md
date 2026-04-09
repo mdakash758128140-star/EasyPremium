@@ -34,10 +34,15 @@
 - index.html মেইন ল্যান্ডিং হোমপেজ
 - ADMIN
   - index.html অ্যাডমিন প্যানেল
-- AccountDelete অ্যাকাউন্ট ডিলিট করার পেজ
-- Checking অর্ডার চেকিং স্ট্যাটাস চেক করার পেজ
-- Demo ডেমো ফাইল (firebase_database.json সহ)
-- Pay পেমেন্ট প্রসেসিং পেজ
+- AccountDelete
+  - index.html অ্যাকাউন্ট ডিলিট করার পেজ
+- Checking
+  - index.html অর্ডার চেকিং স্ট্যাটাস চেক করার পেজ
+- Demo
+  - firebase_database.json
+  - firebase_rules.json
+- Pay
+  - index.html পেমেন্ট পকরার পেজ 
 - Profile ইউজার প্রোফাইল ম্যানেজমেন্ট
 - privacy-refund-policy-terms-of-service প্রাইভেসি, রিফান্ড ও টার্মস অফ সার্ভিস পেজ
 - 404.html  কাস্টম ৪০৪ এরর পেজ
